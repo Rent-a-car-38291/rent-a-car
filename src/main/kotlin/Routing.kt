@@ -17,6 +17,10 @@ fun Application.configureRouting() {
 
         cars[2].updateMileage(1000)
 
+        get("/") {
+            call.respondText("OK")
+        }
+
         get("/vehicles") {
             call.respond(cars)
         }
