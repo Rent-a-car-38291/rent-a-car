@@ -1,0 +1,99 @@
+@startuml RentACar
+
+enum Transmission {
+  Manual
+  Automatic
+}
+
+enum CarStatus {
+  Available
+  Rented
+  Maintenance
+}
+
+enum BodyStyle {
+  Hatchback
+  SUV
+  Sedan
+  Stationwagon
+  Cabrio
+  Coupe
+  MPV
+  Other
+}
+
+class Location {
+  + latitude : Double
+  + longitude : Double
+}
+
+class Trip {
+  + id : Int
+  + distanceKm : Int
+  + score : Int
+}
+
+class User {
+  + id : Int
+  + name : String
+  + email : String
+  - password : String
+  + method(type) : type
+}
+
+class Image {
+  + id : Int
+  + url : String
+  + method(type) : type
+}
+
+class Reservation {
+  + id : Int
+  + startTime : LocalDateTime
+  + endTime : LocalDateTime
+  + method(type) : type
+}
+
+abstract class Car {
+  + id : Int
+  + brand : String
+  + licensePlate : String
+  + mileage : Int
+  + status : CarStatus
+  + rate : Double
+  + location : Location
+  + doors : Int
+  + bodyStyle : BodyStyle
+  + modelYear : LocalDate
+  + power : Int
+  + transmission : Transmission
+  + color : String
+  + method(type) : type
+}
+
+class ICECar {
+  + consumption : ???
+  + method(type) : type
+}
+
+class BEVCar {
+  + consumption : ???
+  + method(type) : type
+}
+
+class FCEVCar {
+  + consumption : ???
+  + method(type) : type
+}
+
+Trip "0..*" --> "1" Reservation
+Reservation "0..*" --> "1" User
+Reservation "0..*" --> "1" Car
+Car "0..*" --> "1" User : owner
+Image "0..*" --> "1" Car
+
+Car <|-- ICECar
+Car <|-- BEVCar
+Car <|-- FCEVCar
+
+@enduml
