@@ -4,6 +4,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
+import kotlinx.serialization.json.*
 import org.jetbrains.amper.ktor.module
 import kotlin.test.*
 
@@ -17,11 +18,12 @@ class CarRoutesTest {
 
         // Act
         val response = client.get("/cars").bodyAsText()
+        val cars = Json.parseToJsonElement(response).jsonArray
+        val types = cars.map { it.jsonObject["type"]?.jsonPrimitive?.content }
 
         // Assert
-        assertTrue(response.contains("\"type\":\"com.example.domain.ICECar\""))
-        assertTrue(response.contains("\"type\":\"com.example.domain.BEVCar\""))
-        assertTrue(response.contains("\"type\":\"com.example.domain.FCEVCar\""))
+        assertEquals(3, cars.size)
+        assertEquals(setOf("BEV", "ICE", "FCEV"), types.toSet())
     }
 
     @Test
