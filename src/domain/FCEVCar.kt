@@ -1,7 +1,9 @@
 package com.example.domain
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+@SerialName("FCEV")
 class FCEVCar (
     override val id: Int,
     override val brand: String,
