@@ -18,4 +18,3 @@ dependencies:
 
 test-dependencies:
   - $ktor.server.testHost
-  - $ktor.client.contentNegotiation
