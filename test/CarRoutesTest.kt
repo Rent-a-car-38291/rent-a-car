@@ -36,6 +36,6 @@ class CarRoutesTest {
 
         // Assert
         assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals(ContentType.Application.Json, response.contentType())
+        assertEquals(true, response.contentType()?.match(ContentType.Application.Json))
     }
 }
