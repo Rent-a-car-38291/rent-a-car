@@ -5,6 +5,8 @@ import com.example.domain.UserRepository
 import com.example.domain.toResponse
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.plugins.UnsupportedMediaTypeException
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -16,7 +18,10 @@ fun Application.configureAccounts() {
         post("/accounts") {
             val request = try {
                 call.receive<RegisterRequest>()
-            } catch (e: Exception) {
+            } catch (e: UnsupportedMediaTypeException) {
+                call.respond(HttpStatusCode.UnsupportedMediaType)
+                return@post
+            } catch (e: BadRequestException) {
                 call.respond(HttpStatusCode.BadRequest)
                 return@post
             }

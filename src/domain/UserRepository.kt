@@ -9,10 +9,12 @@ import javax.crypto.spec.PBEKeySpec
 object UserRepository {
     private val users = mutableListOf<User>()
 
-    @Synchronized
     fun register(name: String, email: String, password: String): User? {
-        if (users.any { it.email.equals(email, ignoreCase = true) }) return null
-        return User(users.size + 1, name, email, hash(password)).also { users.add(it) }
+        val passwordHash = hash(password) // slow, so keep it outside the lock
+        synchronized(this) {
+            if (users.any { it.email.equals(email, ignoreCase = true) }) return null
+            return User(users.size + 1, name, email, passwordHash).also { users.add(it) }
+        }
     }
 
     @Synchronized
