@@ -146,4 +146,15 @@ class AccountRoutesTest {
 
         assertEquals(HttpStatusCode.Forbidden, response.status)
     }
+
+    @Test
+    fun DeletedUsersTokenDoesNotWorkForNewUser() = testApplication {
+        application { module() }
+        val (id, token) = client.signUp()
+        client.deleteAccount(id, token)
+        val (newId, _) = client.signUp("piet@example.com")
+
+        // Tokens outlive a delete, so they're only safe while ids are never handed out again.
+        assertEquals(HttpStatusCode.Unauthorized, client.deleteAccount(newId, token).status)
+    }
 }
