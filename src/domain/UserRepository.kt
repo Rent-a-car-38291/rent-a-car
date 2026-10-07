@@ -31,7 +31,7 @@ object UserRepository {
 
     private fun hash(password: String, salt: ByteArray = ByteArray(16).also { SecureRandom().nextBytes(it) }): String {
         val key = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-            .generateSecret(PBEKeySpec(password.toCharArray(), salt, 120_000, 256)).encoded
+            .generateSecret(PBEKeySpec(password.toCharArray(), salt, 600_000, 256)).encoded
         val b64 = Base64.getEncoder()
         return "${b64.encodeToString(salt)}:${b64.encodeToString(key)}"
     }
