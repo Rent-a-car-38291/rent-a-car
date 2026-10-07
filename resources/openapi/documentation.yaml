@@ -1,0 +1,83 @@
+openapi: 3.0.3
+info:
+  title: Rent my car API
+  version: 0.1.0
+  description: Data lives in memory until the database lands, so it's gone after a restart.
+servers:
+  - url: http://localhost:8080
+paths:
+  /cars:
+    get:
+      tags: [Cars]
+      summary: List all cars
+      responses:
+        "200":
+          description: All cars
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Car"
+components:
+  schemas:
+    Car:
+      oneOf:
+        - $ref: "#/components/schemas/ICECar"
+        - $ref: "#/components/schemas/BEVCar"
+        - $ref: "#/components/schemas/FCEVCar"
+      discriminator:
+        propertyName: type
+        mapping:
+          ICE: "#/components/schemas/ICECar"
+          BEV: "#/components/schemas/BEVCar"
+          FCEV: "#/components/schemas/FCEVCar"
+    CarBase:
+      type: object
+      required: [type, id, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color]
+      properties:
+        type: { type: string, enum: [ICE, BEV, FCEV] }
+        id: { type: integer, example: 1 }
+        brand: { type: string, example: Peugeot }
+        licensePlate: { type: string, example: 85-GHB-2 }
+        mileage: { type: integer, example: 217349 }
+        status: { type: string, enum: [Available, Rented, Maintenance] }
+        rate: { type: number, example: 25.0 }
+        location: { $ref: "#/components/schemas/Location" }
+        doors: { type: integer, example: 5 }
+        bodyStyle: { type: string, enum: [Hatchback, SUV, Sedan, Stationwagon, Cabrio, Coupe, MPV, Other] }
+        modelYear: { type: integer, example: 2008 }
+        power: { type: integer, example: 95 }
+        transmission: { type: string, enum: [Manual, Automatic] }
+        color: { type: string, example: Black }
+    ICECar:
+      allOf:
+        - $ref: "#/components/schemas/CarBase"
+        - type: object
+          required: [fuelType, tankCapacityLitres, consumptionLitresPer100Km]
+          properties:
+            fuelType: { type: string, enum: [Petrol, Diesel, LPG] }
+            tankCapacityLitres: { type: number, example: 50.0 }
+            consumptionLitresPer100Km: { type: number, example: 6.1 }
+    BEVCar:
+      allOf:
+        - $ref: "#/components/schemas/CarBase"
+        - type: object
+          required: [batteryCapacityKwh, consumptionKwhPer100Km]
+          properties:
+            batteryCapacityKwh: { type: number, example: 60.0 }
+            consumptionKwhPer100Km: { type: number, example: 14.5 }
+    FCEVCar:
+      allOf:
+        - $ref: "#/components/schemas/CarBase"
+        - type: object
+          required: [tankCapacityKg, consumptionKgPer100Km]
+          properties:
+            tankCapacityKg: { type: number, example: 5.6 }
+            consumptionKgPer100Km: { type: number, example: 0.76 }
+    Location:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude: { type: number, example: 52.3676 }
+        longitude: { type: number, example: 4.9041 }
