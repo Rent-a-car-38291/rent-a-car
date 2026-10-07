@@ -1,11 +1,16 @@
 import com.example.domain.UserRepository
+import io.ktor.client.HttpClient
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.jetbrains.amper.ktor.module
 import kotlin.test.*
 
@@ -16,11 +21,18 @@ class AccountRoutesTest {
     private fun valid(email: String = "jan@example.com") =
         """{"name":"Jan","email":"$email","password":"supersecret"}"""
 
-    private suspend fun io.ktor.client.HttpClient.register(body: String) =
-        post("/accounts") {
+    private suspend fun HttpClient.postJson(path: String, body: String) =
+        post(path) {
             contentType(ContentType.Application.Json)
             setBody(body)
         }
+
+    private suspend fun HttpClient.register(body: String) = postJson("/accounts", body)
+
+    private suspend fun HttpClient.login(email: String = "jan@example.com", password: String = "supersecret") =
+        postJson("/login", """{"email":"$email","password":"$password"}""")
+
+    private suspend fun HttpResponse.json() = Json.parseToJsonElement(bodyAsText()).jsonObject
 
     @Test
     fun RegisterReturnsCreatedWithoutPassword() = testApplication {
@@ -70,5 +82,25 @@ class AccountRoutesTest {
         }
 
         assertEquals(HttpStatusCode.UnsupportedMediaType, response.status)
+    }
+
+    @Test
+    fun LoginReturnsToken() = testApplication {
+        application { module() }
+        client.register(valid())
+
+        val response = client.login(email = "JAN@example.com")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertFalse(response.json()["token"]?.jsonPrimitive?.content.isNullOrBlank())
+    }
+
+    @Test
+    fun LoginWithWrongCredentialsReturnsUnauthorized() = testApplication {
+        application { module() }
+        client.register(valid())
+
+        assertEquals(HttpStatusCode.Unauthorized, client.login(password = "wrongpassword").status)
+        assertEquals(HttpStatusCode.Unauthorized, client.login(email = "piet@example.com").status)
     }
 }
