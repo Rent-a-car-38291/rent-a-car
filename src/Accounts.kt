@@ -3,7 +3,6 @@ package com.example
 import com.example.domain.LoginRequest
 import com.example.domain.RegisterRequest
 import com.example.domain.TokenRepository
-import com.example.domain.TokenResponse
 import com.example.domain.UserRepository
 import com.example.domain.toResponse
 import io.ktor.http.*
@@ -40,7 +39,7 @@ fun Application.configureAccounts() {
                 call.respond(HttpStatusCode.Unauthorized)
                 return@post
             }
-            call.respond(TokenResponse(TokenRepository.issue(user.id)))
+            call.respond(mapOf("token" to TokenRepository.issue(user.id)))
         }
     }
 }
