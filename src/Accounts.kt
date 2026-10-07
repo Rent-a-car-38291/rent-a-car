@@ -4,13 +4,16 @@ import com.example.domain.LoginRequest
 import com.example.domain.RegisterRequest
 import com.example.domain.TokenRepository
 import com.example.domain.TokenResponse
+import com.example.domain.User
 import com.example.domain.UserRepository
 import com.example.domain.toResponse
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.util.*
 
 private const val MIN_PASSWORD_LENGTH = 8
 private val EMAIL_PATTERN = Regex("[^@\\s]+@[^@\\s]+\\.[^@\\s]+") // something@domain.tld, nothing stricter
@@ -41,6 +44,22 @@ fun Application.configureAccounts() {
                 return@post
             }
             call.respond(TokenResponse(TokenRepository.issue(user.id)))
+        }
+
+        authenticate {
+            delete("/accounts/{id}") {
+                val id = call.parameters.getOrFail<Int>("id")
+                val status = when {
+                    UserRepository.find(id) == null -> HttpStatusCode.NotFound
+                    id != call.principal<User>()?.id -> HttpStatusCode.Forbidden
+                    else -> {
+                        UserRepository.delete(id)
+                        TokenRepository.revokeAll(id)
+                        HttpStatusCode.NoContent
+                    }
+                }
+                call.respond(status)
+            }
         }
     }
 }

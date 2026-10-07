@@ -26,6 +26,9 @@ object UserRepository {
     fun find(id: Int): User? = users.find { it.id == id }
 
     @Synchronized
+    fun delete(id: Int) = users.removeAll { it.id == id }
+
+    @Synchronized
     fun clear() = users.clear()
 
     private fun findByEmail(email: String) = users.find { it.email.equals(email, ignoreCase = true) }
