@@ -17,8 +17,102 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Car"
+  /accounts:
+    post:
+      tags: [Accounts]
+      summary: Register an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Account created (the password is never returned)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: Missing or invalid field (empty name, invalid email, password shorter than 8 characters)
+        "409":
+          description: Email already registered (case-insensitive)
+  /login:
+    post:
+      tags: [Accounts]
+      summary: Log in and get a bearer token
+      description: Copy the token into "Authorize" at the top of the page to call endpoints that need a login.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: Missing field or a body that isn't JSON
+        "401":
+          description: Wrong email or password
+  /accounts/{id}:
+    delete:
+      tags: [Accounts]
+      summary: Delete your own account
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 1 }
+      responses:
+        "204":
+          description: Account deleted
+        "400":
+          description: Non-numeric id
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's account
+        "404":
+          description: Unknown id
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
   schemas:
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string, example: Jan }
+        email: { type: string, example: jan@example.com }
+        password: { type: string, minLength: 8, example: supersecret }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, example: jan@example.com }
+        password: { type: string, example: supersecret }
+    UserResponse:
+      type: object
+      required: [id, name, email]
+      properties:
+        id: { type: integer, example: 1 }
+        name: { type: string, example: Jan }
+        email: { type: string, example: jan@example.com }
+    TokenResponse:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, example: 5c42d744-8a0e-4d6f-9a52-0c3f1e2b7d10 }
     Car:
       oneOf:
         - $ref: "#/components/schemas/ICECar"
