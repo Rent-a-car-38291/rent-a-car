@@ -10,6 +10,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 private const val MIN_PASSWORD_LENGTH = 8
+private val EMAIL_PATTERN = Regex("[^@\\s]+@[^@\\s]+\\.[^@\\s]+") // something@domain.tld, nothing stricter
 
 fun Application.configureAccounts() {
     routing {
@@ -17,7 +18,7 @@ fun Application.configureAccounts() {
             val request = call.receive<RegisterRequest>() // Ktor answers unreadable bodies with 400 or 415
             val name = request.name.trim()
             val email = request.email.trim()
-            if (name.isEmpty() || !email.contains('@') || request.password.length < MIN_PASSWORD_LENGTH) {
+            if (name.isEmpty() || !EMAIL_PATTERN.matches(email) || request.password.length < MIN_PASSWORD_LENGTH) {
                 call.respond(HttpStatusCode.BadRequest)
                 return@post
             }

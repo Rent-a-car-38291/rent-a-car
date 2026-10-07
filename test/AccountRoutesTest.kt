@@ -41,6 +41,9 @@ class AccountRoutesTest {
         listOf(
             """{"name":"","email":"jan@example.com","password":"supersecret"}""",
             """{"name":"Jan","email":"not-an-email","password":"supersecret"}""",
+            """{"name":"Jan","email":"jan@","password":"supersecret"}""",
+            """{"name":"Jan","email":"@example.com","password":"supersecret"}""",
+            """{"name":"Jan","email":"jan@example","password":"supersecret"}""",
             """{"name":"Jan","email":"jan@example.com","password":"short"}""",
             """{}""",
             "not json"
