@@ -22,6 +22,9 @@ object UserRepository {
         synchronized(this) { findByEmail(email) }?.takeIf { verify(password, it.passwordHash) }
 
     @Synchronized
+    fun find(id: Int): User? = users.find { it.id == id }
+
+    @Synchronized
     fun clear() = users.clear()
 
     private fun findByEmail(email: String) = users.find { it.email.equals(email, ignoreCase = true) }
