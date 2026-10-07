@@ -1,0 +1,17 @@
+@startuml SequenceGetCars
+title GET /cars
+autonumber
+
+actor Client
+participant "Routing.kt" as Route
+participant "CarRepository\n(InMemoryCarRepository)" as Repo
+participant "Ktor\n(ContentNegotiation)" as Ktor
+
+Client -> Route : GET /cars
+Route -> Repo : allCars()
+Repo --> Route : List<Car>
+Route -> Ktor : respond(cars)
+Ktor -> Ktor : serialize sealed Car,\nadds "type": "ICE" | "BEV" | "FCEV"
+Ktor --> Client : 200 OK\n[{type, id, brand, ...}, ...]
+
+@enduml

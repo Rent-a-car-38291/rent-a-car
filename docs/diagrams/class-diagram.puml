@@ -1,0 +1,163 @@
+@startuml ClassDiagram
+' Design view: the classes as they exist in src/ today.
+' The planned domain lives in domain-model.puml.
+hide empty members
+set separator none
+
+package com.example <<Folder>> {
+  class "Application.kt" as Application <<(F,orchid) file>> {
+    + main(args : Array<String>)
+    + Application.module()
+  }
+  class "Serialization.kt" as Serialization <<(F,orchid) file>> {
+    + Application.configureSerialization()
+  }
+  class "Security.kt" as Security <<(F,orchid) file>> {
+    + Application.configureSecurity()
+  }
+  class "Routing.kt" as Routing <<(F,orchid) file>> {
+    + Application.configureRouting(repository : CarRepository)
+  }
+  class "Accounts.kt" as Accounts <<(F,orchid) file>> {
+    - MIN_PASSWORD_LENGTH : Int = 8
+    - EMAIL_PATTERN : Regex
+    + Application.configureAccounts()
+  }
+}
+
+package com.example.repository <<Folder>> {
+  interface CarRepository {
+    + allCars() : List<Car>
+  }
+  class InMemoryCarRepository {
+    - cars : List<Car>
+    + allCars() : List<Car>
+  }
+}
+
+package com.example.domain <<Folder>> {
+  abstract class Car <<sealed>> {
+    + id : Int
+    + brand : String
+    + licensePlate : String
+    + mileage : Int
+    + status : CarStatus
+    + rate : Double
+    + location : Location
+    + doors : Int
+    + bodyStyle : BodyStyle
+    + modelYear : Int
+    + power : Int
+    + transmission : Transmission
+    + color : String
+  }
+  class ICECar <<"ICE">> {
+    + fuelType : FuelType
+    + tankCapacityLitres : Double
+    + consumptionLitresPer100Km : Double
+  }
+  class BEVCar <<"BEV">> {
+    + batteryCapacityKwh : Double
+    + consumptionKwhPer100Km : Double
+  }
+  class FCEVCar <<"FCEV">> {
+    + tankCapacityKg : Double
+    + consumptionKgPer100Km : Double
+  }
+  class Location {
+    + latitude : Double
+    + longitude : Double
+  }
+  enum CarStatus {
+    Available
+    Rented
+    Maintenance
+  }
+  enum BodyStyle {
+    Hatchback
+    SUV
+    Sedan
+    Stationwagon
+    Cabrio
+    Coupe
+    MPV
+    Other
+  }
+  enum Transmission {
+    Manual
+    Automatic
+  }
+  enum FuelType {
+    Petrol
+    Diesel
+    LPG
+  }
+
+  class User {
+    + id : Int
+    + name : String
+    + email : String
+    + passwordHash : String
+    + toResponse() : UserResponse
+  }
+  class RegisterRequest <<data>> {
+    + name : String
+    + email : String
+    + password : String
+  }
+  class LoginRequest <<data>> {
+    + email : String
+    + password : String
+  }
+  class UserResponse <<data>> {
+    + id : Int
+    + name : String
+    + email : String
+  }
+  class UserRepository <<object>> {
+    - users : MutableList<User>
+    - nextId : Int
+    + register(name : String, email : String, password : String) : User?
+    + authenticate(email : String, password : String) : User?
+    + find(id : Int) : User?
+    + delete(id : Int) : Boolean
+    + clear()
+    - findByEmail(email : String) : User?
+    - hash(password : String, salt : ByteArray) : String
+    - verify(password : String, passwordHash : String) : Boolean
+  }
+  class TokenRepository <<object>> {
+    - userIds : ConcurrentHashMap<String, Int>
+    + issue(userId : Int) : String
+    + userId(token : String) : Int?
+  }
+}
+
+Car <|-- ICECar
+Car <|-- BEVCar
+Car <|-- FCEVCar
+Car *-- "1" Location
+Car --> "1" CarStatus
+Car --> "1" BodyStyle
+Car --> "1" Transmission
+ICECar --> "1" FuelType
+
+CarRepository <|.. InMemoryCarRepository
+InMemoryCarRepository o-- "0..*" Car
+UserRepository o-- "0..*" User
+User ..> UserResponse : <<creates>>
+
+Application ..> Serialization
+Application ..> Security
+Application ..> Routing
+Application ..> Accounts
+Routing --> CarRepository
+Routing ..> InMemoryCarRepository : default
+Security ..> TokenRepository
+Security ..> UserRepository
+Accounts ..> RegisterRequest
+Accounts ..> LoginRequest
+Accounts ..> UserRepository
+Accounts ..> TokenRepository
+
+@enduml

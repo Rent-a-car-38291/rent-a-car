@@ -1,0 +1,75 @@
+@startuml UseCases
+' Use cases from the GitHub issues. Organization use cases are extras.
+left to right direction
+
+actor Visitor
+actor "User\n(logged in)" as User
+actor Renter
+actor Owner
+actor "Organization member" as Member
+actor "Organization admin" as Admin
+
+Visitor <|-- User
+User <|-- Renter
+User <|-- Owner
+User <|-- Member
+Member <|-- Admin
+
+rectangle "Rent-a-car" {
+  usecase "Register" as UC_Register
+  usecase "Log in" as UC_Login
+  usecase "View cars" as UC_ViewCars
+  usecase "Filter cars by type,\nrate and distance" as UC_Filter
+  usecase "View car details" as UC_Details
+
+  usecase "Delete account" as UC_DeleteAccount
+  usecase "Remove own cars" as UC_RemoveOwnCars
+  usecase "Create organization" as UC_CreateOrg
+
+  usecase "Reserve a car\nfor a daypart" as UC_Reserve
+  usecase "View availability" as UC_Availability
+  usecase "Record trip and\nearn bonus points" as UC_Trip
+
+  usecase "Add car" as UC_AddCar
+  usecase "Update car" as UC_UpdateCar
+  usecase "Remove car" as UC_RemoveCar
+  usecase "Add photo" as UC_Photo
+  usecase "View cost per km" as UC_CostPerKm
+  usecase "View TCO" as UC_Tco
+
+  usecase "Accept invite" as UC_Accept
+  usecase "Manage organization cars" as UC_OrgCars
+  usecase "Leave organization" as UC_Leave
+  usecase "Invite members" as UC_Invite
+  usecase "Manage members" as UC_Members
+}
+
+Visitor --> UC_Register
+Visitor --> UC_Login
+Visitor --> UC_ViewCars
+Visitor --> UC_Details
+UC_Filter .> UC_ViewCars : <<extend>>
+
+User --> UC_DeleteAccount
+User --> UC_CreateOrg
+User --> UC_Accept
+UC_DeleteAccount .> UC_RemoveOwnCars : <<include>>
+
+Renter --> UC_Reserve
+Renter --> UC_Trip
+UC_Reserve .> UC_Availability : <<include>>
+
+Owner --> UC_AddCar
+Owner --> UC_UpdateCar
+Owner --> UC_RemoveCar
+Owner --> UC_Photo
+Owner --> UC_CostPerKm
+Owner --> UC_Tco
+UC_Tco .> UC_CostPerKm : <<include>>
+
+Member --> UC_OrgCars
+Member --> UC_Leave
+Admin --> UC_Invite
+Admin --> UC_Members
+
+@enduml
