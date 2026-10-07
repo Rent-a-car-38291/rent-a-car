@@ -10,7 +10,7 @@ class User(
 )
 
 @Serializable
-data class RegisterRequest(val name: String = "", val email: String = "", val password: String = "")
+data class RegisterRequest(val name: String, val email: String, val password: String)
 
 // The password hash is deliberately not part of this type, so it can never be serialized.
 @Serializable
