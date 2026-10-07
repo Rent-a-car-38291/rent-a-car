@@ -34,6 +34,12 @@ If the server starts successfully, you'll see the following output:
 2024-12-04 14:32:45.682 [main] INFO  Application - Responding at http://0.0.0.0:8080
 ```
 
+## Trying the API (Swagger UI)
+
+With the server running, open [http://localhost:8080/swagger](http://localhost:8080/swagger) to see every endpoint and try it with "Try it out". The page is described by [`resources/openapi/documentation.yaml`](resources/openapi/documentation.yaml), so add new endpoints there as well.
+
+Swagger UI is only served in Ktor's development mode, which is on by default. Start the server with `KTOR_DEVELOPMENT=false` to turn it off.
+
 ## Viewing diagrams (PlantUML)
 
 Diagrams for this project live in [`docs/diagrams`](docs/diagrams) as `.puml` files. To view them in your IDE, install the PlantUML plugin and a local renderer.
