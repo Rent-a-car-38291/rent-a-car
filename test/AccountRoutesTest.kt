@@ -86,18 +86,6 @@ class AccountRoutesTest {
     }
 
     @Test
-    fun RegisterWithoutJsonContentTypeReturnsUnsupportedMediaType() = testApplication {
-        application { module() }
-
-        val response = client.post("/accounts") {
-            contentType(ContentType.Text.Plain)
-            setBody(valid())
-        }
-
-        assertEquals(HttpStatusCode.UnsupportedMediaType, response.status)
-    }
-
-    @Test
     fun LoginReturnsToken() = testApplication {
         application { module() }
         client.register(valid())

@@ -10,7 +10,7 @@ class User(
 )
 
 @Serializable
-data class RegisterRequest(val name: String = "", val email: String = "", val password: String = "")
+data class RegisterRequest(val name: String, val email: String, val password: String)
 
 // The password hash is deliberately not part of this type, so it can never be serialized.
 @Serializable
@@ -18,8 +18,5 @@ data class UserResponse(val id: Int, val name: String, val email: String)
 
 @Serializable
 data class LoginRequest(val email: String, val password: String)
-
-@Serializable
-data class TokenResponse(val token: String)
 
 fun User.toResponse() = UserResponse(id, name, email)
