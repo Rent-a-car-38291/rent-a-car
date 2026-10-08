@@ -1,0 +1,109 @@
+@startuml
+' The car classes as they are in src/. The account classes are in class-accounts.puml.
+hide empty members
+set separator none
+
+package org.jetbrains.amper.ktor <<Folder>> {
+  class "Application.kt" as Application <<(F,orchid) file>> {
+    + main(args : Array<String>)
+    + Application.module()
+  }
+}
+
+package com.example <<Folder>> {
+  class "Serialization.kt" as Serialization <<(F,orchid) file>> {
+    + Application.configureSerialization()
+  }
+  class "Routing.kt" as Routing <<(F,orchid) file>> {
+    + Application.configureRouting()
+  }
+}
+
+package com.example.cars <<Folder>> {
+  class "CarRoutes.kt" as CarRoutes <<(F,orchid) file>> {
+    + Application.configureCars(repository : CarRepository)
+  }
+  interface CarRepository {
+    + allCars() : List<Car>
+  }
+  class InMemoryCarRepository {
+    - cars : List<Car>
+    + allCars() : List<Car>
+  }
+  abstract class Car <<sealed>> {
+    + id : Int
+    + brand : String
+    + licensePlate : String
+    + mileage : Int
+    + status : CarStatus
+    + rate : Double
+    + location : Location
+    + doors : Int
+    + bodyStyle : BodyStyle
+    + modelYear : Int
+    + power : Int
+    + transmission : Transmission
+    + color : String
+  }
+  class ICECar <<"ICE">> {
+    + fuelType : FuelType
+    + tankCapacityLitres : Double
+    + consumptionLitresPer100Km : Double
+  }
+  class BEVCar <<"BEV">> {
+    + batteryCapacityKwh : Double
+    + consumptionKwhPer100Km : Double
+  }
+  class FCEVCar <<"FCEV">> {
+    + tankCapacityKg : Double
+    + consumptionKgPer100Km : Double
+  }
+  class Location {
+    + latitude : Double
+    + longitude : Double
+  }
+  enum CarStatus {
+    Available
+    Rented
+    Maintenance
+  }
+  enum BodyStyle {
+    Hatchback
+    SUV
+    Sedan
+    Stationwagon
+    Cabrio
+    Coupe
+    MPV
+    Other
+  }
+  enum Transmission {
+    Manual
+    Automatic
+  }
+  enum FuelType {
+    Petrol
+    Diesel
+    LPG
+  }
+}
+
+Car <|-- ICECar
+Car <|-- BEVCar
+Car <|-- FCEVCar
+Car *-- "1" Location
+Car --> "1" CarStatus
+Car --> "1" BodyStyle
+Car --> "1" Transmission
+ICECar --> "1" FuelType
+
+CarRepository <|.. InMemoryCarRepository
+InMemoryCarRepository o-- "0..*" Car
+
+Application ..> Serialization
+Application ..> Routing
+Application ..> CarRoutes
+CarRoutes --> CarRepository
+CarRoutes ..> InMemoryCarRepository : default
+
+@enduml
