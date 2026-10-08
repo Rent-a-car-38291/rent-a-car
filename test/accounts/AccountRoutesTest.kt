@@ -1,4 +1,5 @@
-import com.example.domain.UserRepository
+package com.example.accounts
+
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete

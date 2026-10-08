@@ -3,7 +3,7 @@
 hide empty members
 set separator none
 
-package com.example <<Folder>> {
+package com.example.accounts <<Folder>> {
   class "Accounts.kt" as Accounts <<(F,orchid) file>> {
     - MIN_PASSWORD_LENGTH : Int = 8
     - EMAIL_PATTERN : Regex
@@ -12,9 +12,6 @@ package com.example <<Folder>> {
   class "Security.kt" as Security <<(F,orchid) file>> {
     + Application.configureSecurity()
   }
-}
-
-package com.example.domain <<Folder>> {
   class User {
     + id : Int
     + name : String

@@ -1,7 +1,5 @@
-package com.example
+package com.example.accounts
 
-import com.example.domain.TokenRepository
-import com.example.domain.UserRepository
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 

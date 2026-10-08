@@ -1,10 +1,10 @@
-package com.example.domain
+package com.example.cars
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-@SerialName("BEV")
-class BEVCar (
+@SerialName("FCEV")
+class FCEVCar (
     override val id: Int,
     override val brand: String,
     override val licensePlate: String,
@@ -18,6 +18,6 @@ class BEVCar (
     override val power: Int,
     override val transmission: Transmission,
     override val color: String,
-    val batteryCapacityKwh: Double,
-    val consumptionKwhPer100Km: Double
+    val tankCapacityKg: Double,
+    val consumptionKgPer100Km: Double
 ) : Car()
