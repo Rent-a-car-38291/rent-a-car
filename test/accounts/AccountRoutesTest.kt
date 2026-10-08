@@ -1,5 +1,6 @@
 package com.example.accounts
 
+import com.example.database.useTestDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
@@ -50,6 +51,7 @@ class AccountRoutesTest {
 
     @Test
     fun RegisterReturnsCreatedWithoutPassword() = testApplication {
+        useTestDatabase()
         application { module() }
 
         val response = client.register(valid())
@@ -63,6 +65,7 @@ class AccountRoutesTest {
 
     @Test
     fun RegisterWithInvalidFieldsReturnsBadRequest() = testApplication {
+        useTestDatabase()
         application { module() }
 
         listOf(
@@ -79,6 +82,7 @@ class AccountRoutesTest {
 
     @Test
     fun RegisterDuplicateEmailReturnsConflict() = testApplication {
+        useTestDatabase()
         application { module() }
         client.register(valid())
 
@@ -89,6 +93,7 @@ class AccountRoutesTest {
 
     @Test
     fun LoginReturnsToken() = testApplication {
+        useTestDatabase()
         application { module() }
         client.register(valid())
 
@@ -100,6 +105,7 @@ class AccountRoutesTest {
 
     @Test
     fun LoginWithWrongCredentialsReturnsUnauthorized() = testApplication {
+        useTestDatabase()
         application { module() }
         client.register(valid())
 
@@ -109,6 +115,7 @@ class AccountRoutesTest {
 
     @Test
     fun DeleteOwnAccountReturnsNoContent() = testApplication {
+        useTestDatabase()
         application { module() }
         val (id, token) = client.signUp()
 
@@ -121,6 +128,7 @@ class AccountRoutesTest {
 
     @Test
     fun DeleteUnknownAccountReturnsNotFound() = testApplication {
+        useTestDatabase()
         application { module() }
         val (_, token) = client.signUp()
 
@@ -131,6 +139,7 @@ class AccountRoutesTest {
 
     @Test
     fun DeleteWithoutValidTokenReturnsUnauthorized() = testApplication {
+        useTestDatabase()
         application { module() }
         val (id, _) = client.signUp()
 
@@ -140,6 +149,7 @@ class AccountRoutesTest {
 
     @Test
     fun DeleteSomeoneElsesAccountReturnsForbidden() = testApplication {
+        useTestDatabase()
         application { module() }
         val (otherId, _) = client.signUp("piet@example.com")
         val (_, token) = client.signUp()
@@ -151,6 +161,7 @@ class AccountRoutesTest {
 
     @Test
     fun DeletedUsersTokenDoesNotWorkForNewUser() = testApplication {
+        useTestDatabase()
         application { module() }
         val (id, token) = client.signUp()
         client.deleteAccount(id, token)
