@@ -31,6 +31,7 @@ else id != principal.id
   Route --> Client : 403 Forbidden
 else own account
   Route -> UserRepository : delete(id)
+  Route -> TokenRepository : revokeAll(id)
   Route --> Client : 204 No Content
 end
 

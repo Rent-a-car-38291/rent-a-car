@@ -50,6 +50,7 @@ package com.example.accounts <<Folder>> {
     - userIds : ConcurrentHashMap<String, Int>
     + issue(userId : Int) : String
     + userId(token : String) : Int?
+    + revokeAll(userId : Int)
   }
 }
 

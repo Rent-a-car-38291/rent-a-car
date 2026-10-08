@@ -150,13 +150,22 @@ class AccountRoutesTest {
     }
 
     @Test
+    fun DeletedUsersTokenIsRevoked() = testApplication {
+        application { module() }
+        val (id, token) = client.signUp()
+        client.deleteAccount(id, token)
+
+        assertNull(TokenRepository.userId(token))
+        assertEquals(HttpStatusCode.Unauthorized, client.deleteAccount(id, token).status)
+    }
+
+    @Test
     fun DeletedUsersTokenDoesNotWorkForNewUser() = testApplication {
         application { module() }
         val (id, token) = client.signUp()
         client.deleteAccount(id, token)
         val (newId, _) = client.signUp("piet@example.com")
 
-        // Tokens outlive a delete, so they're only safe while ids are never handed out again.
         assertEquals(HttpStatusCode.Unauthorized, client.deleteAccount(newId, token).status)
     }
 }
