@@ -4,7 +4,7 @@ hide empty members
 set separator none
 
 package com.example.accounts <<Folder>> {
-  class "Accounts.kt" as Accounts <<(F,orchid) file>> {
+  class "AccountRoutes.kt" as AccountRoutes <<(F,orchid) file>> {
     - MIN_PASSWORD_LENGTH : Int = 8
     - EMAIL_PATTERN : Regex
     + Application.configureAccounts()
@@ -54,12 +54,12 @@ package com.example.accounts <<Folder>> {
 
 UserRepository o-- "0..*" User
 User ..> UserResponse : <<creates>>
-Accounts ..> RegisterRequest : receives
-Accounts ..> LoginRequest : receives
-Accounts ..> UserResponse : responds
-Accounts ..> User : principal
-Accounts ..> UserRepository
-Accounts ..> TokenRepository
+AccountRoutes ..> RegisterRequest : receives
+AccountRoutes ..> LoginRequest : receives
+AccountRoutes ..> UserResponse : responds
+AccountRoutes ..> User : principal
+AccountRoutes ..> UserRepository
+AccountRoutes ..> TokenRepository
 Security ..> TokenRepository : userId(token)
 Security ..> UserRepository : find(id)
 

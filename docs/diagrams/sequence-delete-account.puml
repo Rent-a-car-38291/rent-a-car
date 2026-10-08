@@ -4,7 +4,7 @@ autonumber
 
 actor Client
 participant "Authentication\n(bearer)" as Auth
-participant "Accounts.kt" as Route
+participant "AccountRoutes.kt" as Route
 participant TokenRepository
 participant UserRepository
 

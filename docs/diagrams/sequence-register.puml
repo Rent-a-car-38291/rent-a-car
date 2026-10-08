@@ -4,7 +4,7 @@ autonumber
 
 actor Client
 participant "Ktor\n(ContentNegotiation)" as Ktor
-participant "Accounts.kt" as Route
+participant "AccountRoutes.kt" as Route
 participant UserRepository
 
 Client -> Ktor : POST /accounts\n{name, email, password}
