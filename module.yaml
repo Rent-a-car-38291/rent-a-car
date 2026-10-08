@@ -15,6 +15,14 @@ dependencies:
   - ch.qos.logback:logback-classic:1.5.38
   - $ktor.server.contentNegotiation
   - $ktor.serialization.kotlinx.json
+  - org.postgresql:postgresql:42.7.14
+  - com.zaxxer:HikariCP:7.1.0
 
 test-dependencies:
   - $ktor.server.testHost
+  - io.zonky.test:embedded-postgres:2.2.2
+  # The library only bundles 14.x binaries and none for Apple Silicon, so pin the platforms we use to the Postgres in docker-compose.yml.
+  - io.zonky.test.postgres:embedded-postgres-binaries-linux-amd64:17.11.0
+  - io.zonky.test.postgres:embedded-postgres-binaries-darwin-arm64v8:17.11.0
+  - io.zonky.test.postgres:embedded-postgres-binaries-darwin-amd64:17.11.0
+  - io.zonky.test.postgres:embedded-postgres-binaries-windows-amd64:17.11.0

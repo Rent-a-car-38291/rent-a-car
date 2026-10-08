@@ -34,6 +34,18 @@ If the server starts successfully, you'll see the following output:
 2024-12-04 14:32:45.682 [main] INFO  Application - Responding at http://0.0.0.0:8080
 ```
 
+## Database
+
+The cars are stored in PostgreSQL. Start a local database before running the server:
+
+```bash
+docker compose up -d
+```
+
+The connection defaults match `docker-compose.yml`. Override them with the environment variables `DATABASE_URL`, `DATABASE_USER` and `DATABASE_PASSWORD`. The tables are created and filled with sample cars when the server starts.
+
+The tests don't need Docker: they start their own Postgres.
+
 ## Viewing diagrams (PlantUML)
 
 Diagrams for this project live in [`docs/diagrams`](docs/diagrams) as `.puml` files, each with an exported `.png` next to it so GitHub can show it without a plugin. To view and edit them in your IDE, install the PlantUML plugin and a local renderer.

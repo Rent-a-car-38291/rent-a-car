@@ -1,5 +1,6 @@
 package com.example.accounts
 
+import com.example.database.useTestDatabase
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -25,6 +26,7 @@ class AccountRoutesTest {
 
     @Test
     fun RegisterReturnsCreatedWithoutPassword() = testApplication {
+        useTestDatabase()
         application { module() }
 
         val response = client.register(valid())
@@ -38,6 +40,7 @@ class AccountRoutesTest {
 
     @Test
     fun RegisterWithInvalidFieldsReturnsBadRequest() = testApplication {
+        useTestDatabase()
         application { module() }
 
         listOf(
@@ -54,6 +57,7 @@ class AccountRoutesTest {
 
     @Test
     fun RegisterDuplicateEmailReturnsConflict() = testApplication {
+        useTestDatabase()
         application { module() }
         client.register(valid())
 
