@@ -1,6 +1,5 @@
-@startuml ClassDiagram
-' Design view: the classes as they exist in src/ today.
-' The planned domain lives in domain-model.puml.
+@startuml
+' The car classes as they are in src/. The account classes are in class-accounts.puml.
 hide empty members
 set separator none
 
@@ -12,16 +11,8 @@ package com.example <<Folder>> {
   class "Serialization.kt" as Serialization <<(F,orchid) file>> {
     + Application.configureSerialization()
   }
-  class "Security.kt" as Security <<(F,orchid) file>> {
-    + Application.configureSecurity()
-  }
   class "Routing.kt" as Routing <<(F,orchid) file>> {
     + Application.configureRouting(repository : CarRepository)
-  }
-  class "Accounts.kt" as Accounts <<(F,orchid) file>> {
-    - MIN_PASSWORD_LENGTH : Int = 8
-    - EMAIL_PATTERN : Regex
-    + Application.configureAccounts()
   }
 }
 
@@ -92,45 +83,6 @@ package com.example.domain <<Folder>> {
     Diesel
     LPG
   }
-
-  class User {
-    + id : Int
-    + name : String
-    + email : String
-    + passwordHash : String
-    + toResponse() : UserResponse
-  }
-  class RegisterRequest <<data>> {
-    + name : String
-    + email : String
-    + password : String
-  }
-  class LoginRequest <<data>> {
-    + email : String
-    + password : String
-  }
-  class UserResponse <<data>> {
-    + id : Int
-    + name : String
-    + email : String
-  }
-  class UserRepository <<object>> {
-    - users : MutableList<User>
-    - nextId : Int
-    + register(name : String, email : String, password : String) : User?
-    + authenticate(email : String, password : String) : User?
-    + find(id : Int) : User?
-    + delete(id : Int) : Boolean
-    + clear()
-    - findByEmail(email : String) : User?
-    - hash(password : String, salt : ByteArray) : String
-    - verify(password : String, passwordHash : String) : Boolean
-  }
-  class TokenRepository <<object>> {
-    - userIds : ConcurrentHashMap<String, Int>
-    + issue(userId : Int) : String
-    + userId(token : String) : Int?
-  }
 }
 
 Car <|-- ICECar
@@ -144,20 +96,10 @@ ICECar --> "1" FuelType
 
 CarRepository <|.. InMemoryCarRepository
 InMemoryCarRepository o-- "0..*" Car
-UserRepository o-- "0..*" User
-User ..> UserResponse : <<creates>>
 
 Application ..> Serialization
-Application ..> Security
 Application ..> Routing
-Application ..> Accounts
 Routing --> CarRepository
 Routing ..> InMemoryCarRepository : default
-Security ..> TokenRepository
-Security ..> UserRepository
-Accounts ..> RegisterRequest
-Accounts ..> LoginRequest
-Accounts ..> UserRepository
-Accounts ..> TokenRepository
 
 @enduml
