@@ -1,13 +1,16 @@
-@startuml RentACar
+@startuml
+' Analysis view: the domain as agreed in the backlog, including parts that aren't built yet.
+' For what the code looks like today, see the class-*.puml diagrams.
+hide empty members
 
 enum Transmission {
   Manual
   Automatic
 }
 
+' Rented is gone: whether a car is rented depends on the daypart (#16).
 enum CarStatus {
   Available
-  Rented
   Maintenance
 }
 
@@ -22,36 +25,46 @@ enum BodyStyle {
   Other
 }
 
+enum FuelType {
+  Petrol
+  Diesel
+  LPG
+}
+
+enum Daypart {
+  Morning
+  Afternoon
+  Evening
+}
+
+enum Role {
+  Admin
+  Member
+}
+
 class Location {
   + latitude : Double
   + longitude : Double
+  + distanceKmTo(other : Location) : Double
 }
 
-class Trip {
-  + id : Int
-  + distanceKm : Int
-  + score : Int
+class EnergyPrices {
+  + petrolPerLitre : Double
+  + dieselPerLitre : Double
+  + lpgPerLitre : Double
+  + electricityPerKwh : Double
+  + hydrogenPerKg : Double
 }
 
 class User {
   + id : Int
   + name : String
   + email : String
-  - password : String
-  + method(type) : type
-}
-
-class Image {
-  + id : Int
-  + url : String
-  + method(type) : type
-}
-
-class Reservation {
-  + id : Int
-  + startTime : LocalDateTime
-  + endTime : LocalDateTime
-  + method(type) : type
+  - passwordHash : String
+  + bonusPoints : Int
+  + checkPassword(password : String) : Boolean
+  + addBonusPoints(points : Int)
+  + canManage(car : Car) : Boolean
 }
 
 abstract class Car {
@@ -64,36 +77,99 @@ abstract class Car {
   + location : Location
   + doors : Int
   + bodyStyle : BodyStyle
-  + modelYear : LocalDate
+  + modelYear : Int
   + power : Int
   + transmission : Transmission
   + color : String
-  + method(type) : type
+  + purchasePrice : Double
+  + insurancePerYear : Double
+  + roadTaxPerYear : Double
+  + maintenancePerYear : Double
+  + {abstract} costPerKm(prices : EnergyPrices) : Double
+  + tcoPerYear(prices : EnergyPrices, kmPerYear : Int) : Double
+  + isAvailable(date : LocalDate, daypart : Daypart) : Boolean
+  + freeDayparts(date : LocalDate) : List<Daypart>
+  + addImage(url : String) : Image
 }
 
 class ICECar {
-  + consumption : ???
-  + method(type) : type
+  + fuelType : FuelType
+  + tankCapacityLitres : Double
+  + consumptionLitresPer100Km : Double
+  + costPerKm(prices : EnergyPrices) : Double
 }
 
 class BEVCar {
-  + consumption : ???
-  + method(type) : type
+  + batteryCapacityKwh : Double
+  + consumptionKwhPer100Km : Double
+  + costPerKm(prices : EnergyPrices) : Double
 }
 
 class FCEVCar {
-  + consumption : ???
-  + method(type) : type
+  + tankCapacityKg : Double
+  + consumptionKgPer100Km : Double
+  + costPerKm(prices : EnergyPrices) : Double
 }
 
-Trip "0..*" --> "1" Reservation
-Reservation "0..*" --> "1" User
-Reservation "0..*" --> "1" Car
-Car "0..*" --> "1" User : owner
-Image "0..*" --> "1" Car
+class Image {
+  + id : Int
+  + url : String
+}
+
+class Reservation {
+  + id : Int
+  + date : LocalDate
+  + daypart : Daypart
+  + recordTrip(distanceKm : Int, hardAccelerations : Int, hardBrakes : Int) : Trip
+}
+
+class Trip {
+  + id : Int
+  + distanceKm : Int
+  + score : Int
+  + {static} calculateScore(distanceKm : Int, hardAccelerations : Int, hardBrakes : Int) : Int
+  + bonusPoints() : Int
+}
+
+class Organization {
+  + id : Int
+  + name : String
+  + addMember(user : User, role : Role)
+  + removeMember(user : User)
+  + isAdmin(user : User) : Boolean
+  + createInvite() : Invite
+}
+
+class Membership {
+  + role : Role
+}
+
+class Invite {
+  + code : String
+  + expiresAt : LocalDateTime
+  + used : Boolean
+  + isValid(now : LocalDateTime) : Boolean
+  + accept(user : User)
+}
 
 Car <|-- ICECar
 Car <|-- BEVCar
 Car <|-- FCEVCar
+
+Car "0..*" --> "1" User : owner
+Car "0..*" --> "0..1" Organization
+Car "1" *-- "0..*" Image
+Car ..> EnergyPrices
+Reservation "0..*" --> "1" Car
+Reservation "0..*" --> "1" User : renter
+Trip "0..1" --> "1" Reservation
+User "0..*" -- "0..*" Organization
+(User, Organization) .. Membership
+Invite "0..*" --> "1" Organization
+
+note "One reservation per car, date and daypart" as N1
+N1 .. Reservation
+note "Organizations and invites are extra (#35–#38)" as N2
+N2 .. Organization
 
 @enduml
