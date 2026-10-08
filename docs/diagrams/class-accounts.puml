@@ -9,6 +9,9 @@ package com.example <<Folder>> {
     - EMAIL_PATTERN : Regex
     + Application.configureAccounts()
   }
+  class "Security.kt" as Security <<(F,orchid) file>> {
+    + Application.configureSecurity()
+  }
 }
 
 package com.example.domain <<Folder>> {
@@ -24,6 +27,10 @@ package com.example.domain <<Folder>> {
     + email : String
     + password : String
   }
+  class LoginRequest <<data>> {
+    + email : String
+    + password : String
+  }
   class UserResponse <<data>> {
     + id : Int
     + name : String
@@ -32,15 +39,28 @@ package com.example.domain <<Folder>> {
   class UserRepository <<object>> {
     - users : MutableList<User>
     + register(name : String, email : String, password : String) : User?
+    + authenticate(email : String, password : String) : User?
+    + find(id : Int) : User?
     + clear()
-    - hash(password : String) : String
+    - findByEmail(email : String) : User?
+    - hash(password : String, salt : ByteArray) : String
+    - verify(password : String, passwordHash : String) : Boolean
+  }
+  class TokenRepository <<object>> {
+    - userIds : ConcurrentHashMap<String, Int>
+    + issue(userId : Int) : String
+    + userId(token : String) : Int?
   }
 }
 
 UserRepository o-- "0..*" User
 User ..> UserResponse : <<creates>>
 Accounts ..> RegisterRequest : receives
+Accounts ..> LoginRequest : receives
 Accounts ..> UserResponse : responds
 Accounts ..> UserRepository
+Accounts ..> TokenRepository
+Security ..> TokenRepository : userId(token)
+Security ..> UserRepository : find(id)
 
 @enduml
