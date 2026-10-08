@@ -26,5 +26,15 @@ fun Application.configureAccounts() {
             }
             call.respond(HttpStatusCode.Created, user.toResponse())
         }
+
+        post("/login") {
+            val request = call.receive<LoginRequest>()
+            val user = UserRepository.authenticate(request.email.trim(), request.password)
+            if (user == null) {
+                call.respond(HttpStatusCode.Unauthorized)
+                return@post
+            }
+            call.respond(mapOf("token" to TokenRepository.issue(user.id)))
+        }
     }
 }

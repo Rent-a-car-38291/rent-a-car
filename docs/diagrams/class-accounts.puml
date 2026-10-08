@@ -9,6 +9,9 @@ package com.example.accounts <<Folder>> {
     - EMAIL_PATTERN : Regex
     + Application.configureAccounts()
   }
+  class "Security.kt" as Security <<(F,orchid) file>> {
+    + Application.configureSecurity()
+  }
   class User {
     + id : Int
     + name : String
@@ -21,6 +24,10 @@ package com.example.accounts <<Folder>> {
     + email : String
     + password : String
   }
+  class LoginRequest <<data>> {
+    + email : String
+    + password : String
+  }
   class UserResponse <<data>> {
     + id : Int
     + name : String
@@ -28,16 +35,30 @@ package com.example.accounts <<Folder>> {
   }
   class UserRepository <<object>> {
     - users : MutableList<User>
+    - dummyHash : String
     + register(name : String, email : String, password : String) : User?
+    + authenticate(email : String, password : String) : User?
+    + find(id : Int) : User?
     + clear()
-    - hash(password : String) : String
+    - findByEmail(email : String) : User?
+    - hash(password : String, salt : ByteArray) : String
+    - verify(password : String, passwordHash : String) : Boolean
+  }
+  class TokenRepository <<object>> {
+    - userIds : ConcurrentHashMap<String, Int>
+    + issue(userId : Int) : String
+    + userId(token : String) : Int?
   }
 }
 
 UserRepository o-- "0..*" User
 User ..> UserResponse : <<creates>>
 AccountRoutes ..> RegisterRequest : receives
+AccountRoutes ..> LoginRequest : receives
 AccountRoutes ..> UserResponse : responds
 AccountRoutes ..> UserRepository
+AccountRoutes ..> TokenRepository
+Security ..> TokenRepository : userId(token)
+Security ..> UserRepository : find(id)
 
 @enduml
