@@ -35,6 +35,7 @@ package com.example.accounts <<Folder>> {
   }
   class UserRepository {
     - dataSource : DataSource
+    - dummyHash : String
     + register(name : String, email : String, password : String) : User?
     + authenticate(email : String, password : String) : User?
     + find(id : Int) : User?
@@ -48,6 +49,7 @@ package com.example.accounts <<Folder>> {
     - userIds : ConcurrentHashMap<String, Int>
     + issue(userId : Int) : String
     + userId(token : String) : Int?
+    + revokeAll(userId : Int)
   }
 }
 

@@ -9,6 +9,8 @@ import javax.crypto.spec.PBEKeySpec
 import javax.sql.DataSource
 
 class UserRepository(private val dataSource: DataSource) {
+    private val dummyHash by lazy { hash("dummy") }
+
     init {
         dataSource.runScript("users.sql")
     }
@@ -19,8 +21,13 @@ class UserRepository(private val dataSource: DataSource) {
         return queryUser("INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?) ON CONFLICT DO NOTHING RETURNING *", name, email, passwordHash)
     }
 
-    fun authenticate(email: String, password: String): User? =
-        queryUser("SELECT * FROM users WHERE lower(email) = lower(?)", email)?.takeIf { verify(password, it.passwordHash) }
+    // An unknown email is verified against a dummy hash, so it costs as much time as a known one
+    // and the response time doesn't reveal which emails have an account.
+    fun authenticate(email: String, password: String): User? {
+        val user = queryUser("SELECT * FROM users WHERE lower(email) = lower(?)", email)
+        val passwordMatches = verify(password, user?.passwordHash ?: dummyHash)
+        return user?.takeIf { passwordMatches }
+    }
 
     fun find(id: Int): User? = queryUser("SELECT * FROM users WHERE id = ?", id)
 

@@ -35,6 +35,7 @@ else id != principal.id
 else own account
   Route -> UserRepository : delete(id)
   UserRepository -> PostgreSQL : DELETE FROM users WHERE id = ?
+  Route -> TokenRepository : revokeAll(id)
   Route --> Client : 204 No Content
 end
 

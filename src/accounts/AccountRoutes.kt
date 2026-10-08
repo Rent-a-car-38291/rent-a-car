@@ -47,6 +47,7 @@ fun Application.configureAccounts(users: UserRepository) {
                     id != call.principal<User>()?.id -> HttpStatusCode.Forbidden
                     else -> {
                         users.delete(id)
+                        TokenRepository.revokeAll(id)
                         HttpStatusCode.NoContent
                     }
                 }
