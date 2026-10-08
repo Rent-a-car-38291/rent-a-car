@@ -11,7 +11,7 @@ import io.ktor.server.util.*
 private const val MIN_PASSWORD_LENGTH = 8
 private val EMAIL_PATTERN = Regex("[^@\\s]+@[^@\\s]+\\.[^@\\s]+") // something@domain.tld, nothing stricter
 
-fun Application.configureAccounts() {
+fun Application.configureAccounts(users: UserRepository) {
     routing {
         post("/accounts") {
             val request = call.receive<RegisterRequest>() // Ktor answers unreadable bodies with 400 or 415
@@ -21,7 +21,7 @@ fun Application.configureAccounts() {
                 call.respond(HttpStatusCode.BadRequest)
                 return@post
             }
-            val user = UserRepository.register(name, email, request.password)
+            val user = users.register(name, email, request.password)
             if (user == null) {
                 call.respond(HttpStatusCode.Conflict)
                 return@post
@@ -31,7 +31,7 @@ fun Application.configureAccounts() {
 
         post("/login") {
             val request = call.receive<LoginRequest>()
-            val user = UserRepository.authenticate(request.email.trim(), request.password)
+            val user = users.authenticate(request.email.trim(), request.password)
             if (user == null) {
                 call.respond(HttpStatusCode.Unauthorized)
                 return@post
@@ -43,10 +43,10 @@ fun Application.configureAccounts() {
             delete("/accounts/{id}") {
                 val id = call.parameters.getOrFail<Int>("id")
                 val status = when {
-                    UserRepository.find(id) == null -> HttpStatusCode.NotFound
+                    users.find(id) == null -> HttpStatusCode.NotFound
                     id != call.principal<User>()?.id -> HttpStatusCode.Forbidden
                     else -> {
-                        UserRepository.delete(id)
+                        users.delete(id)
                         HttpStatusCode.NoContent
                     }
                 }

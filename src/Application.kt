@@ -1,5 +1,6 @@
 package org.jetbrains.amper.ktor
 
+import com.example.accounts.UserRepository
 import com.example.accounts.configureAccounts
 import com.example.accounts.configureSecurity
 import com.example.cars.PostgresCarRepository
@@ -16,7 +17,9 @@ fun main(args: Array<String>) {
 fun Application.module() {
     configureSerialization()
     configureRouting()
-    configureCars(PostgresCarRepository(connectDatabase()))
-    configureSecurity()
-    configureAccounts()
+    val dataSource = connectDatabase()
+    val users = UserRepository(dataSource)
+    configureCars(PostgresCarRepository(dataSource))
+    configureSecurity(users)
+    configureAccounts(users)
 }

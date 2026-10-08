@@ -5,11 +5,13 @@ autonumber
 actor Client
 participant "AccountRoutes.kt" as Route
 participant UserRepository
+database PostgreSQL
 participant TokenRepository
 
 Client -> Route : POST /login\n{email, password}
 Route -> UserRepository : authenticate(email.trim(), password)
-UserRepository -> UserRepository : findByEmail(email)
+UserRepository -> PostgreSQL : SELECT * FROM users\nWHERE lower(email) = lower(?)
+PostgreSQL --> UserRepository : row?
 UserRepository -> UserRepository : verify(password, passwordHash)\nre-hash with stored salt,\nconstant-time compare
 
 alt unknown email or wrong password

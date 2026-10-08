@@ -7,11 +7,13 @@ participant "Authentication\n(bearer)" as Auth
 participant "AccountRoutes.kt" as Route
 participant TokenRepository
 participant UserRepository
+database PostgreSQL
 
 Client -> Auth : DELETE /accounts/{id}\nAuthorization: Bearer <token>
 Auth -> TokenRepository : userId(token)
 TokenRepository --> Auth : userId?
 Auth -> UserRepository : find(userId)
+UserRepository -> PostgreSQL : SELECT ... WHERE id = ?
 UserRepository --> Auth : User?
 break no token, unknown token or user already deleted
   Auth --> Client : 401 Unauthorized
@@ -24,6 +26,7 @@ break id not a number
 end
 
 Route -> UserRepository : find(id)
+UserRepository -> PostgreSQL : SELECT ... WHERE id = ?
 UserRepository --> Route : User?
 alt no user with that id
   Route --> Client : 404 Not Found
@@ -31,6 +34,7 @@ else id != principal.id
   Route --> Client : 403 Forbidden
 else own account
   Route -> UserRepository : delete(id)
+  UserRepository -> PostgreSQL : DELETE FROM users WHERE id = ?
   Route --> Client : 204 No Content
 end
 

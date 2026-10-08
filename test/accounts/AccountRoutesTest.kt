@@ -1,5 +1,6 @@
 package com.example.accounts
 
+import com.example.database.TestDatabase
 import com.example.database.useTestDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
@@ -21,7 +22,7 @@ import kotlin.test.*
 
 class AccountRoutesTest {
     @BeforeTest
-    fun reset() = UserRepository.clear()
+    fun reset() = UserRepository(TestDatabase.dataSource).clear()
 
     private fun valid(email: String = "jan@example.com") =
         """{"name":"Jan","email":"$email","password":"supersecret"}"""
