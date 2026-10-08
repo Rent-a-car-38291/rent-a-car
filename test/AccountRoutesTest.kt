@@ -43,7 +43,8 @@ class AccountRoutesTest {
         assertEquals(HttpStatusCode.Created, response.status)
         val body = response.bodyAsText()
         assertTrue(body.contains("jan@example.com"))
-        assertFalse(body.contains("assword"))
+        assertFalse(body.contains("password"))
+        assertFalse(body.contains("supersecret"))
     }
 
     @Test
