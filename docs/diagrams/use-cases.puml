@@ -1,4 +1,4 @@
-@startuml UseCases
+@startuml
 ' Use cases from the GitHub issues. Organization use cases are extras.
 left to right direction
 

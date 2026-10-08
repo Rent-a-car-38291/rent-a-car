@@ -36,15 +36,17 @@ If the server starts successfully, you'll see the following output:
 
 ## Viewing diagrams (PlantUML)
 
-Diagrams for this project live in [`docs/diagrams`](docs/diagrams) as `.puml` files. To view them in your IDE, install the PlantUML plugin and a local renderer.
+Diagrams for this project live in [`docs/diagrams`](docs/diagrams) as `.puml` files, each with an exported `.png` next to it so GitHub can show it without a plugin. To view and edit them in your IDE, install the PlantUML plugin and a local renderer.
 
-| Diagram                                                                   | Shows                                                       |
-|---------------------------------------------------------------------------|-------------------------------------------------------------|
-| [`use-cases.puml`](docs/diagrams/use-cases.puml)                          | What each kind of user can do, taken from the issues        |
-| [`domain-model.puml`](docs/diagrams/domain-model.puml)                    | The domain as planned in the backlog, including future work |
-| [`class-diagram.puml`](docs/diagrams/class-diagram.puml)                  | The classes as they exist in `src/` today                   |
-| [`components.puml`](docs/diagrams/components.puml)                        | How a request flows through plugins, routes and repositories |
-| [`sequence-*.puml`](docs/diagrams)                                        | One flow per endpoint: register, login, delete account, cars |
+| Diagram                 | Shows                                                                         |
+|-------------------------|-------------------------------------------------------------------------------|
+| `use-cases`             | What each kind of user can do, taken from the issues                          |
+| `domain-model`          | The domain as planned in the backlog, with fields and methods                 |
+| `class-<area>`          | The classes as they are in `src/`, one diagram per area (`cars`, `accounts`)  |
+| `components`            | How a request flows through plugins, routes and repositories                  |
+| `sequence-<endpoint>`   | One flow per endpoint, with every status code                                 |
+
+A PR that changes an endpoint or a class updates its diagram and PNG, and shows them in the PR description.
 
 ### 1. Install the plugin
 
@@ -72,8 +74,8 @@ After installing, restart your IDE and open a `.puml` file to see the rendered p
 
 ### Exporting images
 
-To put the diagrams in a report, export them all as SVG (or `-tpng`) with the PlantUML command line (`brew install plantuml`):
+After changing a `.puml`, export the PNGs again with the PlantUML command line (`brew install plantuml`) and commit them with it:
 
 ```bash
-plantuml -tsvg -o out docs/diagrams/*.puml
+plantuml -tpng docs/diagrams/*.puml
 ```

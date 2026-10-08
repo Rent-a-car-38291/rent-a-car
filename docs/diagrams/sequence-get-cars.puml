@@ -1,4 +1,4 @@
-@startuml SequenceGetCars
+@startuml
 title GET /cars
 autonumber
 

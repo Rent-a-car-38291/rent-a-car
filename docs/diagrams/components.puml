@@ -1,4 +1,4 @@
-@startuml Components
+@startuml
 ' Layers of the server as it runs today. Dashed parts are planned.
 skinparam componentStyle uml2
 
