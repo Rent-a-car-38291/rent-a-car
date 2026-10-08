@@ -1,0 +1,193 @@
+openapi: 3.0.3
+info:
+  title: Rent my car API
+  version: 0.1.0
+  description: Data lives in memory until the database lands, so it's gone after a restart.
+paths:
+  /cars:
+    get:
+      tags: [Cars]
+      summary: List all cars
+      responses:
+        "200":
+          description: All cars
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Car"
+  /accounts:
+    post:
+      tags: [Accounts]
+      summary: Register an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Account created (the password is never returned)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: Missing or invalid field (empty name, invalid email, password shorter than 8 characters)
+        "409":
+          description: Email already registered (case-insensitive)
+  /login:
+    post:
+      tags: [Accounts]
+      summary: Log in and get a bearer token
+      description: Copy the token into "Authorize" at the top of the page to call endpoints that need a login.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: Missing field or a body that isn't JSON
+        "401":
+          description: Wrong email or password
+  /accounts/{id}:
+    delete:
+      tags: [Accounts]
+      summary: Delete your own account
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 1 }
+      responses:
+        "204":
+          description: Account deleted
+        "400":
+          description: Non-numeric id
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's account
+        "404":
+          description: Unknown id
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string, example: Jan }
+        email: { type: string, example: jan@example.com }
+        password: { type: string, minLength: 8, example: supersecret }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, example: jan@example.com }
+        password: { type: string, example: supersecret }
+    UserResponse:
+      type: object
+      required: [id, name, email]
+      properties:
+        id: { type: integer, example: 1 }
+        name: { type: string, example: Jan }
+        email: { type: string, example: jan@example.com }
+    TokenResponse:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, example: 5c42d744-8a0e-4d6f-9a52-0c3f1e2b7d10 }
+    Car:
+      oneOf:
+        - $ref: "#/components/schemas/ICECar"
+        - $ref: "#/components/schemas/BEVCar"
+        - $ref: "#/components/schemas/FCEVCar"
+      discriminator:
+        propertyName: type
+        mapping:
+          ICE: "#/components/schemas/ICECar"
+          BEV: "#/components/schemas/BEVCar"
+          FCEV: "#/components/schemas/FCEVCar"
+    ICECar:
+      type: object
+      required: [type, id, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, fuelType, tankCapacityLitres, consumptionLitresPer100Km]
+      properties:
+        type: { type: string, enum: [ICE] }
+        id: { type: integer, example: 1 }
+        brand: { type: string, example: Peugeot }
+        licensePlate: { type: string, example: 85-GHB-2 }
+        mileage: { type: integer, example: 217349 }
+        status: { type: string, enum: [Available, Rented, Maintenance] }
+        rate: { type: number, example: 25.0 }
+        location: { $ref: "#/components/schemas/Location" }
+        doors: { type: integer, example: 5 }
+        bodyStyle: { type: string, enum: [Hatchback, SUV, Sedan, Stationwagon, Cabrio, Coupe, MPV, Other], example: Hatchback }
+        modelYear: { type: integer, example: 2008 }
+        power: { type: integer, example: 95 }
+        transmission: { type: string, enum: [Manual, Automatic], example: Manual }
+        color: { type: string, example: Black }
+        fuelType: { type: string, enum: [Petrol, Diesel, LPG] }
+        tankCapacityLitres: { type: number, example: 50.0 }
+        consumptionLitresPer100Km: { type: number, example: 6.1 }
+    BEVCar:
+      type: object
+      required: [type, id, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, batteryCapacityKwh, consumptionKwhPer100Km]
+      properties:
+        type: { type: string, enum: [BEV] }
+        id: { type: integer, example: 2 }
+        brand: { type: string, example: "Tesla Model 3" }
+        licensePlate: { type: string, example: K-123-BV }
+        mileage: { type: integer, example: 48210 }
+        status: { type: string, enum: [Available, Rented, Maintenance] }
+        rate: { type: number, example: 55.0 }
+        location: { $ref: "#/components/schemas/Location" }
+        doors: { type: integer, example: 4 }
+        bodyStyle: { type: string, enum: [Hatchback, SUV, Sedan, Stationwagon, Cabrio, Coupe, MPV, Other], example: Sedan }
+        modelYear: { type: integer, example: 2021 }
+        power: { type: integer, example: 208 }
+        transmission: { type: string, enum: [Manual, Automatic], example: Automatic }
+        color: { type: string, example: White }
+        batteryCapacityKwh: { type: number, example: 60.0 }
+        consumptionKwhPer100Km: { type: number, example: 14.5 }
+    FCEVCar:
+      type: object
+      required: [type, id, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, tankCapacityKg, consumptionKgPer100Km]
+      properties:
+        type: { type: string, enum: [FCEV] }
+        id: { type: integer, example: 3 }
+        brand: { type: string, example: "Toyota Mirai" }
+        licensePlate: { type: string, example: XT-482-H }
+        mileage: { type: integer, example: 32500 }
+        status: { type: string, enum: [Available, Rented, Maintenance] }
+        rate: { type: number, example: 70.0 }
+        location: { $ref: "#/components/schemas/Location" }
+        doors: { type: integer, example: 4 }
+        bodyStyle: { type: string, enum: [Hatchback, SUV, Sedan, Stationwagon, Cabrio, Coupe, MPV, Other], example: Sedan }
+        modelYear: { type: integer, example: 2022 }
+        power: { type: integer, example: 134 }
+        transmission: { type: string, enum: [Manual, Automatic], example: Automatic }
+        color: { type: string, example: Blue }
+        tankCapacityKg: { type: number, example: 5.6 }
+        consumptionKgPer100Km: { type: number, example: 0.76 }
+    Location:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude: { type: number, example: 52.3676 }
+        longitude: { type: number, example: 4.9041 }
