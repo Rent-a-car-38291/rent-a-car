@@ -1,13 +1,4 @@
-package com.example.repository
-import com.example.domain.BEVCar
-import com.example.domain.BodyStyle
-import com.example.domain.Car
-import com.example.domain.CarStatus
-import com.example.domain.FCEVCar
-import com.example.domain.FuelType
-import com.example.domain.ICECar
-import com.example.domain.Location
-import com.example.domain.Transmission
+package com.example.cars
 
 class InMemoryCarRepository : CarRepository {
     private val cars: List<Car> = listOf(

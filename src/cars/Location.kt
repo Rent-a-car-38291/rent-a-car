@@ -1,4 +1,4 @@
-package com.example.domain
+package com.example.cars
 import kotlinx.serialization.Serializable
 
 @Serializable

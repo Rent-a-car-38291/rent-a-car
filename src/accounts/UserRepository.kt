@@ -1,4 +1,4 @@
-package com.example.domain
+package com.example.accounts
 
 import java.security.SecureRandom
 import java.util.Base64

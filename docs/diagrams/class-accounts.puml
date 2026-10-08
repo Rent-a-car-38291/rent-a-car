@@ -3,15 +3,12 @@
 hide empty members
 set separator none
 
-package com.example <<Folder>> {
-  class "Accounts.kt" as Accounts <<(F,orchid) file>> {
+package com.example.accounts <<Folder>> {
+  class "AccountRoutes.kt" as AccountRoutes <<(F,orchid) file>> {
     - MIN_PASSWORD_LENGTH : Int = 8
     - EMAIL_PATTERN : Regex
     + Application.configureAccounts()
   }
-}
-
-package com.example.domain <<Folder>> {
   class User {
     + id : Int
     + name : String
@@ -39,8 +36,8 @@ package com.example.domain <<Folder>> {
 
 UserRepository o-- "0..*" User
 User ..> UserResponse : <<creates>>
-Accounts ..> RegisterRequest : receives
-Accounts ..> UserResponse : responds
-Accounts ..> UserRepository
+AccountRoutes ..> RegisterRequest : receives
+AccountRoutes ..> UserResponse : responds
+AccountRoutes ..> UserRepository
 
 @enduml
