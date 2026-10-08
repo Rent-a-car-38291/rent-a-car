@@ -1,4 +1,4 @@
-package com.example.domain
+package com.example.cars
 
 enum class CarStatus {
     Available,
