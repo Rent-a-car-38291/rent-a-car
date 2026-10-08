@@ -9,6 +9,7 @@ import javax.crypto.spec.PBEKeySpec
 // ponytail: in-memory store, swap for the database once #10 lands
 object UserRepository {
     private val users = mutableListOf<User>()
+    private val dummyHash by lazy { hash("dummy") }
 
     fun register(name: String, email: String, password: String): User? {
         val passwordHash = hash(password) // slow, so keep it outside the lock
@@ -18,8 +19,13 @@ object UserRepository {
         }
     }
 
-    fun authenticate(email: String, password: String): User? =
-        synchronized(this) { findByEmail(email) }?.takeIf { verify(password, it.passwordHash) }
+    // An unknown email is verified against a dummy hash, so it costs as much time as a known one
+    // and the response time doesn't reveal which emails have an account.
+    fun authenticate(email: String, password: String): User? {
+        val user = synchronized(this) { findByEmail(email) }
+        val passwordMatches = verify(password, user?.passwordHash ?: dummyHash)
+        return user?.takeIf { passwordMatches }
+    }
 
     @Synchronized
     fun find(id: Int): User? = users.find { it.id == id }
