@@ -1,5 +1,7 @@
 package org.jetbrains.amper.ktor
 
+import com.example.accounts.configureAccounts
+import com.example.cars.configureCars
 import com.example.configureRouting
 import com.example.configureSerialization
 import io.ktor.server.application.*
@@ -11,4 +13,6 @@ fun main(args: Array<String>) {
 fun Application.module() {
     configureSerialization()
     configureRouting()
+    configureCars()
+    configureAccounts()
 }
