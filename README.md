@@ -19,13 +19,13 @@ Here's a list of features included in this project:
 
 ## Building & Running
 
-To build or run the project, use one of the following tasks:
+The project uses the [Kotlin Toolchain](https://github.com/JetBrains/amper). The `./kotlin` wrapper downloads it on the first run, so no install is needed. On Windows, use `kotlin.bat` instead of `./kotlin`.
 
-| Task              | Description       |
-|-------------------|-------------------|
-| `./gradlew test`  | Run the tests     |
-| `./gradlew build` | Build the project |
-| `./gradlew run`   | Run the server    |
+| Command          | Description       |
+|------------------|-------------------|
+| `./kotlin test`  | Run the tests     |
+| `./kotlin build` | Build the project |
+| `./kotlin run`   | Run the server    |
 
 If the server starts successfully, you'll see the following output:
 
