@@ -1,4 +1,5 @@
-import com.example.domain.UserRepository
+package com.example.accounts
+
 import kotlin.test.*
 
 class UserRepositoryTest {

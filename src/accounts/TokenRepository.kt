@@ -1,4 +1,4 @@
-package com.example.domain
+package com.example.accounts
 
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap

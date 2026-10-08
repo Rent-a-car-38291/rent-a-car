@@ -1,10 +1,5 @@
-package com.example
+package com.example.accounts
 
-import com.example.domain.LoginRequest
-import com.example.domain.RegisterRequest
-import com.example.domain.TokenRepository
-import com.example.domain.UserRepository
-import com.example.domain.toResponse
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*

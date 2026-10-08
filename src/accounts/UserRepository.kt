@@ -1,4 +1,4 @@
-package com.example.domain
+package com.example.accounts
 
 import java.security.MessageDigest
 import java.security.SecureRandom
