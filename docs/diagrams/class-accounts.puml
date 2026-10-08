@@ -1,0 +1,66 @@
+@startuml
+' The account classes as they are in src/. The car classes are in class-cars.puml.
+hide empty members
+set separator none
+
+package com.example <<Folder>> {
+  class "Accounts.kt" as Accounts <<(F,orchid) file>> {
+    - MIN_PASSWORD_LENGTH : Int = 8
+    - EMAIL_PATTERN : Regex
+    + Application.configureAccounts()
+  }
+  class "Security.kt" as Security <<(F,orchid) file>> {
+    + Application.configureSecurity()
+  }
+}
+
+package com.example.domain <<Folder>> {
+  class User {
+    + id : Int
+    + name : String
+    + email : String
+    + passwordHash : String
+    + toResponse() : UserResponse
+  }
+  class RegisterRequest <<data>> {
+    + name : String
+    + email : String
+    + password : String
+  }
+  class LoginRequest <<data>> {
+    + email : String
+    + password : String
+  }
+  class UserResponse <<data>> {
+    + id : Int
+    + name : String
+    + email : String
+  }
+  class UserRepository <<object>> {
+    - users : MutableList<User>
+    + register(name : String, email : String, password : String) : User?
+    + authenticate(email : String, password : String) : User?
+    + find(id : Int) : User?
+    + clear()
+    - findByEmail(email : String) : User?
+    - hash(password : String, salt : ByteArray) : String
+    - verify(password : String, passwordHash : String) : Boolean
+  }
+  class TokenRepository <<object>> {
+    - userIds : ConcurrentHashMap<String, Int>
+    + issue(userId : Int) : String
+    + userId(token : String) : Int?
+  }
+}
+
+UserRepository o-- "0..*" User
+User ..> UserResponse : <<creates>>
+Accounts ..> RegisterRequest : receives
+Accounts ..> LoginRequest : receives
+Accounts ..> UserResponse : responds
+Accounts ..> UserRepository
+Accounts ..> TokenRepository
+Security ..> TokenRepository : userId(token)
+Security ..> UserRepository : find(id)
+
+@enduml
