@@ -3,7 +3,7 @@ title GET /cars
 autonumber
 
 actor Client
-participant "Routing.kt" as Route
+participant "CarRoutes.kt" as Route
 participant "CarRepository\n(InMemoryCarRepository)" as Repo
 participant "Ktor\n(ContentNegotiation)" as Ktor
 

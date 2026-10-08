@@ -11,7 +11,7 @@ node "Ktor server (Netty, port 8080)" {
   }
 
   package "Routes" {
-    component "Routing.kt\nGET /cars\n/static/*" as Routing
+    component "CarRoutes.kt\nGET /cars" as CarRoutes
     component "Accounts.kt\nPOST /accounts\nPOST /login\nDELETE /accounts/{id}" as Accounts
   }
 
@@ -30,13 +30,13 @@ node "Ktor server (Netty, port 8080)" {
 database "Database (#10)" as Db #line.dashed
 
 Client --> Json : HTTP + JSON
-Json --> Routing
+Json --> CarRoutes
 Json --> Auth
 Auth --> Accounts : principal User
 Auth ..> TokenRepository : userId(token)
 Auth ..> UserRepository : find(id)
 
-Routing --> CarRepository
+CarRoutes --> CarRepository
 CarRepository - InMemoryCarRepository
 Accounts --> UserRepository
 Accounts --> TokenRepository

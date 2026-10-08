@@ -3,20 +3,26 @@
 hide empty members
 set separator none
 
-package com.example <<Folder>> {
+package org.jetbrains.amper.ktor <<Folder>> {
   class "Application.kt" as Application <<(F,orchid) file>> {
     + main(args : Array<String>)
     + Application.module()
   }
+}
+
+package com.example <<Folder>> {
   class "Serialization.kt" as Serialization <<(F,orchid) file>> {
     + Application.configureSerialization()
   }
   class "Routing.kt" as Routing <<(F,orchid) file>> {
-    + Application.configureRouting(repository : CarRepository)
+    + Application.configureRouting()
   }
 }
 
-package com.example.repository <<Folder>> {
+package com.example.cars <<Folder>> {
+  class "CarRoutes.kt" as CarRoutes <<(F,orchid) file>> {
+    + Application.configureCars(repository : CarRepository)
+  }
   interface CarRepository {
     + allCars() : List<Car>
   }
@@ -24,9 +30,6 @@ package com.example.repository <<Folder>> {
     - cars : List<Car>
     + allCars() : List<Car>
   }
-}
-
-package com.example.domain <<Folder>> {
   abstract class Car <<sealed>> {
     + id : Int
     + brand : String
@@ -99,7 +102,8 @@ InMemoryCarRepository o-- "0..*" Car
 
 Application ..> Serialization
 Application ..> Routing
-Routing --> CarRepository
-Routing ..> InMemoryCarRepository : default
+Application ..> CarRoutes
+CarRoutes --> CarRepository
+CarRoutes ..> InMemoryCarRepository : default
 
 @enduml
