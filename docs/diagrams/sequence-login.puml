@@ -3,7 +3,7 @@ title POST /login
 autonumber
 
 actor Client
-participant "Accounts.kt" as Route
+participant "AccountRoutes.kt" as Route
 participant UserRepository
 participant TokenRepository
 
