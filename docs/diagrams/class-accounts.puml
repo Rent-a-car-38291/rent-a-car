@@ -38,9 +38,11 @@ package com.example.domain <<Folder>> {
   }
   class UserRepository <<object>> {
     - users : MutableList<User>
+    - nextId : Int
     + register(name : String, email : String, password : String) : User?
     + authenticate(email : String, password : String) : User?
     + find(id : Int) : User?
+    + delete(id : Int) : Boolean
     + clear()
     - findByEmail(email : String) : User?
     - hash(password : String, salt : ByteArray) : String
@@ -58,6 +60,7 @@ User ..> UserResponse : <<creates>>
 Accounts ..> RegisterRequest : receives
 Accounts ..> LoginRequest : receives
 Accounts ..> UserResponse : responds
+Accounts ..> User : principal
 Accounts ..> UserRepository
 Accounts ..> TokenRepository
 Security ..> TokenRepository : userId(token)
