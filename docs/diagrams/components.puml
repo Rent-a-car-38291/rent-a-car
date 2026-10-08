@@ -1,0 +1,48 @@
+@startuml
+' Layers of the server as it runs today. Dashed parts are planned.
+skinparam componentStyle uml2
+
+actor "Mobile app / client" as Client
+
+node "Ktor server (Netty, port 8080)" {
+  package "Plugins" {
+    component "ContentNegotiation\n(kotlinx JSON)" as Json
+    component "Authentication\n(bearer token)" as Auth
+  }
+
+  package "Routes" {
+    component "CarRoutes.kt\nGET /cars" as CarRoutes
+    component "AccountRoutes.kt\nPOST /accounts\nPOST /login\nDELETE /accounts/{id}" as AccountRoutes
+  }
+
+  package "Repositories" {
+    interface CarRepository
+    component InMemoryCarRepository
+    component UserRepository
+    component TokenRepository
+  }
+
+  package "Domain" {
+    component "Car, ICECar, BEVCar, FCEVCar\nUser, Location, enums" as DomainClasses
+  }
+}
+
+database "Database (#10)" as Db #line.dashed
+
+Client --> Json : HTTP + JSON
+Json --> CarRoutes
+Json --> Auth
+Auth --> AccountRoutes : principal User
+Auth ..> TokenRepository : userId(token)
+Auth ..> UserRepository : find(id)
+
+CarRoutes --> CarRepository
+CarRepository - InMemoryCarRepository
+AccountRoutes --> UserRepository
+AccountRoutes --> TokenRepository
+
+InMemoryCarRepository ..> DomainClasses
+UserRepository ..> DomainClasses
+InMemoryCarRepository .[#gray,dashed].> Db : replaced by
+
+@enduml
