@@ -1,0 +1,46 @@
+@startuml
+' The account classes as they are in src/. The car classes are in class-cars.puml.
+hide empty members
+set separator none
+
+package com.example <<Folder>> {
+  class "Accounts.kt" as Accounts <<(F,orchid) file>> {
+    - MIN_PASSWORD_LENGTH : Int = 8
+    - EMAIL_PATTERN : Regex
+    + Application.configureAccounts()
+  }
+}
+
+package com.example.domain <<Folder>> {
+  class User {
+    + id : Int
+    + name : String
+    + email : String
+    + passwordHash : String
+    + toResponse() : UserResponse
+  }
+  class RegisterRequest <<data>> {
+    + name : String
+    + email : String
+    + password : String
+  }
+  class UserResponse <<data>> {
+    + id : Int
+    + name : String
+    + email : String
+  }
+  class UserRepository <<object>> {
+    - users : MutableList<User>
+    + register(name : String, email : String, password : String) : User?
+    + clear()
+    - hash(password : String) : String
+  }
+}
+
+UserRepository o-- "0..*" User
+User ..> UserResponse : <<creates>>
+Accounts ..> RegisterRequest : receives
+Accounts ..> UserResponse : responds
+Accounts ..> UserRepository
+
+@enduml
