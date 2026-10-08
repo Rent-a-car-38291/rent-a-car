@@ -36,6 +36,7 @@ package com.example.accounts <<Folder>> {
   class UserRepository <<object>> {
     - users : MutableList<User>
     - nextId : Int
+    - dummyHash : String
     + register(name : String, email : String, password : String) : User?
     + authenticate(email : String, password : String) : User?
     + find(id : Int) : User?

@@ -10,7 +10,7 @@ participant TokenRepository
 Client -> Route : POST /login\n{email, password}
 Route -> UserRepository : authenticate(email.trim(), password)
 UserRepository -> UserRepository : findByEmail(email)
-UserRepository -> UserRepository : verify(password, passwordHash)\nre-hash with stored salt,\nconstant-time compare
+UserRepository -> UserRepository : verify(password, passwordHash or dummyHash)\nre-hash with stored salt,\nconstant-time compare\n(unknown email: dummy hash, same time)
 
 alt unknown email or wrong password
   UserRepository --> Route : null
