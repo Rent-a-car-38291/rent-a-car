@@ -255,6 +255,19 @@ class AccountRoutesTest {
     }
 
     @Test
+    fun UpdateTrimsNameAndEmail() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        val body = client.updateAccount("$id", profile(name = "  Janneke ", email = " janneke@example.com  "), token).json()
+
+        assertEquals("Janneke", body["name"]!!.jsonPrimitive.content)
+        assertEquals("janneke@example.com", body["email"]!!.jsonPrimitive.content)
+        assertEquals(HttpStatusCode.OK, client.login("janneke@example.com").status)
+    }
+
+    @Test
     fun UpdatedEmailCanBeUsedToLogIn() = testApplication {
         useTestDatabase()
         application { module() }
