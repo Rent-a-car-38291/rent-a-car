@@ -1,6 +1,7 @@
 package com.example.accounts
 
 import io.ktor.http.*
+import io.ktor.http.auth.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
@@ -40,6 +41,12 @@ fun Application.configureAccounts(users: UserRepository) {
         }
 
         authenticate {
+            post("/logout") {
+                // Only the token of this request: the user's other logins keep working.
+                (call.request.parseAuthorizationHeader() as? HttpAuthHeader.Single)?.let { TokenRepository.revoke(it.blob) }
+                call.respond(HttpStatusCode.NoContent)
+            }
+
             delete("/accounts/{id}") {
                 val id = call.parameters.getOrFail<Int>("id")
                 val status = when {
