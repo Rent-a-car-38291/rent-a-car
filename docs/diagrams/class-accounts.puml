@@ -62,7 +62,7 @@ package com.example.accounts <<Folder>> {
     + issue(userId : Int) : String
     + userId(token : String) : Int?
     + revoke(token : String)
-    + revokeAll(userId : Int, except : String?)
+    + revokeAll(userId : Int, except : String? = null)
   }
 }
 
