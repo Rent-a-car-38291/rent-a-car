@@ -354,6 +354,17 @@ class AccountRoutesTest {
     }
 
     @Test
+    fun ChangePasswordToTheSamePasswordReturnsNoContent() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.NoContent, client.changePassword("$id", passwords(new = "supersecret"), token).status)
+
+        assertEquals(HttpStatusCode.OK, client.login().status)
+    }
+
+    @Test
     fun ChangePasswordRevokesOtherTokensButKeepsTheCurrentOne() = testApplication {
         useTestDatabase()
         application { module() }
@@ -379,6 +390,15 @@ class AccountRoutesTest {
 
         assertEquals(HttpStatusCode.OK, client.login().status)
         assertEquals(HttpStatusCode.NoContent, client.logout(otherToken).status)
+    }
+
+    @Test
+    fun ChangePasswordChecksTheNewPasswordBeforeTheCurrentOne() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.BadRequest, client.changePassword("$id", passwords(current = "wrongpassword", new = "short"), token).status)
     }
 
     @Test

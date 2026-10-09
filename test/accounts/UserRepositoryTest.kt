@@ -63,6 +63,11 @@ class UserRepositoryTest {
     }
 
     @Test
+    fun ChangePasswordOfUnknownUserReturnsFalse() {
+        assertFalse(users.changePassword(999, "supersecret", "evenmoresecret"))
+    }
+
+    @Test
     fun RegisterStoresHashedPassword() {
         val user = assertNotNull(users.register("Jan", "jan@example.com", "supersecret"))
 

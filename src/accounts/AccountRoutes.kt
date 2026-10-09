@@ -85,6 +85,7 @@ fun Application.configureAccounts(users: UserRepository) {
                             call.respond(HttpStatusCode.Forbidden)
                             return@put
                         }
+                        // shortcut: a login that checked the old password just before the update can still get a token after this, a password version in the token would close it.
                         TokenRepository.revokeAll(id, except = call.bearerToken())
                         call.respond(HttpStatusCode.NoContent)
                     }

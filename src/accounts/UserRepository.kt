@@ -44,6 +44,7 @@ class UserRepository(private val dataSource: DataSource) {
 
     // false when the current password is wrong. The update only matches the hash that was verified,
     // so two changes at once can't both win.
+    // shortcut: the loser of such a race (or a user deleted meanwhile) also gets false, so the route answers 403, give it its own result when that matters.
     fun changePassword(id: Int, currentPassword: String, newPassword: String): Boolean {
         val user = find(id) ?: return false
         if (!verify(currentPassword, user.passwordHash)) return false
