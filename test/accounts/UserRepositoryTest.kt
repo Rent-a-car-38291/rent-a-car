@@ -44,6 +44,25 @@ class UserRepositoryTest {
     }
 
     @Test
+    fun ChangePasswordReplacesThePassword() {
+        val user = assertNotNull(users.register("Jan", "jan@example.com", "supersecret"))
+
+        assertTrue(users.changePassword(user.id, "supersecret", "evenmoresecret"))
+
+        assertNotNull(users.authenticate("jan@example.com", "evenmoresecret"))
+        assertNull(users.authenticate("jan@example.com", "supersecret"))
+    }
+
+    @Test
+    fun ChangePasswordWithWrongCurrentPasswordChangesNothing() {
+        val user = assertNotNull(users.register("Jan", "jan@example.com", "supersecret"))
+
+        assertFalse(users.changePassword(user.id, "wrongpassword", "evenmoresecret"))
+
+        assertNotNull(users.authenticate("jan@example.com", "supersecret"))
+    }
+
+    @Test
     fun RegisterStoresHashedPassword() {
         val user = assertNotNull(users.register("Jan", "jan@example.com", "supersecret"))
 

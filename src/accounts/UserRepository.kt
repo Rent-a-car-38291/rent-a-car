@@ -42,6 +42,19 @@ class UserRepository(private val dataSource: DataSource) {
         if (e.sqlState == UNIQUE_VIOLATION) null else throw e
     }
 
+    // false when the current password is wrong. The update only matches the hash that was verified,
+    // so two changes at once can't both win.
+    fun changePassword(id: Int, currentPassword: String, newPassword: String): Boolean {
+        val user = find(id) ?: return false
+        if (!verify(currentPassword, user.passwordHash)) return false
+        val newHash = hash(newPassword) // slow, so keep it away from the database connection
+        return dataSource.connection.use { connection ->
+            connection.prepareStatement("UPDATE users SET password_hash = ? WHERE id = ? AND password_hash = ?").use {
+                it.setString(1, newHash); it.setInt(2, id); it.setString(3, user.passwordHash); it.executeUpdate() > 0
+            }
+        }
+    }
+
     fun delete(id: Int): Boolean = dataSource.connection.use { connection ->
         connection.prepareStatement("DELETE FROM users WHERE id = ?").use { it.setInt(1, id); it.executeUpdate() > 0 }
     }
