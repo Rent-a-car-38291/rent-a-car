@@ -6,6 +6,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
@@ -49,6 +50,16 @@ class AccountRoutesTest {
 
     private suspend fun HttpClient.logout(token: String? = null) =
         post("/logout") { token?.let { bearerAuth(it) } }
+
+    private suspend fun HttpClient.updateAccount(id: String, body: String, token: String? = null) =
+        put("/accounts/$id") {
+            token?.let { bearerAuth(it) }
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }
+
+    private fun profile(name: String = "Janneke", email: String = "janneke@example.com") =
+        """{"name":"$name","email":"$email"}"""
 
     private suspend fun HttpClient.deleteAccount(id: Int, token: String? = null) =
         delete("/accounts/$id") { token?.let { bearerAuth(it) } }
@@ -216,5 +227,107 @@ class AccountRoutesTest {
 
         assertEquals(HttpStatusCode.Unauthorized, client.logout().status)
         assertEquals(HttpStatusCode.Unauthorized, client.logout("not-a-token").status)
+    }
+
+    @Test
+    fun UpdateOwnAccountReturnsUpdatedAccountWithoutPassword() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        val response = client.updateAccount("$id", profile(), token)
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.json()
+        assertEquals("Janneke", body["name"]!!.jsonPrimitive.content)
+        assertEquals("janneke@example.com", body["email"]!!.jsonPrimitive.content)
+        assertFalse(response.bodyAsText().contains("password"))
+    }
+
+    @Test
+    fun UpdateTrimsNameAndEmail() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        val body = client.updateAccount("$id", profile(name = "  Janneke ", email = " janneke@example.com  "), token).json()
+
+        assertEquals("Janneke", body["name"]!!.jsonPrimitive.content)
+        assertEquals("janneke@example.com", body["email"]!!.jsonPrimitive.content)
+        assertEquals(HttpStatusCode.OK, client.login("janneke@example.com").status)
+    }
+
+    @Test
+    fun UpdatedEmailCanBeUsedToLogIn() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+        client.updateAccount("$id", profile(), token)
+
+        assertEquals(HttpStatusCode.OK, client.login("janneke@example.com").status)
+        assertEquals(HttpStatusCode.Unauthorized, client.login("jan@example.com").status)
+    }
+
+    @Test
+    fun UpdateKeepingOwnEmailReturnsOk() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.OK, client.updateAccount("$id", profile(email = "jan@example.com"), token).status)
+        assertEquals(HttpStatusCode.OK, client.updateAccount("$id", profile(email = "JAN@example.com"), token).status)
+    }
+
+    @Test
+    fun UpdateWithInvalidFieldsReturnsBadRequest() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        listOf(profile(name = " "), profile(email = "not-an-email"), profile(email = "jan@"), "{}", "not json").forEach {
+            assertEquals(HttpStatusCode.BadRequest, client.updateAccount("$id", it, token).status, it)
+        }
+        assertEquals(HttpStatusCode.BadRequest, client.updateAccount("abc", profile(), token).status)
+    }
+
+    @Test
+    fun UpdateWithoutValidTokenReturnsUnauthorized() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, _) = client.signUp()
+
+        assertEquals(HttpStatusCode.Unauthorized, client.updateAccount("$id", profile()).status)
+        assertEquals(HttpStatusCode.Unauthorized, client.updateAccount("$id", profile(), "not-a-token").status)
+    }
+
+    @Test
+    fun UpdateSomeoneElsesAccountReturnsForbidden() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (otherId, _) = client.signUp("piet@example.com")
+        val (_, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.Forbidden, client.updateAccount("$otherId", profile(), token).status)
+        assertEquals(HttpStatusCode.OK, client.login("piet@example.com").status)
+    }
+
+    @Test
+    fun UpdateUnknownAccountReturnsNotFound() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.NotFound, client.updateAccount("999", profile(), token).status)
+    }
+
+    @Test
+    fun UpdateToEmailOfAnotherAccountReturnsConflict() = testApplication {
+        useTestDatabase()
+        application { module() }
+        client.signUp("piet@example.com")
+        val (id, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.Conflict, client.updateAccount("$id", profile(email = "PIET@example.com"), token).status)
+        assertEquals(HttpStatusCode.OK, client.login("jan@example.com").status)
     }
 }

@@ -24,6 +24,26 @@ class UserRepositoryTest {
     }
 
     @Test
+    fun UpdateChangesNameAndEmailButKeepsPassword() {
+        val user = assertNotNull(users.register("Jan", "jan@example.com", "supersecret"))
+
+        val updated = assertNotNull(users.update(user.id, "Janneke", "janneke@example.com"))
+
+        assertEquals("Janneke", updated.name)
+        assertEquals("janneke@example.com", updated.email)
+        assertNotNull(users.authenticate("janneke@example.com", "supersecret"))
+    }
+
+    @Test
+    fun UpdateToEmailOfAnotherUserReturnsNull() {
+        users.register("Piet", "piet@example.com", "supersecret")
+        val user = assertNotNull(users.register("Jan", "jan@example.com", "supersecret"))
+
+        assertNull(users.update(user.id, "Jan", "PIET@example.com"))
+        assertEquals("jan@example.com", users.find(user.id)?.email)
+    }
+
+    @Test
     fun RegisterStoresHashedPassword() {
         val user = assertNotNull(users.register("Jan", "jan@example.com", "supersecret"))
 

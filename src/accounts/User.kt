@@ -17,6 +17,9 @@ data class RegisterRequest(val name: String, val email: String, val password: St
 data class UserResponse(val id: Int, val name: String, val email: String)
 
 @Serializable
+data class UpdateAccountRequest(val name: String, val email: String)
+
+@Serializable
 data class LoginRequest(val email: String, val password: String)
 
 fun User.toResponse() = UserResponse(id, name, email)
