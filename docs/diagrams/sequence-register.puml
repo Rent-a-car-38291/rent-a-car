@@ -6,6 +6,7 @@ actor Client
 participant "Ktor\n(ContentNegotiation)" as Ktor
 participant "AccountRoutes.kt" as Route
 participant UserRepository
+database PostgreSQL
 
 Client -> Ktor : POST /accounts\n{name, email, password}
 Ktor -> Route : receive<RegisterRequest>()
@@ -20,12 +21,13 @@ end
 
 Route -> UserRepository : register(name, email, password)
 UserRepository -> UserRepository : hash(password)\nPBKDF2, random salt
-UserRepository -> UserRepository : email already used?\n(synchronized, ignores case)
-alt email taken
+UserRepository -> PostgreSQL : INSERT INTO users ...\nON CONFLICT DO NOTHING RETURNING *
+alt email taken\n(unique index on lower(email))
+  PostgreSQL --> UserRepository : no row
   UserRepository --> Route : null
   Route --> Client : 409 Conflict
 else new email
-  UserRepository -> UserRepository : add new User
+  PostgreSQL --> UserRepository : new row
   UserRepository --> Route : User
   Route -> Route : user.toResponse()
   Route --> Client : 201 Created\n{id, name, email}
