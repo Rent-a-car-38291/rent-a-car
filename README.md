@@ -1,42 +1,80 @@
 # rent-a-car
 
-This project was created using the [Ktor Project Generator](https://start.ktor.io).
+[![Build](https://github.com/Rent-a-car-38291/rent-a-car/actions/workflows/build.yml/badge.svg)](https://github.com/Rent-a-car-38291/rent-a-car/actions/workflows/build.yml)
 
-Here are some useful links to get you started:
+A car rental backend for the Avans course: browse a fleet of petrol, electric and hydrogen cars, and register and log in with an account.
 
-* [Ktor Documentation](https://ktor.io/docs/home.html)
-* [Ktor GitHub page](https://github.com/ktorio/ktor)
-* [Ktor Slack chat](https://app.slack.com/client/T09229ZC6/C0A974TJ9). [Request an invite](https://surveys.jetbrains.com/s3/kotlin-slack-sign-up).
+Built with [Ktor](https://ktor.io) and Kotlin, and the [Kotlin Toolchain](https://github.com/JetBrains/amper) (Amper).
 
 ## Features
 
-Here's a list of features included in this project:
+- Cars of three kinds: combustion (`ICE`), battery electric (`BEV`) and hydrogen (`FCEV`), with a sample fleet
+- Register and log in, with bearer tokens for protected routes
+- Passwords are stored hashed
 
-| Name                                                                                  | Description                                                                        |
-|---------------------------------------------------------------------------------------|------------------------------------------------------------------------------------|
-| [Content Negotiation](https://start.ktor.io/p/io.ktor/server-content-negotiation)     | Provides automatic content conversion according to Content-Type and Accept headers |
-| [kotlinx.serialization](https://start.ktor.io/p/io.ktor/server-kotlinx-serialization) | Handles JSON serialization using kotlinx.serialization library                     |
+## Getting started
 
-## Building & Running
+You need a JDK. The `./kotlin` wrapper downloads the toolchain on the first run, so there is nothing else to install. On Windows, use `kotlin.bat` instead of `./kotlin`.
 
-The project uses the [Kotlin Toolchain](https://github.com/JetBrains/amper). The `./kotlin` wrapper downloads it on the first run, so no install is needed. On Windows, use `kotlin.bat` instead of `./kotlin`.
+```bash
+./kotlin run
+```
 
-| Command          | Description       |
-|------------------|-------------------|
-| `./kotlin test`  | Run the tests     |
-| `./kotlin build` | Build the project |
-| `./kotlin run`   | Run the server    |
-
-If the server starts successfully, you'll see the following output:
+If the server starts successfully, you'll see:
 
 ```
 2024-12-04 14:32:45.584 [main] INFO  Application - Application started in 0.303 seconds.
 2024-12-04 14:32:45.682 [main] INFO  Application - Responding at http://0.0.0.0:8080
 ```
 
-## Viewing diagrams (PlantUML)
+Try it:
 
-Diagrams for this project live in [`docs/diagrams`](docs/diagrams) as `.puml` files, each with an exported `.png` next to it so GitHub can show it without a plugin. To view and edit them in your IDE, install the PlantUML plugin and a local renderer.
+```bash
+curl http://localhost:8080/cars
+```
+
+| Command          | Description       |
+|------------------|-------------------|
+| `./kotlin run`   | Run the server    |
+| `./kotlin test`  | Run the tests     |
+| `./kotlin build` | Build the project |
+
+Cars, accounts and login tokens are kept in memory: after a restart the sample cars are back and everyone has to register and log in again.
+
+## API
+
+| Method | Path        | Description         | Success | Errors       |
+|--------|-------------|---------------------|---------|--------------|
+| `GET`  | `/cars`     | List all cars       | `200`   |              |
+| `POST` | `/accounts` | Register an account | `201`   | `400`, `409` |
+| `POST` | `/login`    | Get a token         | `200`   | `401`        |
+
+A password needs at least 8 characters, and the email address must be unused. Routes that need a login take the token from `POST /login` in an `Authorization: Bearer <token>` header. Each endpoint has a [sequence diagram](docs/diagrams) with every status code.
+
+```bash
+curl -X POST localhost:8080/accounts -H 'Content-Type: application/json' \
+     -d '{"name":"Sam","email":"sam@example.com","password":"correct horse"}'
+
+curl -X POST localhost:8080/login -H 'Content-Type: application/json' \
+     -d '{"email":"sam@example.com","password":"correct horse"}'
+# {"token":"..."}
+```
+
+## Project layout
+
+```
+src/
+├── Application.kt        wires the modules together
+├── accounts/             users, login tokens, account routes
+└── cars/                 the car hierarchy, repository and routes
+resources/                server configuration
+test/                     mirrors src/
+docs/diagrams/            PlantUML sources and exported PNGs
+```
+
+## Diagrams
+
+Diagrams live in [`docs/diagrams`](docs/diagrams) as `.puml` files, each with an exported `.png` next to it so GitHub can show it without a plugin.
 
 | Diagram                 | Shows                                                                         |
 |-------------------------|-------------------------------------------------------------------------------|
@@ -48,29 +86,15 @@ Diagrams for this project live in [`docs/diagrams`](docs/diagrams) as `.puml` fi
 
 A PR that changes an endpoint or a class updates its diagram and PNG, and shows them in the PR description.
 
-### 1. Install the plugin
+![Components](docs/diagrams/components.png)
 
-- **IntelliJ IDEA**: Go to `Settings/Preferences > Plugins > Marketplace`, search for **PlantUML Integration**, and install it.
+### Viewing and editing
 
-### 2. Install the renderer
-
-PlantUML renders diagrams using Graphviz, which must be installed separately.
-
-**macOS** (via [Homebrew](https://brew.sh)):
-
-```bash
-brew install graphviz
-```
-
-**Windows** (via [Chocolatey](https://chocolatey.org)):
-
-```bash
-choco install graphviz
-```
-
-Alternatively on Windows, download the installer from the [Graphviz website](https://graphviz.org/download/) and make sure to check "Add Graphviz to the system PATH" during installation.
-
-After installing, restart your IDE and open a `.puml` file to see the rendered preview.
+1. **Install the plugin.** In IntelliJ IDEA, go to `Settings/Preferences > Plugins > Marketplace`, search for **PlantUML Integration** and install it.
+2. **Install Graphviz**, which PlantUML renders with:
+   - macOS: `brew install graphviz`
+   - Windows: `choco install graphviz`, or the installer from the [Graphviz website](https://graphviz.org/download/) with "Add Graphviz to the system PATH" checked.
+3. Restart your IDE and open a `.puml` file to see the preview.
 
 ### Exporting images
 
