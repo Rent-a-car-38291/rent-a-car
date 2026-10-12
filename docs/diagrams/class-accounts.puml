@@ -8,6 +8,7 @@ package com.example.accounts <<Folder>> {
     - MIN_PASSWORD_LENGTH : Int = 8
     - EMAIL_PATTERN : Regex
     - isValid(name : String, email : String) : Boolean
+    - ApplicationCall.bearerToken() : String?
     + Application.configureAccounts(users : UserRepository)
   }
   class "Security.kt" as Security <<(F,orchid) file>> {
@@ -29,6 +30,10 @@ package com.example.accounts <<Folder>> {
     + name : String
     + email : String
   }
+  class ChangePasswordRequest <<data>> {
+    + currentPassword : String
+    + newPassword : String
+  }
   class LoginRequest <<data>> {
     + email : String
     + password : String
@@ -45,6 +50,7 @@ package com.example.accounts <<Folder>> {
     + authenticate(email : String, password : String) : User?
     + find(id : Int) : User?
     + update(id : Int, name : String, email : String) : User?
+    + changePassword(id : Int, currentPassword : String, newPassword : String) : Boolean
     + delete(id : Int) : Boolean
     + clear()
     - queryUser(sql : String, parameters : Any) : User?
@@ -56,7 +62,7 @@ package com.example.accounts <<Folder>> {
     + issue(userId : Int) : String
     + userId(token : String) : Int?
     + revoke(token : String)
-    + revokeAll(userId : Int)
+    + revokeAll(userId : Int, except : String? = null)
   }
 }
 
@@ -65,6 +71,7 @@ User ..> UserResponse : <<creates>>
 AccountRoutes ..> RegisterRequest : receives
 AccountRoutes ..> LoginRequest : receives
 AccountRoutes ..> UpdateAccountRequest : receives
+AccountRoutes ..> ChangePasswordRequest : receives
 AccountRoutes ..> UserResponse : responds
 AccountRoutes ..> User : principal
 AccountRoutes ..> UserRepository

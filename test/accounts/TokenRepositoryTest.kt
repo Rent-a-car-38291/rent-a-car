@@ -26,4 +26,15 @@ class TokenRepositoryTest {
         assertNull(TokenRepository.userId(first))
         assertEquals(103, TokenRepository.userId(second))
     }
+
+    @Test
+    fun RevokeAllCanKeepOneToken() {
+        val kept = TokenRepository.issue(104)
+        val revoked = TokenRepository.issue(104)
+
+        TokenRepository.revokeAll(104, except = kept)
+
+        assertEquals(104, TokenRepository.userId(kept))
+        assertNull(TokenRepository.userId(revoked))
+    }
 }

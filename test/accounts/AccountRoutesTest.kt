@@ -58,6 +58,16 @@ class AccountRoutesTest {
             setBody(body)
         }
 
+    private suspend fun HttpClient.changePassword(id: String, body: String, token: String? = null) =
+        put("/accounts/$id/password") {
+            token?.let { bearerAuth(it) }
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }
+
+    private fun passwords(current: String = "supersecret", new: String = "evenmoresecret") =
+        """{"currentPassword":"$current","newPassword":"$new"}"""
+
     private fun profile(name: String = "Janneke", email: String = "janneke@example.com") =
         """{"name":"$name","email":"$email"}"""
 
@@ -329,5 +339,108 @@ class AccountRoutesTest {
 
         assertEquals(HttpStatusCode.Conflict, client.updateAccount("$id", profile(email = "PIET@example.com"), token).status)
         assertEquals(HttpStatusCode.OK, client.login("jan@example.com").status)
+    }
+
+    @Test
+    fun ChangePasswordReturnsNoContentAndNewPasswordLogsIn() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.NoContent, client.changePassword("$id", passwords(), token).status)
+
+        assertEquals(HttpStatusCode.OK, client.login(password = "evenmoresecret").status)
+        assertEquals(HttpStatusCode.Unauthorized, client.login(password = "supersecret").status)
+    }
+
+    @Test
+    fun ChangePasswordToTheSamePasswordReturnsNoContent() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.NoContent, client.changePassword("$id", passwords(new = "supersecret"), token).status)
+
+        assertEquals(HttpStatusCode.OK, client.login().status)
+    }
+
+    @Test
+    fun ChangePasswordRevokesOtherTokensButKeepsTheCurrentOne() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+        val otherToken = client.login().json()["token"]!!.jsonPrimitive.content
+        val (_, someoneElsesToken) = client.signUp("piet@example.com")
+
+        client.changePassword("$id", passwords(), token)
+
+        assertEquals(HttpStatusCode.Unauthorized, client.logout(otherToken).status)
+        assertEquals(HttpStatusCode.NoContent, client.logout(someoneElsesToken).status)
+        assertEquals(HttpStatusCode.NoContent, client.logout(token).status)
+    }
+
+    @Test
+    fun ChangePasswordWithWrongCurrentPasswordReturnsForbidden() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+        val otherToken = client.login().json()["token"]!!.jsonPrimitive.content
+
+        assertEquals(HttpStatusCode.Forbidden, client.changePassword("$id", passwords(current = "wrongpassword"), token).status)
+
+        assertEquals(HttpStatusCode.OK, client.login().status)
+        assertEquals(HttpStatusCode.NoContent, client.logout(otherToken).status)
+    }
+
+    @Test
+    fun ChangePasswordChecksTheNewPasswordBeforeTheCurrentOne() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.BadRequest, client.changePassword("$id", passwords(current = "wrongpassword", new = "short"), token).status)
+    }
+
+    @Test
+    fun ChangePasswordWithInvalidRequestReturnsBadRequest() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        listOf(passwords(new = "short"), passwords(new = ""), """{"currentPassword":"supersecret"}""", "{}", "not json").forEach {
+            assertEquals(HttpStatusCode.BadRequest, client.changePassword("$id", it, token).status, it)
+        }
+        assertEquals(HttpStatusCode.BadRequest, client.changePassword("abc", passwords(), token).status)
+        assertEquals(HttpStatusCode.OK, client.login().status)
+    }
+
+    @Test
+    fun ChangePasswordWithoutValidTokenReturnsUnauthorized() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, _) = client.signUp()
+
+        assertEquals(HttpStatusCode.Unauthorized, client.changePassword("$id", passwords()).status)
+        assertEquals(HttpStatusCode.Unauthorized, client.changePassword("$id", passwords(), "not-a-token").status)
+    }
+
+    @Test
+    fun ChangeSomeoneElsesPasswordReturnsForbidden() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (otherId, _) = client.signUp("piet@example.com")
+        val (_, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.Forbidden, client.changePassword("$otherId", passwords(), token).status)
+        assertEquals(HttpStatusCode.OK, client.login("piet@example.com").status)
+    }
+
+    @Test
+    fun ChangePasswordOfUnknownAccountReturnsNotFound() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.NotFound, client.changePassword("999", passwords(), token).status)
     }
 }

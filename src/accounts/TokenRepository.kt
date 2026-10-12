@@ -16,7 +16,7 @@ object TokenRepository {
         userIds.remove(token)
     }
 
-    fun revokeAll(userId: Int) {
-        userIds.values.removeIf { it == userId }
+    fun revokeAll(userId: Int, except: String? = null) {
+        userIds.entries.removeIf { it.value == userId && it.key != except }
     }
 }

@@ -14,6 +14,8 @@ private val EMAIL_PATTERN = Regex("[^@\\s]+@[^@\\s]+\\.[^@\\s]+") // something@d
 
 private fun isValid(name: String, email: String) = name.isNotEmpty() && EMAIL_PATTERN.matches(email)
 
+private fun ApplicationCall.bearerToken() = (request.parseAuthorizationHeader() as? HttpAuthHeader.Single)?.blob
+
 fun Application.configureAccounts(users: UserRepository) {
     routing {
         post("/accounts") {
@@ -45,7 +47,7 @@ fun Application.configureAccounts(users: UserRepository) {
         authenticate {
             post("/logout") {
                 // Only the token of this request: the user's other logins keep working.
-                (call.request.parseAuthorizationHeader() as? HttpAuthHeader.Single)?.let { TokenRepository.revoke(it.blob) }
+                call.bearerToken()?.let(TokenRepository::revoke)
                 call.respond(HttpStatusCode.NoContent)
             }
 
@@ -64,6 +66,28 @@ fun Application.configureAccounts(users: UserRepository) {
                         }
                         val user = users.update(id, name, email)
                         if (user == null) call.respond(HttpStatusCode.Conflict) else call.respond(user.toResponse())
+                    }
+                }
+            }
+
+            put("/accounts/{id}/password") {
+                val id = call.parameters.getOrFail<Int>("id")
+                when {
+                    users.find(id) == null -> call.respond(HttpStatusCode.NotFound)
+                    id != call.principal<User>()?.id -> call.respond(HttpStatusCode.Forbidden)
+                    else -> {
+                        val request = call.receive<ChangePasswordRequest>()
+                        if (request.newPassword.length < MIN_PASSWORD_LENGTH) {
+                            call.respond(HttpStatusCode.BadRequest)
+                            return@put
+                        }
+                        if (!users.changePassword(id, request.currentPassword, request.newPassword)) {
+                            call.respond(HttpStatusCode.Forbidden)
+                            return@put
+                        }
+                        // shortcut: a login that checked the old password just before the update can still get a token after this, a password version in the token would close it.
+                        TokenRepository.revokeAll(id, except = call.bearerToken())
+                        call.respond(HttpStatusCode.NoContent)
                     }
                 }
             }
