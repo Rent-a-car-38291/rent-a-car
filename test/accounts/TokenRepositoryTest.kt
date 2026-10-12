@@ -15,4 +15,15 @@ class TokenRepositoryTest {
         assertNull(TokenRepository.userId(second))
         assertEquals(102, TokenRepository.userId(other))
     }
+
+    @Test
+    fun RevokeRemovesThatTokenOnly() {
+        val first = TokenRepository.issue(103)
+        val second = TokenRepository.issue(103)
+
+        TokenRepository.revoke(first)
+
+        assertNull(TokenRepository.userId(first))
+        assertEquals(103, TokenRepository.userId(second))
+    }
 }

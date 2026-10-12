@@ -47,6 +47,9 @@ class AccountRoutesTest {
         return id to token
     }
 
+    private suspend fun HttpClient.logout(token: String? = null) =
+        post("/logout") { token?.let { bearerAuth(it) } }
+
     private suspend fun HttpClient.deleteAccount(id: Int, token: String? = null) =
         delete("/accounts/$id") { token?.let { bearerAuth(it) } }
 
@@ -180,5 +183,38 @@ class AccountRoutesTest {
         val (newId, _) = client.signUp("piet@example.com")
 
         assertEquals(HttpStatusCode.Unauthorized, client.deleteAccount(newId, token).status)
+    }
+
+    @Test
+    fun LogoutReturnsNoContentAndRevokesToken() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.NoContent, client.logout(token).status)
+
+        assertEquals(HttpStatusCode.Unauthorized, client.logout(token).status)
+        assertEquals(HttpStatusCode.Unauthorized, client.deleteAccount(id, token).status)
+    }
+
+    @Test
+    fun LogoutKeepsOtherLoginsOfTheUser() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, token) = client.signUp()
+        val otherToken = client.login().json()["token"]!!.jsonPrimitive.content
+
+        client.logout(token)
+
+        assertEquals(HttpStatusCode.NoContent, client.logout(otherToken).status)
+    }
+
+    @Test
+    fun LogoutWithoutValidTokenReturnsUnauthorized() = testApplication {
+        useTestDatabase()
+        application { module() }
+
+        assertEquals(HttpStatusCode.Unauthorized, client.logout().status)
+        assertEquals(HttpStatusCode.Unauthorized, client.logout("not-a-token").status)
     }
 }
