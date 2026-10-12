@@ -15,6 +15,7 @@ dependencies:
   - ch.qos.logback:logback-classic:1.5.38
   - $ktor.server.contentNegotiation
   - $ktor.server.swagger
+  - $ktor.server.auth
   - $ktor.serialization.kotlinx.json
 
 test-dependencies:

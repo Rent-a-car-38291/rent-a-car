@@ -1,12 +1,20 @@
 package com.example.accounts
 
+import io.ktor.client.HttpClient
+import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.jetbrains.amper.ktor.module
 import kotlin.test.*
 
@@ -17,11 +25,28 @@ class AccountRoutesTest {
     private fun valid(email: String = "jan@example.com") =
         """{"name":"Jan","email":"$email","password":"supersecret"}"""
 
-    private suspend fun io.ktor.client.HttpClient.register(body: String) =
-        post("/accounts") {
+    private suspend fun HttpClient.postJson(path: String, body: String) =
+        post(path) {
             contentType(ContentType.Application.Json)
             setBody(body)
         }
+
+    private suspend fun HttpClient.register(body: String) = postJson("/accounts", body)
+
+    private suspend fun HttpClient.login(email: String = "jan@example.com", password: String = "supersecret") =
+        postJson("/login", """{"email":"$email","password":"$password"}""")
+
+    private suspend fun HttpResponse.json() = Json.parseToJsonElement(bodyAsText()).jsonObject
+
+    // Registers and logs in a user, returning its id and token.
+    private suspend fun HttpClient.signUp(email: String = "jan@example.com"): Pair<Int, String> {
+        val id = register(valid(email)).json()["id"]!!.jsonPrimitive.int
+        val token = login(email).json()["token"]!!.jsonPrimitive.content
+        return id to token
+    }
+
+    private suspend fun HttpClient.deleteAccount(id: Int, token: String? = null) =
+        delete("/accounts/$id") { token?.let { bearerAuth(it) } }
 
     @Test
     fun RegisterReturnsCreatedWithoutPassword() = testApplication {
@@ -60,5 +85,87 @@ class AccountRoutesTest {
         val response = client.register(valid("JAN@example.com"))
 
         assertEquals(HttpStatusCode.Conflict, response.status)
+    }
+
+    @Test
+    fun LoginReturnsToken() = testApplication {
+        application { module() }
+        client.register(valid())
+
+        val response = client.login(email = "JAN@example.com")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertFalse(response.json()["token"]?.jsonPrimitive?.content.isNullOrBlank())
+    }
+
+    @Test
+    fun LoginWithWrongCredentialsReturnsUnauthorized() = testApplication {
+        application { module() }
+        client.register(valid())
+
+        assertEquals(HttpStatusCode.Unauthorized, client.login(password = "wrongpassword").status)
+        assertEquals(HttpStatusCode.Unauthorized, client.login(email = "piet@example.com").status)
+    }
+
+    @Test
+    fun DeleteOwnAccountReturnsNoContent() = testApplication {
+        application { module() }
+        val (id, token) = client.signUp()
+
+        val response = client.deleteAccount(id, token)
+
+        assertEquals(HttpStatusCode.NoContent, response.status)
+        assertEquals(HttpStatusCode.Unauthorized, client.login().status)
+        assertEquals(HttpStatusCode.Unauthorized, client.deleteAccount(id, token).status)
+    }
+
+    @Test
+    fun DeleteUnknownAccountReturnsNotFound() = testApplication {
+        application { module() }
+        val (_, token) = client.signUp()
+
+        val response = client.deleteAccount(999, token)
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+    }
+
+    @Test
+    fun DeleteWithoutValidTokenReturnsUnauthorized() = testApplication {
+        application { module() }
+        val (id, _) = client.signUp()
+
+        assertEquals(HttpStatusCode.Unauthorized, client.deleteAccount(id).status)
+        assertEquals(HttpStatusCode.Unauthorized, client.deleteAccount(id, "not-a-token").status)
+    }
+
+    @Test
+    fun DeleteSomeoneElsesAccountReturnsForbidden() = testApplication {
+        application { module() }
+        val (otherId, _) = client.signUp("piet@example.com")
+        val (_, token) = client.signUp()
+
+        val response = client.deleteAccount(otherId, token)
+
+        assertEquals(HttpStatusCode.Forbidden, response.status)
+    }
+
+    @Test
+    fun DeletedUsersTokenIsRevoked() = testApplication {
+        application { module() }
+        val (id, token) = client.signUp()
+        client.deleteAccount(id, token)
+
+        assertNull(TokenRepository.userId(token))
+        assertEquals(HttpStatusCode.Unauthorized, client.deleteAccount(id, token).status)
+    }
+
+    @Test
+    fun DeletedUsersTokenDoesNotWorkForNewUser() = testApplication {
+        application { module() }
+        val (id, token) = client.signUp()
+        client.deleteAccount(id, token)
+        val (newId, _) = client.signUp("piet@example.com")
+
+        assertEquals(HttpStatusCode.Unauthorized, client.deleteAccount(newId, token).status)
     }
 }
