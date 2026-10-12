@@ -1,0 +1,38 @@
+@startuml
+title DELETE /accounts/{id}
+autonumber
+
+actor Client
+participant "Authentication\n(bearer)" as Auth
+participant "AccountRoutes.kt" as Route
+participant TokenRepository
+participant UserRepository
+
+Client -> Auth : DELETE /accounts/{id}\nAuthorization: Bearer <token>
+Auth -> TokenRepository : userId(token)
+TokenRepository --> Auth : userId?
+Auth -> UserRepository : find(userId)
+UserRepository --> Auth : User?
+break no token, unknown token or user already deleted
+  Auth --> Client : 401 Unauthorized
+end
+Auth -> Route : principal = User
+
+Route -> Route : parameters.getOrFail<Int>("id")
+break id not a number
+  Route --> Client : 400 Bad Request
+end
+
+Route -> UserRepository : find(id)
+UserRepository --> Route : User?
+alt no user with that id
+  Route --> Client : 404 Not Found
+else id != principal.id
+  Route --> Client : 403 Forbidden
+else own account
+  Route -> UserRepository : delete(id)
+  Route -> TokenRepository : revokeAll(id)
+  Route --> Client : 204 No Content
+end
+
+@enduml

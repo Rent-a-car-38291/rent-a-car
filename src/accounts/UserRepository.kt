@@ -9,13 +9,14 @@ import javax.crypto.spec.PBEKeySpec
 // ponytail: in-memory store, swap for the database once #10 lands
 object UserRepository {
     private val users = mutableListOf<User>()
+    private var nextId = 1 // a counter, because users.size + 1 repeats an id once a user is deleted
     private val dummyHash by lazy { hash("dummy") }
 
     fun register(name: String, email: String, password: String): User? {
         val passwordHash = hash(password) // slow, so keep it outside the lock
         synchronized(this) {
             if (findByEmail(email) != null) return null
-            return User(users.size + 1, name, email, passwordHash).also { users.add(it) }
+            return User(nextId++, name, email, passwordHash).also { users.add(it) }
         }
     }
 
@@ -29,6 +30,9 @@ object UserRepository {
 
     @Synchronized
     fun find(id: Int): User? = users.find { it.id == id }
+
+    @Synchronized
+    fun delete(id: Int) = users.removeAll { it.id == id }
 
     @Synchronized
     fun clear() = users.clear()
