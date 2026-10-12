@@ -1,9 +1,12 @@
 package com.example.accounts
 
+import com.example.database.TestDatabase
+import com.example.database.useTestDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
@@ -20,7 +23,7 @@ import kotlin.test.*
 
 class AccountRoutesTest {
     @BeforeTest
-    fun reset() = UserRepository.clear()
+    fun reset() = UserRepository(TestDatabase.dataSource).clear()
 
     private fun valid(email: String = "jan@example.com") =
         """{"name":"Jan","email":"$email","password":"supersecret"}"""
@@ -45,11 +48,35 @@ class AccountRoutesTest {
         return id to token
     }
 
+    private suspend fun HttpClient.logout(token: String? = null) =
+        post("/logout") { token?.let { bearerAuth(it) } }
+
+    private suspend fun HttpClient.updateAccount(id: String, body: String, token: String? = null) =
+        put("/accounts/$id") {
+            token?.let { bearerAuth(it) }
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }
+
+    private suspend fun HttpClient.changePassword(id: String, body: String, token: String? = null) =
+        put("/accounts/$id/password") {
+            token?.let { bearerAuth(it) }
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }
+
+    private fun passwords(current: String = "supersecret", new: String = "evenmoresecret") =
+        """{"currentPassword":"$current","newPassword":"$new"}"""
+
+    private fun profile(name: String = "Janneke", email: String = "janneke@example.com") =
+        """{"name":"$name","email":"$email"}"""
+
     private suspend fun HttpClient.deleteAccount(id: Int, token: String? = null) =
         delete("/accounts/$id") { token?.let { bearerAuth(it) } }
 
     @Test
     fun RegisterReturnsCreatedWithoutPassword() = testApplication {
+        useTestDatabase()
         application { module() }
 
         val response = client.register(valid())
@@ -63,6 +90,7 @@ class AccountRoutesTest {
 
     @Test
     fun RegisterWithInvalidFieldsReturnsBadRequest() = testApplication {
+        useTestDatabase()
         application { module() }
 
         listOf(
@@ -79,6 +107,7 @@ class AccountRoutesTest {
 
     @Test
     fun RegisterDuplicateEmailReturnsConflict() = testApplication {
+        useTestDatabase()
         application { module() }
         client.register(valid())
 
@@ -89,6 +118,7 @@ class AccountRoutesTest {
 
     @Test
     fun LoginReturnsToken() = testApplication {
+        useTestDatabase()
         application { module() }
         client.register(valid())
 
@@ -100,6 +130,7 @@ class AccountRoutesTest {
 
     @Test
     fun LoginWithWrongCredentialsReturnsUnauthorized() = testApplication {
+        useTestDatabase()
         application { module() }
         client.register(valid())
 
@@ -109,6 +140,7 @@ class AccountRoutesTest {
 
     @Test
     fun DeleteOwnAccountReturnsNoContent() = testApplication {
+        useTestDatabase()
         application { module() }
         val (id, token) = client.signUp()
 
@@ -121,6 +153,7 @@ class AccountRoutesTest {
 
     @Test
     fun DeleteUnknownAccountReturnsNotFound() = testApplication {
+        useTestDatabase()
         application { module() }
         val (_, token) = client.signUp()
 
@@ -131,6 +164,7 @@ class AccountRoutesTest {
 
     @Test
     fun DeleteWithoutValidTokenReturnsUnauthorized() = testApplication {
+        useTestDatabase()
         application { module() }
         val (id, _) = client.signUp()
 
@@ -140,6 +174,7 @@ class AccountRoutesTest {
 
     @Test
     fun DeleteSomeoneElsesAccountReturnsForbidden() = testApplication {
+        useTestDatabase()
         application { module() }
         val (otherId, _) = client.signUp("piet@example.com")
         val (_, token) = client.signUp()
@@ -151,6 +186,7 @@ class AccountRoutesTest {
 
     @Test
     fun DeletedUsersTokenIsRevoked() = testApplication {
+        useTestDatabase()
         application { module() }
         val (id, token) = client.signUp()
         client.deleteAccount(id, token)
@@ -161,11 +197,250 @@ class AccountRoutesTest {
 
     @Test
     fun DeletedUsersTokenDoesNotWorkForNewUser() = testApplication {
+        useTestDatabase()
         application { module() }
         val (id, token) = client.signUp()
         client.deleteAccount(id, token)
         val (newId, _) = client.signUp("piet@example.com")
 
         assertEquals(HttpStatusCode.Unauthorized, client.deleteAccount(newId, token).status)
+    }
+
+    @Test
+    fun LogoutReturnsNoContentAndRevokesToken() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.NoContent, client.logout(token).status)
+
+        assertEquals(HttpStatusCode.Unauthorized, client.logout(token).status)
+        assertEquals(HttpStatusCode.Unauthorized, client.deleteAccount(id, token).status)
+    }
+
+    @Test
+    fun LogoutKeepsOtherLoginsOfTheUser() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, token) = client.signUp()
+        val otherToken = client.login().json()["token"]!!.jsonPrimitive.content
+
+        client.logout(token)
+
+        assertEquals(HttpStatusCode.NoContent, client.logout(otherToken).status)
+    }
+
+    @Test
+    fun LogoutWithoutValidTokenReturnsUnauthorized() = testApplication {
+        useTestDatabase()
+        application { module() }
+
+        assertEquals(HttpStatusCode.Unauthorized, client.logout().status)
+        assertEquals(HttpStatusCode.Unauthorized, client.logout("not-a-token").status)
+    }
+
+    @Test
+    fun UpdateOwnAccountReturnsUpdatedAccountWithoutPassword() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        val response = client.updateAccount("$id", profile(), token)
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.json()
+        assertEquals("Janneke", body["name"]!!.jsonPrimitive.content)
+        assertEquals("janneke@example.com", body["email"]!!.jsonPrimitive.content)
+        assertFalse(response.bodyAsText().contains("password"))
+    }
+
+    @Test
+    fun UpdateTrimsNameAndEmail() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        val body = client.updateAccount("$id", profile(name = "  Janneke ", email = " janneke@example.com  "), token).json()
+
+        assertEquals("Janneke", body["name"]!!.jsonPrimitive.content)
+        assertEquals("janneke@example.com", body["email"]!!.jsonPrimitive.content)
+        assertEquals(HttpStatusCode.OK, client.login("janneke@example.com").status)
+    }
+
+    @Test
+    fun UpdatedEmailCanBeUsedToLogIn() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+        client.updateAccount("$id", profile(), token)
+
+        assertEquals(HttpStatusCode.OK, client.login("janneke@example.com").status)
+        assertEquals(HttpStatusCode.Unauthorized, client.login("jan@example.com").status)
+    }
+
+    @Test
+    fun UpdateKeepingOwnEmailReturnsOk() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.OK, client.updateAccount("$id", profile(email = "jan@example.com"), token).status)
+        assertEquals(HttpStatusCode.OK, client.updateAccount("$id", profile(email = "JAN@example.com"), token).status)
+    }
+
+    @Test
+    fun UpdateWithInvalidFieldsReturnsBadRequest() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        listOf(profile(name = " "), profile(email = "not-an-email"), profile(email = "jan@"), "{}", "not json").forEach {
+            assertEquals(HttpStatusCode.BadRequest, client.updateAccount("$id", it, token).status, it)
+        }
+        assertEquals(HttpStatusCode.BadRequest, client.updateAccount("abc", profile(), token).status)
+    }
+
+    @Test
+    fun UpdateWithoutValidTokenReturnsUnauthorized() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, _) = client.signUp()
+
+        assertEquals(HttpStatusCode.Unauthorized, client.updateAccount("$id", profile()).status)
+        assertEquals(HttpStatusCode.Unauthorized, client.updateAccount("$id", profile(), "not-a-token").status)
+    }
+
+    @Test
+    fun UpdateSomeoneElsesAccountReturnsForbidden() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (otherId, _) = client.signUp("piet@example.com")
+        val (_, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.Forbidden, client.updateAccount("$otherId", profile(), token).status)
+        assertEquals(HttpStatusCode.OK, client.login("piet@example.com").status)
+    }
+
+    @Test
+    fun UpdateUnknownAccountReturnsNotFound() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.NotFound, client.updateAccount("999", profile(), token).status)
+    }
+
+    @Test
+    fun UpdateToEmailOfAnotherAccountReturnsConflict() = testApplication {
+        useTestDatabase()
+        application { module() }
+        client.signUp("piet@example.com")
+        val (id, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.Conflict, client.updateAccount("$id", profile(email = "PIET@example.com"), token).status)
+        assertEquals(HttpStatusCode.OK, client.login("jan@example.com").status)
+    }
+
+    @Test
+    fun ChangePasswordReturnsNoContentAndNewPasswordLogsIn() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.NoContent, client.changePassword("$id", passwords(), token).status)
+
+        assertEquals(HttpStatusCode.OK, client.login(password = "evenmoresecret").status)
+        assertEquals(HttpStatusCode.Unauthorized, client.login(password = "supersecret").status)
+    }
+
+    @Test
+    fun ChangePasswordToTheSamePasswordReturnsNoContent() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.NoContent, client.changePassword("$id", passwords(new = "supersecret"), token).status)
+
+        assertEquals(HttpStatusCode.OK, client.login().status)
+    }
+
+    @Test
+    fun ChangePasswordRevokesOtherTokensButKeepsTheCurrentOne() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+        val otherToken = client.login().json()["token"]!!.jsonPrimitive.content
+        val (_, someoneElsesToken) = client.signUp("piet@example.com")
+
+        client.changePassword("$id", passwords(), token)
+
+        assertEquals(HttpStatusCode.Unauthorized, client.logout(otherToken).status)
+        assertEquals(HttpStatusCode.NoContent, client.logout(someoneElsesToken).status)
+        assertEquals(HttpStatusCode.NoContent, client.logout(token).status)
+    }
+
+    @Test
+    fun ChangePasswordWithWrongCurrentPasswordReturnsForbidden() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+        val otherToken = client.login().json()["token"]!!.jsonPrimitive.content
+
+        assertEquals(HttpStatusCode.Forbidden, client.changePassword("$id", passwords(current = "wrongpassword"), token).status)
+
+        assertEquals(HttpStatusCode.OK, client.login().status)
+        assertEquals(HttpStatusCode.NoContent, client.logout(otherToken).status)
+    }
+
+    @Test
+    fun ChangePasswordChecksTheNewPasswordBeforeTheCurrentOne() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.BadRequest, client.changePassword("$id", passwords(current = "wrongpassword", new = "short"), token).status)
+    }
+
+    @Test
+    fun ChangePasswordWithInvalidRequestReturnsBadRequest() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, token) = client.signUp()
+
+        listOf(passwords(new = "short"), passwords(new = ""), """{"currentPassword":"supersecret"}""", "{}", "not json").forEach {
+            assertEquals(HttpStatusCode.BadRequest, client.changePassword("$id", it, token).status, it)
+        }
+        assertEquals(HttpStatusCode.BadRequest, client.changePassword("abc", passwords(), token).status)
+        assertEquals(HttpStatusCode.OK, client.login().status)
+    }
+
+    @Test
+    fun ChangePasswordWithoutValidTokenReturnsUnauthorized() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (id, _) = client.signUp()
+
+        assertEquals(HttpStatusCode.Unauthorized, client.changePassword("$id", passwords()).status)
+        assertEquals(HttpStatusCode.Unauthorized, client.changePassword("$id", passwords(), "not-a-token").status)
+    }
+
+    @Test
+    fun ChangeSomeoneElsesPasswordReturnsForbidden() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (otherId, _) = client.signUp("piet@example.com")
+        val (_, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.Forbidden, client.changePassword("$otherId", passwords(), token).status)
+        assertEquals(HttpStatusCode.OK, client.login("piet@example.com").status)
+    }
+
+    @Test
+    fun ChangePasswordOfUnknownAccountReturnsNotFound() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.NotFound, client.changePassword("999", passwords(), token).status)
     }
 }

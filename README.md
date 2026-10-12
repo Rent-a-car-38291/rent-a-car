@@ -2,21 +2,25 @@
 
 [![Build](https://github.com/Rent-a-car-38291/rent-a-car/actions/workflows/build.yml/badge.svg)](https://github.com/Rent-a-car-38291/rent-a-car/actions/workflows/build.yml)
 
-A car rental backend for the Avans course: browse a fleet of petrol, electric and hydrogen cars, and register and log in with an account.
+A car rental backend for the Avans course: browse a fleet of petrol, electric and hydrogen cars, and register, log in and manage your account.
 
 Built with [Ktor](https://ktor.io) and Kotlin, and the [Kotlin Toolchain](https://github.com/JetBrains/amper) (Amper).
 
 ## Features
 
 - Cars of three kinds: combustion (`ICE`), battery electric (`BEV`) and hydrogen (`FCEV`), with a sample fleet
-- Register and log in, with bearer tokens for protected routes
+- Register, log in and out, and update or delete your own account, with bearer tokens for protected routes
+- Cars and accounts are stored in PostgreSQL
 - Passwords are stored hashed
 
 ## Getting started
 
-You need a JDK. The `./kotlin` wrapper downloads the toolchain on the first run, so there is nothing else to install. On Windows, use `kotlin.bat` instead of `./kotlin`.
+You need a JDK and Docker. The `./kotlin` wrapper downloads the toolchain on the first run, so there is nothing else to install. On Windows, use `kotlin.bat` instead of `./kotlin`.
+
+Start the database, then the server:
 
 ```bash
+docker compose up -d
 ./kotlin run
 ```
 
@@ -39,17 +43,21 @@ curl http://localhost:8080/cars
 | `./kotlin test`  | Run the tests     |
 | `./kotlin build` | Build the project |
 
-Cars, accounts and login tokens are kept in memory: after a restart the sample cars are back and everyone has to register and log in again.
+The connection defaults match `docker-compose.yml`. Override them with the environment variables `DATABASE_URL`, `DATABASE_USER` and `DATABASE_PASSWORD`. The tables are created when the server starts, and the cars table is filled with sample cars when it is empty. Login tokens are not stored: after a restart everyone logs in again. The tests don't need Docker: they start their own Postgres.
 
 ## API
 
-| Method | Path        | Description         | Success | Errors       |
-|--------|-------------|---------------------|---------|--------------|
-| `GET`  | `/cars`     | List all cars       | `200`   |              |
-| `POST` | `/accounts` | Register an account | `201`   | `400`, `409` |
-| `POST` | `/login`    | Get a token         | `200`   | `401`        |
+| Method   | Path                      | Description                    | Success | Errors                            |
+| -------- | ------------------------- | ------------------------------ | ------- | --------------------------------- |
+| `GET`    | `/cars`                   | List all cars                  | `200`   |                                   |
+| `POST`   | `/accounts`               | Register an account            | `201`   | `400`, `409`                      |
+| `POST`   | `/login`                  | Get a token                    | `200`   | `401`                             |
+| `POST`   | `/logout`                 | Revoke the token you used      | `204`   | `401`                             |
+| `PUT`    | `/accounts/{id}`          | Update your own name and email | `200`   | `400`, `401`, `403`, `404`, `409` |
+| `PUT`    | `/accounts/{id}/password` | Change your own password       | `204`   | `400`, `401`, `403`, `404`        |
+| `DELETE` | `/accounts/{id}`          | Delete your own account        | `204`   | `400`, `401`, `403`, `404`        |
 
-A password needs at least 8 characters, and the email address must be unused. Routes that need a login take the token from `POST /login` in an `Authorization: Bearer <token>` header. Each endpoint has a [sequence diagram](docs/diagrams) with every status code.
+A password needs at least 8 characters, and the email address must be unused. Everything under `/accounts/{id}` and `/logout` needs a login and only works on your own account. Routes that need a login take the token from `POST /login` in an `Authorization: Bearer <token>` header. Each endpoint has a [sequence diagram](docs/diagrams) with every status code.
 
 ```bash
 curl -X POST localhost:8080/accounts -H 'Content-Type: application/json' \
@@ -66,8 +74,9 @@ curl -X POST localhost:8080/login -H 'Content-Type: application/json' \
 src/
 ├── Application.kt        wires the modules together
 ├── accounts/             users, login tokens, account routes
-└── cars/                 the car hierarchy, repository and routes
-resources/                server configuration
+├── cars/                 the car hierarchy, repository and routes
+└── database/             the PostgreSQL connection
+resources/                server configuration and the SQL that creates the tables
 test/                     mirrors src/
 docs/diagrams/            PlantUML sources and exported PNGs
 ```

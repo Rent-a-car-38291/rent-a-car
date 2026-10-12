@@ -1,43 +1,77 @@
 package com.example.accounts
 
+import com.example.database.runScript
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.sql.SQLException
 import java.util.Base64
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
+import javax.sql.DataSource
 
-// ponytail: in-memory store, swap for the database once #10 lands
-object UserRepository {
-    private val users = mutableListOf<User>()
-    private var nextId = 1 // a counter, because users.size + 1 repeats an id once a user is deleted
+private const val UNIQUE_VIOLATION = "23505"
+
+class UserRepository(private val dataSource: DataSource) {
     private val dummyHash by lazy { hash("dummy") }
 
+    init {
+        dataSource.runScript("users.sql")
+    }
+
+    // null when the email is taken: the unique index on lower(email) decides, so two requests at once can't both win.
     fun register(name: String, email: String, password: String): User? {
-        val passwordHash = hash(password) // slow, so keep it outside the lock
-        synchronized(this) {
-            if (findByEmail(email) != null) return null
-            return User(nextId++, name, email, passwordHash).also { users.add(it) }
-        }
+        val passwordHash = hash(password) // slow, so keep it away from the database connection
+        return queryUser("INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?) ON CONFLICT DO NOTHING RETURNING *", name, email, passwordHash)
     }
 
     // An unknown email is verified against a dummy hash, so it costs as much time as a known one
     // and the response time doesn't reveal which emails have an account.
     fun authenticate(email: String, password: String): User? {
-        val user = synchronized(this) { findByEmail(email) }
+        val user = queryUser("SELECT * FROM users WHERE lower(email) = lower(?)", email)
         val passwordMatches = verify(password, user?.passwordHash ?: dummyHash)
         return user?.takeIf { passwordMatches }
     }
 
-    @Synchronized
-    fun find(id: Int): User? = users.find { it.id == id }
+    fun find(id: Int): User? = queryUser("SELECT * FROM users WHERE id = ?", id)
 
-    @Synchronized
-    fun delete(id: Int) = users.removeAll { it.id == id }
+    // null when the email belongs to another account (the unique index decides, so two requests at once can't both win),
+    // or when the user was deleted meanwhile: shortcut, the route reports both as 409.
+    fun update(id: Int, name: String, email: String): User? = try {
+        queryUser("UPDATE users SET name = ?, email = ? WHERE id = ? RETURNING *", name, email, id)
+    } catch (e: SQLException) {
+        if (e.sqlState == UNIQUE_VIOLATION) null else throw e
+    }
 
-    @Synchronized
-    fun clear() = users.clear()
+    // false when the current password is wrong. The update only matches the hash that was verified,
+    // so two changes at once can't both win.
+    // shortcut: the loser of such a race (or a user deleted meanwhile) also gets false, so the route answers 403, give it its own result when that matters.
+    fun changePassword(id: Int, currentPassword: String, newPassword: String): Boolean {
+        val user = find(id) ?: return false
+        if (!verify(currentPassword, user.passwordHash)) return false
+        val newHash = hash(newPassword) // slow, so keep it away from the database connection
+        return dataSource.connection.use { connection ->
+            connection.prepareStatement("UPDATE users SET password_hash = ? WHERE id = ? AND password_hash = ?").use {
+                it.setString(1, newHash); it.setInt(2, id); it.setString(3, user.passwordHash); it.executeUpdate() > 0
+            }
+        }
+    }
 
-    private fun findByEmail(email: String) = users.find { it.email.equals(email, ignoreCase = true) }
+    fun delete(id: Int): Boolean = dataSource.connection.use { connection ->
+        connection.prepareStatement("DELETE FROM users WHERE id = ?").use { it.setInt(1, id); it.executeUpdate() > 0 }
+    }
+
+    fun clear() {
+        dataSource.connection.use { it.createStatement().use { statement -> statement.execute("TRUNCATE users RESTART IDENTITY") } }
+    }
+
+    private fun queryUser(sql: String, vararg parameters: Any): User? = dataSource.connection.use { connection ->
+        connection.prepareStatement(sql).use { statement ->
+            parameters.forEachIndexed { index, parameter -> statement.setObject(index + 1, parameter) }
+            statement.executeQuery().use { rows ->
+                if (rows.next()) User(rows.getInt("id"), rows.getString("name"), rows.getString("email"), rows.getString("password_hash")) else null
+            }
+        }
+    }
 
     private fun hash(password: String, salt: ByteArray = ByteArray(16).also { SecureRandom().nextBytes(it) }): String {
         val key = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
