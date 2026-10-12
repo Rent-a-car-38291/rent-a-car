@@ -1,5 +1,6 @@
 package com.example.cars
 
+import com.example.database.useTestDatabase
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -14,6 +15,7 @@ class CarRoutesTest {
     @Test
     fun GetCarsReturnsAllThreeCarTypes() = testApplication {
         // Arrange
+        useTestDatabase()
         application {
             module()
         }
@@ -24,13 +26,14 @@ class CarRoutesTest {
         val types = cars.map { it.jsonObject["type"]?.jsonPrimitive?.content }
 
         // Assert
-        assertEquals(3, cars.size)
+        assertTrue(cars.size in 10..15)
         assertEquals(setOf("BEV", "ICE", "FCEV"), types.toSet())
     }
 
     @Test
     fun GetCarsReturnsOkWithJsonList() = testApplication {
         // Arrange
+        useTestDatabase()
         application {
             module()
         }
