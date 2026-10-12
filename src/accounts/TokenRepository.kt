@@ -11,4 +11,8 @@ object TokenRepository {
     fun issue(userId: Int): String = UUID.randomUUID().toString().also { userIds[it] = userId }
 
     fun userId(token: String): Int? = userIds[token]
+
+    fun revokeAll(userId: Int) {
+        userIds.values.removeIf { it == userId }
+    }
 }
