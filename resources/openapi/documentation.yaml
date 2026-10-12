@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Rent my car API
   version: 0.1.0
-  description: Data lives in memory until the database lands, so it's gone after a restart.
+  description: Cars and accounts are stored in PostgreSQL. Login tokens are kept in memory, so everyone logs in again after a restart.
 paths:
   /cars:
     get:
@@ -60,17 +60,56 @@ paths:
           description: Missing field or a body that isn't JSON
         "401":
           description: Wrong email or password
+  /logout:
+    post:
+      tags: [Accounts]
+      summary: Log out
+      description: Revokes the token of this request only. Your other logins keep working.
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Logged out
+        "401":
+          description: Missing or invalid token
   /accounts/{id}:
+    put:
+      tags: [Accounts]
+      summary: Update your own name and email
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAccountRequest"
+      responses:
+        "200":
+          description: Account updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: Non-numeric id, empty name or invalid email
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's account
+        "404":
+          description: Unknown id
+        "409":
+          description: Email already registered (case-insensitive)
     delete:
       tags: [Accounts]
       summary: Delete your own account
       security:
         - bearerAuth: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: integer, example: 1 }
+        - $ref: "#/components/parameters/id"
       responses:
         "204":
           description: Account deleted
@@ -82,7 +121,39 @@ paths:
           description: Someone else's account
         "404":
           description: Unknown id
+  /accounts/{id}/password:
+    put:
+      tags: [Accounts]
+      summary: Change your own password
+      description: Your other logins are logged out, the one you are using keeps working.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "204":
+          description: Password changed
+        "400":
+          description: Non-numeric id or a new password shorter than 8 characters
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's account, or the current password is wrong
+        "404":
+          description: Unknown id
 components:
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, example: 1 }
   securitySchemes:
     bearerAuth:
       type: http
@@ -101,6 +172,18 @@ components:
       properties:
         email: { type: string, example: jan@example.com }
         password: { type: string, example: supersecret }
+    UpdateAccountRequest:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string, example: Jan }
+        email: { type: string, example: jan@example.com }
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: { type: string, example: supersecret }
+        newPassword: { type: string, minLength: 8, example: evenmoresecret }
     UserResponse:
       type: object
       required: [id, name, email]

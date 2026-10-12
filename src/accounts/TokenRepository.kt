@@ -3,7 +3,7 @@ package com.example.accounts
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-// ponytail: in-memory tokens that never expire and are lost on restart, fine until #10 lands
+// ponytail: in-memory tokens that never expire and are lost on restart (users log in again), keep them in a table when that matters
 object TokenRepository {
     private val userIds = ConcurrentHashMap<String, Int>()
 
@@ -12,7 +12,11 @@ object TokenRepository {
 
     fun userId(token: String): Int? = userIds[token]
 
-    fun revokeAll(userId: Int) {
-        userIds.values.removeIf { it == userId }
+    fun revoke(token: String) {
+        userIds.remove(token)
+    }
+
+    fun revokeAll(userId: Int, except: String? = null) {
+        userIds.entries.removeIf { it.value == userId && it.key != except }
     }
 }

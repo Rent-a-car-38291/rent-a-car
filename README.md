@@ -34,6 +34,18 @@ If the server starts successfully, you'll see the following output:
 2024-12-04 14:32:45.682 [main] INFO  Application - Responding at http://0.0.0.0:8080
 ```
 
+## Database
+
+The cars and accounts are stored in PostgreSQL. Start a local database before running the server:
+
+```bash
+docker compose up -d
+```
+
+The connection defaults match `docker-compose.yml`. Override them with the environment variables `DATABASE_URL`, `DATABASE_USER` and `DATABASE_PASSWORD`. The tables are created when the server starts, and the cars table is filled with sample cars when it is empty. Login tokens are not stored: after a restart everyone logs in again.
+
+The tests don't need Docker: they start their own Postgres.
+
 ## Trying the API (Swagger UI)
 
 With the server running, open [http://localhost:8080/swagger](http://localhost:8080/swagger) to see every endpoint and try it with "Try it out". The page is described by [`resources/openapi/documentation.yaml`](resources/openapi/documentation.yaml), so add new endpoints there as well.

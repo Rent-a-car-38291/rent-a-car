@@ -1,3 +1,4 @@
+import com.example.database.useTestDatabase
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
@@ -8,6 +9,7 @@ import kotlin.test.*
 class SwaggerTest {
     @Test
     fun SwaggerUiIsServedInDevelopmentMode() = testApplication {
+        useTestDatabase()
         application { module() }
 
         assertEquals(HttpStatusCode.OK, client.get("/swagger").status)
@@ -16,6 +18,7 @@ class SwaggerTest {
 
     @Test
     fun SwaggerUiIsHiddenOutsideDevelopmentMode() = testApplication {
+        useTestDatabase()
         serverConfig { developmentMode = false }
         application { module() }
 

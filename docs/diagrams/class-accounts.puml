@@ -7,10 +7,12 @@ package com.example.accounts <<Folder>> {
   class "AccountRoutes.kt" as AccountRoutes <<(F,orchid) file>> {
     - MIN_PASSWORD_LENGTH : Int = 8
     - EMAIL_PATTERN : Regex
-    + Application.configureAccounts()
+    - isValid(name : String, email : String) : Boolean
+    - ApplicationCall.bearerToken() : String?
+    + Application.configureAccounts(users : UserRepository)
   }
   class "Security.kt" as Security <<(F,orchid) file>> {
-    + Application.configureSecurity()
+    + Application.configureSecurity(users : UserRepository)
   }
   class User {
     + id : Int
@@ -24,6 +26,14 @@ package com.example.accounts <<Folder>> {
     + email : String
     + password : String
   }
+  class UpdateAccountRequest <<data>> {
+    + name : String
+    + email : String
+  }
+  class ChangePasswordRequest <<data>> {
+    + currentPassword : String
+    + newPassword : String
+  }
   class LoginRequest <<data>> {
     + email : String
     + password : String
@@ -33,16 +43,17 @@ package com.example.accounts <<Folder>> {
     + name : String
     + email : String
   }
-  class UserRepository <<object>> {
-    - users : MutableList<User>
-    - nextId : Int
+  class UserRepository {
+    - dataSource : DataSource
     - dummyHash : String
     + register(name : String, email : String, password : String) : User?
     + authenticate(email : String, password : String) : User?
     + find(id : Int) : User?
+    + update(id : Int, name : String, email : String) : User?
+    + changePassword(id : Int, currentPassword : String, newPassword : String) : Boolean
     + delete(id : Int) : Boolean
     + clear()
-    - findByEmail(email : String) : User?
+    - queryUser(sql : String, parameters : Any) : User?
     - hash(password : String, salt : ByteArray) : String
     - verify(password : String, passwordHash : String) : Boolean
   }
@@ -50,14 +61,17 @@ package com.example.accounts <<Folder>> {
     - userIds : ConcurrentHashMap<String, Int>
     + issue(userId : Int) : String
     + userId(token : String) : Int?
-    + revokeAll(userId : Int)
+    + revoke(token : String)
+    + revokeAll(userId : Int, except : String? = null)
   }
 }
 
-UserRepository o-- "0..*" User
+UserRepository ..> User : reads and writes
 User ..> UserResponse : <<creates>>
 AccountRoutes ..> RegisterRequest : receives
 AccountRoutes ..> LoginRequest : receives
+AccountRoutes ..> UpdateAccountRequest : receives
+AccountRoutes ..> ChangePasswordRequest : receives
 AccountRoutes ..> UserResponse : responds
 AccountRoutes ..> User : principal
 AccountRoutes ..> UserRepository

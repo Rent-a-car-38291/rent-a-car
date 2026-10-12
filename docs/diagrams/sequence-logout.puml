@@ -1,0 +1,27 @@
+@startuml
+title POST /logout
+autonumber
+
+actor Client
+participant "Authentication\n(bearer)" as Auth
+participant "AccountRoutes.kt" as Route
+participant TokenRepository
+participant UserRepository
+database PostgreSQL
+
+Client -> Auth : POST /logout\nAuthorization: Bearer <token>
+Auth -> TokenRepository : userId(token)
+TokenRepository --> Auth : userId?
+Auth -> UserRepository : find(userId)
+UserRepository -> PostgreSQL : SELECT ... WHERE id = ?
+UserRepository --> Auth : User?
+break no token, unknown token or already logged out
+  Auth --> Client : 401 Unauthorized
+end
+Auth -> Route : principal = User
+
+Route -> TokenRepository : revoke(token)
+note right : only this token, other logins\nof the user keep working
+Route --> Client : 204 No Content
+
+@enduml
