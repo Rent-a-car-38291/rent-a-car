@@ -1,0 +1,51 @@
+@startuml
+title PUT /accounts/{id}
+autonumber
+
+actor Client
+participant "Authentication\n(bearer)" as Auth
+participant "AccountRoutes.kt" as Route
+participant TokenRepository
+participant UserRepository
+database PostgreSQL
+
+Client -> Auth : PUT /accounts/{id}\nAuthorization: Bearer <token>\n{ name, email }
+Auth -> TokenRepository : userId(token)
+TokenRepository --> Auth : userId?
+Auth -> UserRepository : find(userId)
+UserRepository -> PostgreSQL : SELECT ... WHERE id = ?
+UserRepository --> Auth : User?
+break no token, unknown token or user deleted
+  Auth --> Client : 401 Unauthorized
+end
+Auth -> Route : principal = User
+
+Route -> Route : parameters.getOrFail<Int>("id")
+break id not a number
+  Route --> Client : 400 Bad Request
+end
+
+Route -> UserRepository : find(id)
+UserRepository -> PostgreSQL : SELECT ... WHERE id = ?
+UserRepository --> Route : User?
+alt no user with that id
+  Route --> Client : 404 Not Found
+else id != principal.id
+  Route --> Client : 403 Forbidden
+end
+
+Route -> Route : trim name and email, isValid(name, email)
+break empty name or invalid email
+  Route --> Client : 400 Bad Request
+end
+
+Route -> UserRepository : update(id, name, email)
+UserRepository -> PostgreSQL : UPDATE users SET name = ?, email = ?\nWHERE id = ? RETURNING *
+UserRepository --> Route : User?
+alt email belongs to another account
+  Route --> Client : 409 Conflict
+else updated
+  Route --> Client : 200 OK { id, name, email }
+end
+
+@enduml

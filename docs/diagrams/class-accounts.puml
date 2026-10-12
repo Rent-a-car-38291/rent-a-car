@@ -7,6 +7,7 @@ package com.example.accounts <<Folder>> {
   class "AccountRoutes.kt" as AccountRoutes <<(F,orchid) file>> {
     - MIN_PASSWORD_LENGTH : Int = 8
     - EMAIL_PATTERN : Regex
+    - isValid(name : String, email : String) : Boolean
     + Application.configureAccounts(users : UserRepository)
   }
   class "Security.kt" as Security <<(F,orchid) file>> {
@@ -24,6 +25,10 @@ package com.example.accounts <<Folder>> {
     + email : String
     + password : String
   }
+  class UpdateAccountRequest <<data>> {
+    + name : String
+    + email : String
+  }
   class LoginRequest <<data>> {
     + email : String
     + password : String
@@ -39,6 +44,7 @@ package com.example.accounts <<Folder>> {
     + register(name : String, email : String, password : String) : User?
     + authenticate(email : String, password : String) : User?
     + find(id : Int) : User?
+    + update(id : Int, name : String, email : String) : User?
     + delete(id : Int) : Boolean
     + clear()
     - queryUser(sql : String, parameters : Any) : User?
@@ -58,6 +64,7 @@ UserRepository ..> User : reads and writes
 User ..> UserResponse : <<creates>>
 AccountRoutes ..> RegisterRequest : receives
 AccountRoutes ..> LoginRequest : receives
+AccountRoutes ..> UpdateAccountRequest : receives
 AccountRoutes ..> UserResponse : responds
 AccountRoutes ..> User : principal
 AccountRoutes ..> UserRepository

@@ -23,6 +23,7 @@ rectangle "Rent-a-car" {
   usecase "View car details" as UC_Details
 
   usecase "Log out" as UC_Logout
+  usecase "Update account" as UC_UpdateAccount
   usecase "Delete account" as UC_DeleteAccount
   usecase "Remove own cars" as UC_RemoveOwnCars
   usecase "Create organization" as UC_CreateOrg
@@ -52,6 +53,7 @@ Visitor --> UC_Details
 UC_Filter .> UC_ViewCars : <<extend>>
 
 User --> UC_Logout
+User --> UC_UpdateAccount
 User --> UC_DeleteAccount
 User --> UC_CreateOrg
 User --> UC_Accept
