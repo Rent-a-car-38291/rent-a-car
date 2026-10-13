@@ -14,6 +14,7 @@ private const val INSERT_CAR = """
 
 class PostgresCarRepository(private val dataSource: DataSource) : CarRepository {
     init {
+        dataSource.runScript("users.sql")
         dataSource.runScript("cars.sql")
     }
 
