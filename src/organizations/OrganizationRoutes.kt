@@ -31,6 +31,38 @@ fun Application.configureOrganizations(organizations: OrganizationRepository) {
                 }
             }
 
+            put("/organizations/{id}/members/{userId}") {
+                val id = call.parameters.getOrFail<Int>("id")
+                val userId = call.parameters.getOrFail<Int>("userId")
+                when {
+                    !organizations.exists(id) -> call.respond(HttpStatusCode.NotFound)
+                    organizations.findMembership(id, call.principal<User>()!!.id)?.role != Role.ADMIN -> call.respond(HttpStatusCode.Forbidden)
+                    else -> {
+                        val role = call.receive<UpdateRoleRequest>().role
+                        when (organizations.setRole(id, userId, role)) {
+                            ChangeResult.DONE -> call.respond(Membership(userId, id, role))
+                            ChangeResult.NOT_A_MEMBER -> call.respond(HttpStatusCode.NotFound)
+                            ChangeResult.LAST_ADMIN -> call.respond(HttpStatusCode.Conflict)
+                        }
+                    }
+                }
+            }
+
+            delete("/organizations/{id}/members/{userId}") {
+                val id = call.parameters.getOrFail<Int>("id")
+                val userId = call.parameters.getOrFail<Int>("userId")
+                val caller = call.principal<User>()!!.id
+                when {
+                    !organizations.exists(id) -> call.respond(HttpStatusCode.NotFound)
+                    userId != caller && organizations.findMembership(id, caller)?.role != Role.ADMIN -> call.respond(HttpStatusCode.Forbidden)
+                    else -> call.respond(when (organizations.remove(id, userId)) {
+                        ChangeResult.DONE -> HttpStatusCode.NoContent
+                        ChangeResult.NOT_A_MEMBER -> HttpStatusCode.NotFound
+                        ChangeResult.LAST_ADMIN -> HttpStatusCode.Conflict
+                    })
+                }
+            }
+
             post("/invites/{code}/accept") {
                 val result = organizations.accept(call.parameters.getOrFail("code"), call.principal<User>()!!.id)
                 call.respond(when (result) {
