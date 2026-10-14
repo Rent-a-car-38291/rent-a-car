@@ -102,10 +102,12 @@ class OrganizationRepository(private val dataSource: DataSource) {
         val current = roles[userId] ?: return ChangeResult.NOT_A_MEMBER
         if (current == Role.ADMIN && role != Role.ADMIN && roles.values.count { it == Role.ADMIN } == 1) return ChangeResult.LAST_ADMIN
         val sql = if (role == null) "DELETE FROM memberships WHERE organization_id = ? AND user_id = ?"
-                  else "UPDATE memberships SET role = '$role' WHERE organization_id = ? AND user_id = ?"
+                  else "UPDATE memberships SET role = ? WHERE organization_id = ? AND user_id = ?"
         connection.prepareStatement(sql).use { statement ->
-            statement.setInt(1, organizationId)
-            statement.setInt(2, userId)
+            val offset = if (role == null) 0 else 1
+            role?.let { statement.setString(1, it.name) }
+            statement.setInt(1 + offset, organizationId)
+            statement.setInt(2 + offset, userId)
             statement.executeUpdate()
         }
         connection.commit()
