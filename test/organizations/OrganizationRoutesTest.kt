@@ -75,4 +75,116 @@ class OrganizationRoutesTest {
         assertEquals(HttpStatusCode.Unauthorized, client.postJson("/organizations", """{"name":"Rent Co"}""").status)
         assertEquals(HttpStatusCode.Unauthorized, client.postJson("/organizations", """{"name":"Rent Co"}""", "unknown").status)
     }
+
+    private suspend fun HttpClient.createOrganization(token: String) =
+        postJson("/organizations", """{"name":"Rent Co"}""", token).json()["id"]!!.jsonPrimitive.int
+
+    private suspend fun HttpClient.invite(organizationId: Int, token: String) =
+        postJson("/organizations/$organizationId/invites", "", token)
+
+    private suspend fun HttpClient.accept(code: String, token: String? = null) =
+        post("/invites/$code/accept") { token?.let { bearerAuth(it) } }
+
+    private suspend fun HttpClient.inviteCode(organizationId: Int, token: String) =
+        invite(organizationId, token).json()["code"]!!.jsonPrimitive.content
+
+    @Test
+    fun InviteReturnsCreatedWithACodeThatLetsAUserJoinOnce() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, admin) = client.signUp()
+        val (userId, token) = client.signUp("piet@example.com")
+        val (_, other) = client.signUp("kees@example.com")
+        val organizationId = client.createOrganization(admin)
+
+        val response = client.invite(organizationId, admin)
+        assertEquals(HttpStatusCode.Created, response.status)
+        val code = response.json()["code"]!!.jsonPrimitive.content
+
+        assertEquals(HttpStatusCode.NoContent, client.accept(code, token).status)
+        assertEquals(Role.MEMBER, OrganizationRepository(TestDatabase.dataSource).findMembership(organizationId, userId)?.role)
+        assertEquals(HttpStatusCode.NotFound, client.accept(code, other).status)
+    }
+
+    @Test
+    fun InviteCodesDiffer() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, admin) = client.signUp()
+        val organizationId = client.createOrganization(admin)
+
+        assertNotEquals(client.inviteCode(organizationId, admin), client.inviteCode(organizationId, admin))
+    }
+
+    @Test
+    fun InviteWithoutValidTokenReturnsUnauthorized() = testApplication {
+        useTestDatabase()
+        application { module() }
+
+        assertEquals(HttpStatusCode.Unauthorized, client.postJson("/organizations/1/invites", "").status)
+    }
+
+    @Test
+    fun InviteByAMemberReturnsForbidden() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, admin) = client.signUp()
+        val (_, member) = client.signUp("piet@example.com")
+        val (_, outsider) = client.signUp("kees@example.com")
+        val organizationId = client.createOrganization(admin)
+        client.accept(client.inviteCode(organizationId, admin), member)
+
+        assertEquals(HttpStatusCode.Forbidden, client.invite(organizationId, member).status)
+        assertEquals(HttpStatusCode.Forbidden, client.invite(organizationId, outsider).status)
+    }
+
+    @Test
+    fun InviteForUnknownOrganizationReturnsNotFound() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.NotFound, client.invite(999, token).status)
+    }
+
+    @Test
+    fun AcceptWithoutValidTokenReturnsUnauthorized() = testApplication {
+        useTestDatabase()
+        application { module() }
+
+        assertEquals(HttpStatusCode.Unauthorized, client.accept("code").status)
+    }
+
+    @Test
+    fun AcceptUnknownCodeReturnsNotFound() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, token) = client.signUp()
+
+        assertEquals(HttpStatusCode.NotFound, client.accept("unknown", token).status)
+    }
+
+    @Test
+    fun AcceptExpiredCodeReturnsNotFound() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, admin) = client.signUp()
+        val (_, token) = client.signUp("piet@example.com")
+        val code = client.inviteCode(client.createOrganization(admin), admin)
+        TestDatabase.dataSource.connection.use { it.createStatement().use { s -> s.execute("UPDATE invites SET expires_at = now() - interval '1 second'") } }
+
+        assertEquals(HttpStatusCode.NotFound, client.accept(code, token).status)
+    }
+
+    @Test
+    fun AcceptByAMemberReturnsConflictAndKeepsTheCodeValid() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, admin) = client.signUp()
+        val (_, token) = client.signUp("piet@example.com")
+        val code = client.inviteCode(client.createOrganization(admin), admin)
+
+        assertEquals(HttpStatusCode.Conflict, client.accept(code, admin).status)
+        assertEquals(HttpStatusCode.NoContent, client.accept(code, token).status)
+    }
 }
