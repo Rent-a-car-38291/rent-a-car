@@ -107,6 +107,19 @@ class OrganizationRoutesTest {
     }
 
     @Test
+    fun InviteExpiresAfterSevenDays() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, admin) = client.signUp()
+        client.inviteCode(client.createOrganization(admin), admin)
+
+        val validDays = TestDatabase.dataSource.connection.use { it.createStatement().use { s ->
+            s.executeQuery("SELECT extract(epoch FROM expires_at - now()) / 86400 FROM invites").use { rows -> rows.next(); rows.getDouble(1) }
+        } }
+        assertEquals(7.0, validDays, 0.01)
+    }
+
+    @Test
     fun InviteCodesDiffer() = testApplication {
         useTestDatabase()
         application { module() }
