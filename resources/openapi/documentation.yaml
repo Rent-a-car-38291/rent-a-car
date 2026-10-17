@@ -17,6 +17,59 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Car"
+    post:
+      tags: [Cars]
+      summary: Offer a car
+      description: The logged-in user becomes the owner. A new car is always Available. fuelType is only for ICE, and capacity and consumption are always required.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CarRequest"
+      responses:
+        "201":
+          description: Car created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Car"
+        "400":
+          description: Invalid or missing field
+        "401":
+          description: Missing or invalid token
+  /cars/{id}:
+    put:
+      tags: [Cars]
+      summary: Update your own car
+      description: Same body as POST /cars. The owner and the status stay as they are, and the type can't change.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CarRequest"
+      responses:
+        "200":
+          description: Car updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Car"
+        "400":
+          description: Non-numeric id, invalid field, unknown field or a different type
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's car
+        "404":
+          description: Unknown id
   /accounts:
     post:
       tags: [Accounts]
@@ -106,6 +159,7 @@ paths:
     delete:
       tags: [Accounts]
       summary: Delete your own account
+      description: Your cars are deleted too (not the cars of your organizations).
       security:
         - bearerAuth: []
       parameters:
@@ -121,6 +175,8 @@ paths:
           description: Someone else's account
         "404":
           description: Unknown id
+        "409":
+          description: You are the last admin of an organization
   /accounts/{id}/password:
     put:
       tags: [Accounts]
@@ -147,6 +203,131 @@ paths:
           description: Someone else's account, or the current password is wrong
         "404":
           description: Unknown id
+  /organizations:
+    post:
+      tags: [Organizations]
+      summary: Create an organization
+      description: The logged-in user becomes its admin.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationRequest"
+      responses:
+        "201":
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+        "400":
+          description: Empty name
+        "401":
+          description: Missing or invalid token
+  /organizations/{id}/invites:
+    post:
+      tags: [Organizations]
+      summary: Create an invite code (admin only)
+      description: The code works once and expires after 7 days.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "201":
+          description: Invite created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteResponse"
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Not an admin of this organization
+        "404":
+          description: Unknown organization
+  /invites/{code}/accept:
+    post:
+      tags: [Organizations]
+      summary: Join an organization with an invite code
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Joined as MEMBER
+        "401":
+          description: Missing or invalid token
+        "404":
+          description: Unknown, used or expired code
+        "409":
+          description: Already a member
+  /organizations/{id}/members/{userId}:
+    put:
+      tags: [Organizations]
+      summary: Change the role of a member (admin only)
+      description: The last admin can't be demoted.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer, example: 2 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleRequest"
+      responses:
+        "200":
+          description: Role changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Membership"
+        "400":
+          description: Unknown role
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Not an admin of this organization
+        "404":
+          description: Unknown organization or member
+        "409":
+          description: The last admin can't be demoted
+    delete:
+      tags: [Organizations]
+      summary: Remove a member or leave
+      description: An admin can remove anyone, a member only themselves. The last admin can't be removed or leave.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer, example: 2 }
+      responses:
+        "204":
+          description: Member removed
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Not an admin, and not yourself
+        "404":
+          description: Unknown organization or member
+        "409":
+          description: The last admin can't leave
 components:
   parameters:
     id:
@@ -213,6 +394,7 @@ components:
       properties:
         type: { type: string, enum: [ICE] }
         id: { type: integer, example: 1 }
+        ownerId: { type: integer, example: 1 }
         brand: { type: string, example: Peugeot }
         licensePlate: { type: string, example: 85-GHB-2 }
         mileage: { type: integer, example: 217349 }
@@ -234,6 +416,7 @@ components:
       properties:
         type: { type: string, enum: [BEV] }
         id: { type: integer, example: 2 }
+        ownerId: { type: integer, example: 1 }
         brand: { type: string, example: "Tesla Model 3" }
         licensePlate: { type: string, example: K-123-BV }
         mileage: { type: integer, example: 48210 }
@@ -254,6 +437,7 @@ components:
       properties:
         type: { type: string, enum: [FCEV] }
         id: { type: integer, example: 3 }
+        ownerId: { type: integer, example: 1 }
         brand: { type: string, example: "Toyota Mirai" }
         licensePlate: { type: string, example: XT-482-H }
         mileage: { type: integer, example: 32500 }
@@ -274,3 +458,50 @@ components:
       properties:
         latitude: { type: number, example: 52.3676 }
         longitude: { type: number, example: 4.9041 }
+    CarRequest:
+      type: object
+      required: [type, brand, licensePlate, mileage, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption]
+      properties:
+        type: { type: string, enum: [ICE, BEV, FCEV], example: BEV }
+        brand: { type: string, example: Test Motors }
+        licensePlate: { type: string, example: EV-100 }
+        mileage: { type: integer, minimum: 0, example: 1200 }
+        rate: { type: number, minimum: 0, example: 45.5 }
+        location: { $ref: "#/components/schemas/Location" }
+        doors: { type: integer, example: 4 }
+        bodyStyle: { type: string, enum: [Hatchback, SUV, Sedan, Stationwagon, Cabrio, Coupe, MPV, Other], example: Sedan }
+        modelYear: { type: integer, example: 2024 }
+        power: { type: integer, example: 150 }
+        transmission: { type: string, enum: [Manual, Automatic], example: Automatic }
+        color: { type: string, example: Blue }
+        fuelType: { type: string, enum: [Petrol, Diesel, LPG], description: Required for ICE }
+        capacity: { type: number, example: 75.0, description: "Battery in kWh (BEV), tank in litres (ICE) or kg (FCEV)" }
+        consumption: { type: number, example: 16.2, description: Per 100 km, in the unit of the capacity }
+    CreateOrganizationRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, example: Rent Co }
+    Organization:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer, example: 1 }
+        name: { type: string, example: Rent Co }
+    InviteResponse:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, example: 5c42d744-8a0e-4d6f-9a52-0c3f1e2b7d10 }
+    UpdateRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role: { type: string, enum: [ADMIN, MEMBER] }
+    Membership:
+      type: object
+      required: [userId, organizationId, role]
+      properties:
+        userId: { type: integer, example: 2 }
+        organizationId: { type: integer, example: 1 }
+        role: { type: string, enum: [ADMIN, MEMBER] }

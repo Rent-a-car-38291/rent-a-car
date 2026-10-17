@@ -17,6 +17,16 @@ class SwaggerTest {
     }
 
     @Test
+    fun EveryEndpointIsDescribed() = testApplication {
+        useTestDatabase()
+        application { module() }
+
+        val documentation = client.get("/swagger/documentation.yaml").bodyAsText()
+        listOf("/cars/{id}:", "/organizations:", "/organizations/{id}/invites:", "/invites/{code}/accept:", "/organizations/{id}/members/{userId}:")
+            .forEach { assertTrue(documentation.contains("  $it"), it) }
+    }
+
+    @Test
     fun SwaggerUiIsHiddenOutsideDevelopmentMode() = testApplication {
         useTestDatabase()
         serverConfig { developmentMode = false }
