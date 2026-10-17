@@ -47,4 +47,33 @@ class PostgresCarRepositoryTest {
 
         assertEquals(before, repository.allCars().size)
     }
+
+    @Test
+    fun UpdateCarChangesTheFieldsAndFindCarReadsThemBack() {
+        val original = repository.allCars().first()
+        val changed = AddCarRequest(
+            original.type, "Changed", original.licensePlate, 1, 9.99, Location(1.0, 2.0), original.doors, original.bodyStyle,
+            original.modelYear, original.power, original.transmission, original.color,
+            fuelType = FuelType.Diesel, capacity = 1.0, consumption = 2.0,
+        ).toCar(original.ownerId, original.id)
+
+        try {
+            assertEquals("Changed", assertNotNull(repository.updateCar(changed)).brand)
+            assertEquals(9.99, assertNotNull(repository.findCar(original.id)).rate)
+        } finally {
+            repository.updateCar(original)
+        }
+        assertEquals(original.brand, repository.findCar(original.id)?.brand)
+    }
+
+    @Test
+    fun UpdateAndFindOfUnknownCarReturnNull() {
+        val car = repository.allCars().first()
+
+        assertNull(repository.findCar(-5))
+        assertNull(repository.updateCar(AddCarRequest(
+            car.type, "x", "x", 1, 1.0, Location(1.0, 2.0), 4, car.bodyStyle, 2020, 1, car.transmission, "x",
+            fuelType = FuelType.Diesel, capacity = 1.0, consumption = 1.0,
+        ).toCar(car.ownerId, -5)))
+    }
 }
