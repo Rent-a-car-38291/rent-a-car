@@ -113,6 +113,7 @@ class PutCarRoutesTest {
 
         assertEquals(HttpStatusCode.BadRequest, client.putCar(1, carRequest(mileage = -1), token).status)
         assertEquals(HttpStatusCode.BadRequest, client.putCar(1, carRequest(rate = -5.0), token).status)
+        assertEquals(HttpStatusCode.BadRequest, client.putCar(1, carRequest(rate = 1_000_000.0), token).status) // too big for the rate column
         assertEquals(HttpStatusCode.BadRequest, client.putCar(1, carRequest(extraFields = """"capacity":75.0"""), token).status)
         assertEquals("OLD-1", repository.cars.single().licensePlate)
     }

@@ -55,11 +55,12 @@ class PostgresCarRepositoryTest {
             original.type, "Changed", original.licensePlate, 1, 9.99, Location(1.0, 2.0), original.doors, original.bodyStyle,
             original.modelYear, original.power, original.transmission, original.color,
             fuelType = FuelType.Diesel, capacity = 1.0, consumption = 2.0,
-        ).toCar(original.ownerId, original.id)
+        ).toCar(original.ownerId, original.id).also { it.status = CarStatus.Maintenance }
 
         try {
             assertEquals("Changed", assertNotNull(repository.updateCar(changed)).brand)
             assertEquals(9.99, assertNotNull(repository.findCar(original.id)).rate)
+            assertEquals(original.status, repository.findCar(original.id)?.status) // the status is not part of an update
         } finally {
             repository.updateCar(original)
         }
