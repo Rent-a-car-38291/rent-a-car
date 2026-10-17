@@ -65,7 +65,7 @@ class PostCarRoutesTest {
             configureSerialization()
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users)
-            configureAccounts(users)
+            configureAccounts(users, repository)
             configureCars(repository)
         }
         val (userId, token) = client.signUp()
@@ -111,7 +111,7 @@ class PostCarRoutesTest {
             configureSerialization()
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users)
-            configureAccounts(users)
+            configureAccounts(users, repository)
             configureCars(repository)
         }
 

@@ -61,7 +61,7 @@ class PutCarRoutesTest {
             configureSerialization()
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users)
-            configureAccounts(users)
+            configureAccounts(users, repository)
             configureCars(repository)
         }
         val (ownerId, token) = client.signUp("jan@example.com")

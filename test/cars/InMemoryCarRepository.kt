@@ -11,4 +11,8 @@ class InMemoryCarRepository : CarRepository {
 
     override fun updateCar(car: Car): Car? =
         findCar(car.id)?.let { cars[cars.indexOf(it)] = car; car }
+
+    override fun deleteCarsOf(ownerId: Int) {
+        cars.removeAll { it.ownerId == ownerId }
+    }
 }

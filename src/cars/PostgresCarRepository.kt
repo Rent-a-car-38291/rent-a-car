@@ -55,6 +55,12 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
         )
     }
 
+    override fun deleteCarsOf(ownerId: Int) {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement("DELETE FROM cars WHERE owner_id = ?").use { it.setInt(1, ownerId); it.executeUpdate() }
+        }
+    }
+
     override fun addCar(car: Car): Car {
         val columns = typeColumns(car)
         return queryCar(
