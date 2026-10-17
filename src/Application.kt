@@ -8,6 +8,8 @@ import com.example.cars.configureCars
 import com.example.configureRouting
 import com.example.configureSerialization
 import com.example.database.connectDatabase
+import com.example.organizations.OrganizationRepository
+import com.example.organizations.configureOrganizations
 import io.ktor.server.application.*
 
 fun main(args: Array<String>) {
@@ -21,5 +23,7 @@ fun Application.module() {
     val users = UserRepository(dataSource)
     configureCars(PostgresCarRepository(dataSource))
     configureSecurity(users)
-    configureAccounts(users)
+    val organizations = OrganizationRepository(dataSource)
+    configureAccounts(users, organizations)
+    configureOrganizations(organizations)
 }
