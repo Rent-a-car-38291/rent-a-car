@@ -12,9 +12,9 @@ private const val INSERT_CAR = """
     RETURNING *
 """
 
-// The owner, type and id of a car never change.
+// The owner, type and id of a car never change, and the status is left alone so an update can't undo a change made meanwhile.
 private const val UPDATE_CAR = """
-    UPDATE cars SET brand = ?, license_plate = ?, mileage = ?, status = ?, rate = ?,
+    UPDATE cars SET brand = ?, license_plate = ?, mileage = ?, rate = ?,
         latitude = ?, longitude = ?, doors = ?, body_style = ?, model_year = ?, power = ?, transmission = ?,
         color = ?, fuel_type = ?, capacity = ?, consumption = ?
     WHERE id = ?
@@ -49,7 +49,7 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
         val columns = typeColumns(car)
         return queryCar(
             UPDATE_CAR,
-            car.brand, car.licensePlate, car.mileage, car.status.name, car.rate,
+            car.brand, car.licensePlate, car.mileage, car.rate,
             car.location.latitude, car.location.longitude, car.doors, car.bodyStyle.name, car.modelYear, car.power,
             car.transmission.name, car.color, columns.fuelType, columns.capacity, columns.consumption, car.id,
         )
