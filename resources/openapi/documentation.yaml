@@ -37,9 +37,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/Car"
         "400":
-          description: Malformed body, or a missing or unknown field. A value that is out of range (a negative mileage or rate, a missing capacity) is not rejected cleanly yet and gives 500.
+          description: Malformed body, or a missing, unknown or out-of-range field (a negative mileage or rate, a missing capacity)
         "401":
           description: Missing or invalid token
+        "409":
+          description: Another car already has this license plate
   /accounts:
     post:
       tags: [Accounts]

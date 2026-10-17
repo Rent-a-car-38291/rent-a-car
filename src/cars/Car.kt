@@ -42,6 +42,7 @@ data class AddCarRequest(
 ) {
     fun toCar(ownerId: Int): Car {
         require(mileage >= 0) { "mileage must be >= 0" }
+        require(rate in 0.0..999_999.99) { "rate must be between 0 and 999999.99" } // the column is numeric(8, 2)
         val capacity = requireNotNull(capacity) { "capacity is required" }
         val consumption = requireNotNull(consumption) { "consumption is required" }
         return when (type) {

@@ -2,6 +2,7 @@ package com.example.cars
 
 import com.example.database.runScript
 import java.sql.ResultSet
+import java.sql.SQLException
 import javax.sql.DataSource
 
 private const val INSERT_CAR = """
@@ -33,7 +34,7 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
             is ICECar -> TypeColumns("ICE", car.fuelType.name, car.tankCapacityLitres, car.consumptionLitresPer100Km)
             is FCEVCar -> TypeColumns("FCEV", null, car.tankCapacityKg, car.consumptionKgPer100Km)
         }
-        return queryCar(
+        return queryCarOrConflict(
             INSERT_CAR,
             columns.type, car.ownerId, car.brand, car.licensePlate, car.mileage,
             car.status.name, car.rate, car.location.latitude, car.location.longitude,
@@ -66,6 +67,13 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
             "FCEV" -> FCEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption)
             else -> error("Unknown car type $type")
         }
+    }
+
+    // The unique index on license_plate decides, so two requests at once can't both win.
+    private fun queryCarOrConflict(sql: String, vararg parameters: Any?): Car? = try {
+        queryCar(sql, *parameters)
+    } catch (e: SQLException) {
+        if (e.sqlState == "23505") throw LicensePlateTakenException() else throw e
     }
 
     private fun queryCar(sql: String, vararg parameters: Any?): Car? = dataSource.connection.use { connection ->
