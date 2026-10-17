@@ -72,4 +72,22 @@ class DeleteAccountCarsTest {
         }
         assertFalse("KEEP-1" in client.licensePlates())
     }
+
+    @Test
+    fun DeletingSomeoneElsesAccountKeepsTheirCars() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (janId, jan) = client.signUp("jan@example.com")
+        val (_, piet) = client.signUp("piet@example.com")
+        assertEquals(HttpStatusCode.Created, client.addCar("SAFE-1", jan).status)
+
+        try {
+            assertEquals(HttpStatusCode.Forbidden, client.delete("/accounts/$janId") { bearerAuth(piet) }.status)
+            assertEquals(HttpStatusCode.NotFound, client.delete("/accounts/99999") { bearerAuth(piet) }.status)
+
+            assertTrue("SAFE-1" in client.licensePlates())
+        } finally {
+            client.delete("/accounts/$janId") { bearerAuth(jan) } // leaves no cars behind for other tests
+        }
+    }
 }
