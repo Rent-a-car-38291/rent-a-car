@@ -1,6 +1,7 @@
 package com.example.accounts
 
 import com.example.database.TestDatabase
+import com.example.organizations.OrganizationRepository
 import com.example.database.useTestDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
@@ -88,6 +89,24 @@ class DeleteAccountCarsTest {
             assertTrue("SAFE-1" in client.licensePlates())
         } finally {
             client.delete("/accounts/$janId") { bearerAuth(jan) } // leaves no cars behind for other tests
+        }
+    }
+
+    @Test
+    fun TheLastAdminOfAnOrganizationKeepsTheirCarsWhenTheDeletionIsRefused() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (janId, jan) = client.signUp("jan@example.com")
+        assertEquals(HttpStatusCode.Created, client.postJson("/organizations", """{"name":"Rent Co"}""", jan).status)
+        assertEquals(HttpStatusCode.Created, client.addCar("ADMIN-1", jan).status)
+
+        try {
+            assertEquals(HttpStatusCode.Conflict, client.delete("/accounts/$janId") { bearerAuth(jan) }.status)
+
+            assertTrue("ADMIN-1" in client.licensePlates())
+        } finally {
+            OrganizationRepository(TestDatabase.dataSource).clear() // the last admin may leave now
+            client.delete("/accounts/$janId") { bearerAuth(jan) }
         }
     }
 }
