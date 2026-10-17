@@ -61,7 +61,7 @@ class UserRepository(private val dataSource: DataSource) {
     }
 
     fun clear() {
-        dataSource.connection.use { it.createStatement().use { statement -> statement.execute("TRUNCATE users RESTART IDENTITY") } }
+        dataSource.connection.use { it.createStatement().use { statement -> statement.execute("TRUNCATE users RESTART IDENTITY CASCADE") } }
     }
 
     private fun queryUser(sql: String, vararg parameters: Any): User? = dataSource.connection.use { connection ->

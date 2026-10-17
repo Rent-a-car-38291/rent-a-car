@@ -1,4 +1,6 @@
 ktor:
+    # Development mode shows Swagger UI at /swagger. Set KTOR_DEVELOPMENT=false outside local development.
+    development: "$KTOR_DEVELOPMENT:true"
     application:
         modules:
             - org.jetbrains.amper.ktor.ApplicationKt.module
