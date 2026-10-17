@@ -121,6 +121,8 @@ paths:
           description: Someone else's account
         "404":
           description: Unknown id
+        "409":
+          description: You are the last admin of an organization
   /accounts/{id}/password:
     put:
       tags: [Accounts]
@@ -215,6 +217,69 @@ paths:
           description: Unknown, used or expired code
         "409":
           description: Already a member
+  /organizations/{id}/members/{userId}:
+    put:
+      tags: [Organizations]
+      summary: Change the role of a member (admin only)
+      description: The last admin can't be demoted.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer, example: 2 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleRequest"
+      responses:
+        "200":
+          description: Role changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Membership"
+        "400":
+          description: Non-numeric id, or a malformed body or unknown role
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Not an admin of this organization
+        "404":
+          description: Unknown organization or member
+        "409":
+          description: The last admin can't be demoted
+    delete:
+      tags: [Organizations]
+      summary: Remove a member or leave
+      description: An admin can remove anyone, a member only themselves. The last admin can't be removed or leave.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer, example: 2 }
+      responses:
+        "204":
+          description: Member removed
+        "400":
+          description: Non-numeric id
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Not an admin, and not yourself
+        "404":
+          description: Unknown organization or member
+        "409":
+          description: The last admin can't leave
+components:
+  parameters:
 components:
   parameters:
     id:
@@ -358,3 +423,15 @@ components:
       required: [code]
       properties:
         code: { type: string, example: 5c42d744-8a0e-4d6f-9a52-0c3f1e2b7d10 }
+    UpdateRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role: { type: string, enum: [ADMIN, MEMBER] }
+    Membership:
+      type: object
+      required: [userId, organizationId, role]
+      properties:
+        userId: { type: integer, example: 2 }
+        organizationId: { type: integer, example: 1 }
+        role: { type: string, enum: [ADMIN, MEMBER] }
