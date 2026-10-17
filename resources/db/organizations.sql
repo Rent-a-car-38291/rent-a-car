@@ -10,3 +10,10 @@ CREATE TABLE IF NOT EXISTS memberships (
     role            text NOT NULL CHECK (role IN ('ADMIN', 'MEMBER')),
     PRIMARY KEY (organization_id, user_id)
 );
+
+-- An invite code works once and expires; it is deleted when it is used.
+CREATE TABLE IF NOT EXISTS invites (
+    code            text PRIMARY KEY,
+    organization_id integer NOT NULL REFERENCES organizations ON DELETE CASCADE,
+    expires_at      timestamptz NOT NULL
+);
