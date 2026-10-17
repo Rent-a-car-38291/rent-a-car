@@ -1,6 +1,5 @@
 package com.example.accounts
 
-import com.example.cars.CarRepository
 import com.example.organizations.OrganizationRepository
 import io.ktor.http.*
 import io.ktor.http.auth.*
@@ -18,7 +17,7 @@ private fun isValid(name: String, email: String) = name.isNotEmpty() && EMAIL_PA
 
 private fun ApplicationCall.bearerToken() = (request.parseAuthorizationHeader() as? HttpAuthHeader.Single)?.blob
 
-fun Application.configureAccounts(users: UserRepository, organizations: OrganizationRepository, cars: CarRepository) {
+fun Application.configureAccounts(users: UserRepository, organizations: OrganizationRepository) {
     routing {
         post("/accounts") {
             val request = call.receive<RegisterRequest>() // Ktor answers unreadable bodies with 400 or 415
@@ -101,7 +100,6 @@ fun Application.configureAccounts(users: UserRepository, organizations: Organiza
                     id != call.principal<User>()?.id -> HttpStatusCode.Forbidden
                     organizations.isLastAdmin(id) -> HttpStatusCode.Conflict // an organization always keeps an admin
                     else -> {
-                        cars.deleteCarsOf(id) // before the user: cars reference their owner
                         users.delete(id)
                         TokenRepository.revokeAll(id)
                         HttpStatusCode.NoContent

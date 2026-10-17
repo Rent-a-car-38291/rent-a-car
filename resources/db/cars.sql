@@ -24,6 +24,10 @@ CREATE TABLE IF NOT EXISTS cars (
     CHECK ((type = 'ICE') = (fuel_type IS NOT NULL))
 );
 
+-- A deleted user takes the cars along, in the same statement. CREATE TABLE IF NOT EXISTS leaves an older table alone, so replace the constraint.
+ALTER TABLE cars DROP CONSTRAINT IF EXISTS cars_owner_id_fkey,
+    ADD CONSTRAINT cars_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE;
+
 -- Seed data, only when the table is empty.
 INSERT INTO cars (owner_id, type, brand, license_plate, mileage, status, rate, latitude, longitude, doors, body_style,
                   model_year, power, transmission, color, fuel_type, capacity, consumption)
