@@ -159,6 +159,7 @@ paths:
     delete:
       tags: [Accounts]
       summary: Delete your own account
+      description: Your cars are deleted too.
       security:
         - bearerAuth: []
       parameters:
