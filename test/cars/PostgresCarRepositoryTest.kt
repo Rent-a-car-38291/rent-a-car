@@ -77,4 +77,29 @@ class PostgresCarRepositoryTest {
             fuelType = FuelType.Diesel, capacity = 1.0, consumption = 1.0,
         ).toCar(car.ownerId, -5)))
     }
+
+    @Test
+    fun AddingACarWithATakenLicensePlateThrows() {
+        val seeded = repository.allCars().first { it is ICECar }
+        val duplicate = AddCarRequest(
+            CarType.ICE, "Copy", seeded.licensePlate, 1, 1.0, Location(1.0, 2.0), 4, seeded.bodyStyle, 2020, 1, seeded.transmission, "x",
+            fuelType = FuelType.Petrol, capacity = 1.0, consumption = 1.0,
+        ).toCar(seeded.ownerId)
+
+        assertFailsWith<LicensePlateTakenException> { repository.addCar(duplicate) }
+    }
+
+    @Test
+    fun UpdatingACarToATakenLicensePlateThrows() {
+        val seededIce = repository.allCars().first { it is ICECar }
+        val other = repository.allCars().first { it is ICECar && it.id != seededIce.id }
+        val request = AddCarRequest(
+            CarType.ICE, "Copy", "x", 1, 1.0, Location(1.0, 2.0), 4, seededIce.bodyStyle, 2020, 1, seededIce.transmission, "x",
+            fuelType = FuelType.Petrol, capacity = 1.0, consumption = 1.0,
+        )
+
+        assertFailsWith<LicensePlateTakenException> {
+            repository.updateCar(request.copy(licensePlate = other.licensePlate).toCar(seededIce.ownerId, seededIce.id))
+        }
+    }
 }

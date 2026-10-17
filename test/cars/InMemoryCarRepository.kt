@@ -7,12 +7,13 @@ class InMemoryCarRepository : CarRepository {
 
     override fun findCar(id: Int): Car? = cars.find { it.id == id }
 
-    override fun addCar(car: Car): Car = car.also(cars::add)
+    override fun addCar(car: Car): Car {
+        if (cars.any { it.licensePlate == car.licensePlate }) throw LicensePlateTakenException()
+        return car.also(cars::add)
+    }
 
-    override fun updateCar(car: Car): Car? =
-        findCar(car.id)?.let { cars[cars.indexOf(it)] = car; car }
-
-    override fun deleteCarsOf(ownerId: Int) {
-        cars.removeAll { it.ownerId == ownerId }
+    override fun updateCar(car: Car): Car? {
+        if (cars.any { it.id != car.id && it.licensePlate == car.licensePlate }) throw LicensePlateTakenException()
+        return findCar(car.id)?.let { cars[cars.indexOf(it)] = car; car }
     }
 }

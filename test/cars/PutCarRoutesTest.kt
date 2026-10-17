@@ -61,7 +61,7 @@ class PutCarRoutesTest {
             configureSerialization()
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users)
-            configureAccounts(users, repository)
+            configureAccounts(users)
             configureCars(repository)
         }
         val (ownerId, token) = client.signUp("jan@example.com")
@@ -142,5 +142,27 @@ class PutCarRoutesTest {
 
         assertEquals(HttpStatusCode.Forbidden, client.putCar(1, carRequest(), other).status)
         assertEquals("OLD-1", repository.cars.single().licensePlate)
+    }
+
+    @Test
+    fun PutWithALicensePlateOfAnotherCarReturnsConflict() = testApplication {
+        val (client, token) = withOwnedCar()
+        val first = repository.cars.single()
+        repository.cars += AddCarRequest(
+            CarType.BEV, "Other", "TAKEN-1", 100, 40.0, Location(1.0, 2.0), 4, BodyStyle.Sedan, 2020, 100,
+            Transmission.Manual, "Red", capacity = 50.0, consumption = 15.0,
+        ).toCar(first.ownerId, 2)
+
+        val response = client.putCar(1, carRequest().replace("EV-100", "TAKEN-1"), token)
+
+        assertEquals(HttpStatusCode.Conflict, response.status)
+        assertEquals("OLD-1", repository.cars.first { it.id == 1 }.licensePlate)
+    }
+
+    @Test
+    fun PutKeepingTheOwnLicensePlateIsFine() = testApplication {
+        val (client, token) = withOwnedCar()
+
+        assertEquals(HttpStatusCode.OK, client.putCar(1, carRequest().replace("EV-100", "OLD-1"), token).status)
     }
 }

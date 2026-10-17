@@ -2,6 +2,7 @@ package com.example.cars
 
 import com.example.database.runScript
 import java.sql.ResultSet
+import java.sql.SQLException
 import javax.sql.DataSource
 
 private const val INSERT_CAR = """
@@ -47,7 +48,7 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
     // null when the car doesn't exist (anymore).
     override fun updateCar(car: Car): Car? {
         val columns = typeColumns(car)
-        return queryCar(
+        return queryCarOrConflict(
             UPDATE_CAR,
             car.brand, car.licensePlate, car.mileage, car.rate,
             car.location.latitude, car.location.longitude, car.doors, car.bodyStyle.name, car.modelYear, car.power,
@@ -55,15 +56,9 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
         )
     }
 
-    override fun deleteCarsOf(ownerId: Int) {
-        dataSource.connection.use { connection ->
-            connection.prepareStatement("DELETE FROM cars WHERE owner_id = ?").use { it.setInt(1, ownerId); it.executeUpdate() }
-        }
-    }
-
     override fun addCar(car: Car): Car {
         val columns = typeColumns(car)
-        return queryCar(
+        return queryCarOrConflict(
             INSERT_CAR,
             columns.type, car.ownerId, car.brand, car.licensePlate, car.mileage,
             car.status.name, car.rate, car.location.latitude, car.location.longitude,
@@ -96,6 +91,13 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
             "FCEV" -> FCEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption)
             else -> error("Unknown car type $type")
         }
+    }
+
+    // The unique index on license_plate decides, so two requests at once can't both win.
+    private fun queryCarOrConflict(sql: String, vararg parameters: Any?): Car? = try {
+        queryCar(sql, *parameters)
+    } catch (e: SQLException) {
+        if (e.sqlState == "23505") throw LicensePlateTakenException() else throw e
     }
 
     private fun queryCar(sql: String, vararg parameters: Any?): Car? = dataSource.connection.use { connection ->
