@@ -8,6 +8,7 @@ import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.util.getOrFail
 
 fun Application.configureCars(repository: CarRepository) {
     routing {
@@ -29,6 +30,31 @@ fun Application.configureCars(repository: CarRepository) {
                     call.respond(HttpStatusCode.Created, message = repository.addCar(car))
                 } catch (e: LicensePlateTakenException) {
                     call.respond(HttpStatusCode.Conflict)
+                }
+            }
+
+            put("/cars/{id}") {
+                val id = call.parameters.getOrFail<Int>("id")
+                val existing = repository.findCar(id)
+                when {
+                    existing == null -> call.respond(HttpStatusCode.NotFound)
+                    existing.ownerId != call.principal<User>()!!.id -> call.respond(HttpStatusCode.Forbidden)
+                    else -> {
+                        val request = call.receive<AddCarRequest>()
+                        // toCar rejects invalid fields with an IllegalArgumentException.
+                        val car = runCatching { request.toCar(existing.ownerId, id) }.getOrNull()
+                        if (car == null || request.type != existing.type) {
+                            call.respond(HttpStatusCode.BadRequest)
+                            return@put
+                        }
+                        car.status = existing.status // the request has no status
+                        // null when the car was deleted meanwhile
+                        try {
+                            repository.updateCar(car)?.let { call.respond(it) } ?: call.respond(HttpStatusCode.NotFound)
+                        } catch (e: LicensePlateTakenException) {
+                            call.respond(HttpStatusCode.Conflict)
+                        }
+                    }
                 }
             }
         }

@@ -21,6 +21,12 @@ sealed class Car {
 
 enum class CarType { BEV, ICE, FCEV }
 
+val Car.type: CarType get() = when (this) {
+    is BEVCar -> CarType.BEV
+    is ICECar -> CarType.ICE
+    is FCEVCar -> CarType.FCEV
+}
+
 @Serializable
 data class AddCarRequest(
     val type: CarType,
@@ -40,14 +46,14 @@ data class AddCarRequest(
     val capacity: Double? = null,
     val consumption: Double? = null,
 ) {
-    fun toCar(ownerId: Int): Car {
+    fun toCar(ownerId: Int, id: Int = 0): Car {
         require(mileage >= 0) { "mileage must be >= 0" }
         require(rate in 0.0..999_999.99) { "rate must be between 0 and 999999.99" } // the column is numeric(8, 2)
         val capacity = requireNotNull(capacity) { "capacity is required" }
         val consumption = requireNotNull(consumption) { "consumption is required" }
         return when (type) {
             CarType.BEV -> BEVCar(
-                id = 0,
+                id = id,
                 ownerId = ownerId,
                 brand = brand,
                 licensePlate = licensePlate,
@@ -67,7 +73,7 @@ data class AddCarRequest(
             CarType.ICE -> {
                 val fuel = requireNotNull(fuelType) { "fuelType is required for ICE" }
                 ICECar(
-                    id = 0,
+                    id = id,
                     ownerId = ownerId,
                     brand = brand,
                     licensePlate = licensePlate,
@@ -87,7 +93,7 @@ data class AddCarRequest(
                 )
             }
             CarType.FCEV -> FCEVCar(
-                id = 0,
+                id = id,
                 ownerId = ownerId,
                 brand = brand,
                 licensePlate = licensePlate,
