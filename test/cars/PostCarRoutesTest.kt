@@ -14,6 +14,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.int
@@ -122,5 +123,52 @@ class PostCarRoutesTest {
 
         assertEquals(HttpStatusCode.Unauthorized, response.status)
         assertTrue(repository.cars.isEmpty())
+    }
+
+    private fun ApplicationTestBuilder.carApplication(repository: CarRepository) {
+        useTestDatabase()
+        UserRepository(TestDatabase.dataSource).clear()
+        application {
+            configureSerialization()
+            val users = UserRepository(TestDatabase.dataSource)
+            configureSecurity(users)
+            configureAccounts(users)
+            configureCars(repository)
+        }
+    }
+
+    private suspend fun HttpClient.postCar(body: String, token: String) = post("/cars") {
+        bearerAuth(token)
+        contentType(ContentType.Application.Json)
+        setBody(body)
+    }
+
+    @Test
+    fun PostCarsWithInvalidOrMissingFieldsReturnsBadRequest() = testApplication {
+        val repository = InMemoryCarRepository()
+        carApplication(repository)
+        val (_, token) = client.signUp()
+        val valid = ""","capacity":75.0,"consumption":16.2"""
+
+        listOf(
+            carRequest("BEV", "EV-1", valid).replace(""""mileage":1200""", """"mileage":-1"""),
+            carRequest("BEV", "EV-1", valid).replace(""""rate":45.50""", """"rate":-1"""),
+            carRequest("BEV", "EV-1", valid).replace(""""rate":45.50""", """"rate":10000000"""),
+            carRequest("BEV", "EV-1", ""","capacity":75.0"""),
+            carRequest("ICE", "EV-1", valid),
+        ).forEach { assertEquals(HttpStatusCode.BadRequest, client.postCar(it, token).status, it) }
+        assertTrue(repository.cars.isEmpty())
+    }
+
+    @Test
+    fun PostCarsWithATakenLicensePlateReturnsConflict() = testApplication {
+        val repository = InMemoryCarRepository()
+        carApplication(repository)
+        val (_, token) = client.signUp()
+        val body = carRequest("BEV", "EV-1", ""","capacity":75.0,"consumption":16.2""")
+
+        assertEquals(HttpStatusCode.Created, client.postCar(body, token).status)
+        assertEquals(HttpStatusCode.Conflict, client.postCar(body, token).status)
+        assertEquals(1, repository.cars.size)
     }
 }

@@ -20,9 +20,17 @@ fun Application.configureCars(repository: CarRepository) {
             post("/cars") {
                 val user = call.principal<User>()!!
                 val request = call.receive<AddCarRequest>()
-                val car = request.toCar(ownerId = user.id)
-                val created: Car = repository.addCar(car)
-                call.respond(HttpStatusCode.Created, message = created)
+                // toCar rejects invalid or missing fields with an IllegalArgumentException.
+                val car = runCatching { request.toCar(ownerId = user.id) }.getOrNull()
+                if (car == null) {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+                try {
+                    call.respond(HttpStatusCode.Created, message = repository.addCar(car))
+                } catch (e: LicensePlateTakenException) {
+                    call.respond(HttpStatusCode.Conflict)
+                }
             }
 
             put("/cars/{id}") {
@@ -41,7 +49,11 @@ fun Application.configureCars(repository: CarRepository) {
                         }
                         car.status = existing.status // the request has no status
                         // null when the car was deleted meanwhile
-                        repository.updateCar(car)?.let { call.respond(it) } ?: call.respond(HttpStatusCode.NotFound)
+                        try {
+                            repository.updateCar(car)?.let { call.respond(it) } ?: call.respond(HttpStatusCode.NotFound)
+                        } catch (e: LicensePlateTakenException) {
+                            call.respond(HttpStatusCode.Conflict)
+                        }
                     }
                 }
             }
