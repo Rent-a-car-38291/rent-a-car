@@ -4,8 +4,26 @@ import com.example.database.runScript
 import java.sql.ResultSet
 import javax.sql.DataSource
 
+private const val INSERT_CAR = """
+    INSERT INTO cars (type, owner_id, brand, license_plate, mileage, status, rate,
+        latitude, longitude, doors, body_style, model_year, power, transmission,
+        color, fuel_type, capacity, consumption)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    RETURNING *
+"""
+
+// The owner, type and id of a car never change.
+private const val UPDATE_CAR = """
+    UPDATE cars SET brand = ?, license_plate = ?, mileage = ?, status = ?, rate = ?,
+        latitude = ?, longitude = ?, doors = ?, body_style = ?, model_year = ?, power = ?, transmission = ?,
+        color = ?, fuel_type = ?, capacity = ?, consumption = ?
+    WHERE id = ?
+    RETURNING *
+"""
+
 class PostgresCarRepository(private val dataSource: DataSource) : CarRepository {
     init {
+        dataSource.runScript("users.sql")
         dataSource.runScript("cars.sql")
     }
 
@@ -17,8 +35,47 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
         }
     }
 
+    override fun findCar(id: Int): Car? = queryCar("SELECT * FROM cars WHERE id = ?", id)
+
+    // Translate the Kotlin subclass into the values for the type-specific columns.
+    private fun typeColumns(car: Car) = when (car) {
+        is BEVCar -> TypeColumns("BEV", null, car.batteryCapacityKwh, car.consumptionKwhPer100Km)
+        is ICECar -> TypeColumns("ICE", car.fuelType.name, car.tankCapacityLitres, car.consumptionLitresPer100Km)
+        is FCEVCar -> TypeColumns("FCEV", null, car.tankCapacityKg, car.consumptionKgPer100Km)
+    }
+
+    // null when the car doesn't exist (anymore).
+    override fun updateCar(car: Car): Car? {
+        val columns = typeColumns(car)
+        return queryCar(
+            UPDATE_CAR,
+            car.brand, car.licensePlate, car.mileage, car.status.name, car.rate,
+            car.location.latitude, car.location.longitude, car.doors, car.bodyStyle.name, car.modelYear, car.power,
+            car.transmission.name, car.color, columns.fuelType, columns.capacity, columns.consumption, car.id,
+        )
+    }
+
+    override fun deleteCarsOf(ownerId: Int) {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement("DELETE FROM cars WHERE owner_id = ?").use { it.setInt(1, ownerId); it.executeUpdate() }
+        }
+    }
+
+    override fun addCar(car: Car): Car {
+        val columns = typeColumns(car)
+        return queryCar(
+            INSERT_CAR,
+            columns.type, car.ownerId, car.brand, car.licensePlate, car.mileage,
+            car.status.name, car.rate, car.location.latitude, car.location.longitude,
+            car.doors, car.bodyStyle.name, car.modelYear, car.power,
+            car.transmission.name, car.color,
+            columns.fuelType, columns.capacity, columns.consumption,
+        ) ?: error("Insert returned no row")
+    }
+
     private fun ResultSet.toCar(): Car {
         val id = getInt("id")
+        val ownerId = getInt("owner_id")
         val brand = getString("brand")
         val licensePlate = getString("license_plate")
         val mileage = getInt("mileage")
@@ -34,10 +91,24 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
         val capacity = getDouble("capacity")
         val consumption = getDouble("consumption")
         return when (val type = getString("type")) {
-            "BEV" -> BEVCar(id, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption)
-            "ICE" -> ICECar(id, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, FuelType.valueOf(getString("fuel_type")), capacity, consumption)
-            "FCEV" -> FCEVCar(id, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption)
+            "BEV" -> BEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption)
+            "ICE" -> ICECar(id,ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, FuelType.valueOf(getString("fuel_type")), capacity, consumption)
+            "FCEV" -> FCEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption)
             else -> error("Unknown car type $type")
         }
     }
+
+    private fun queryCar(sql: String, vararg parameters: Any?): Car? = dataSource.connection.use { connection ->
+        connection.prepareStatement(sql).use { statement ->
+            parameters.forEachIndexed { index, parameter -> statement.setObject(index + 1, parameter) }
+            statement.executeQuery().use { rows -> if (rows.next()) rows.toCar() else null }
+        }
+    }
 }
+
+private data class TypeColumns(
+    val type: String,
+    val fuelType: String?,
+    val capacity: Double,
+    val consumption: Double,
+)
