@@ -443,4 +443,23 @@ class AccountRoutesTest {
 
         assertEquals(HttpStatusCode.NotFound, client.changePassword("999", passwords(), token).status)
     }
+
+    @Test
+    fun PasswordOfExactlyTheMaximumLengthWorksAndLongerOnesAreRejected() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val max = "a".repeat(128)
+        val tooLong = "a".repeat(129)
+
+        assertEquals(HttpStatusCode.BadRequest, client.register("""{"name":"Jan","email":"jan@example.com","password":"$tooLong"}""").status)
+        val id = client.register("""{"name":"Jan","email":"jan@example.com","password":"$max"}""").json()["id"]!!.jsonPrimitive.int
+        assertEquals(HttpStatusCode.OK, client.login(password = max).status)
+        assertEquals(HttpStatusCode.Unauthorized, client.login(password = tooLong).status)
+        assertEquals(HttpStatusCode.Unauthorized, client.login(email = "nobody@example.com", password = tooLong).status)
+
+        val token = client.login(password = max).json()["token"]!!.jsonPrimitive.content
+        assertEquals(HttpStatusCode.BadRequest, client.changePassword("$id", passwords(current = max, new = tooLong), token).status)
+        assertEquals(HttpStatusCode.Forbidden, client.changePassword("$id", passwords(current = tooLong, new = "evenmoresecret"), token).status)
+        assertEquals(HttpStatusCode.NoContent, client.changePassword("$id", passwords(current = max, new = max), token).status)
+    }
 }
