@@ -22,7 +22,7 @@ fun Application.configureAccounts(users: UserRepository) {
             val request = call.receive<RegisterRequest>() // Ktor answers unreadable bodies with 400 or 415
             val name = request.name.trim()
             val email = request.email.trim()
-            if (!isValid(name, email) || request.password.length < MIN_PASSWORD_LENGTH) {
+            if (!isValid(name, email) || request.password.length !in MIN_PASSWORD_LENGTH..MAX_PASSWORD_LENGTH) {
                 call.respond(HttpStatusCode.BadRequest)
                 return@post
             }
@@ -77,7 +77,7 @@ fun Application.configureAccounts(users: UserRepository) {
                     id != call.principal<User>()?.id -> call.respond(HttpStatusCode.Forbidden)
                     else -> {
                         val request = call.receive<ChangePasswordRequest>()
-                        if (request.newPassword.length < MIN_PASSWORD_LENGTH) {
+                        if (request.newPassword.length !in MIN_PASSWORD_LENGTH..MAX_PASSWORD_LENGTH) {
                             call.respond(HttpStatusCode.BadRequest)
                             return@put
                         }
