@@ -34,9 +34,10 @@ class OrganizationRepository(private val dataSource: DataSource) {
     }
 
     // A random UUID comes from SecureRandom, so the code can't be guessed (same as login tokens).
+    // 168 hours = 7 days: '7 days' is a calendar interval, which is an hour longer across a daylight saving change.
     fun invite(organizationId: Int): String = UUID.randomUUID().toString().also { code ->
         dataSource.connection.use { connection ->
-            connection.prepareStatement("INSERT INTO invites (code, organization_id, expires_at) VALUES (?, ?, now() + interval '7 days')").use { statement ->
+            connection.prepareStatement("INSERT INTO invites (code, organization_id, expires_at) VALUES (?, ?, now() + interval '168 hours')").use { statement ->
                 statement.setString(1, code)
                 statement.setInt(2, organizationId)
                 statement.executeUpdate()
