@@ -46,6 +46,12 @@ The connection defaults match `docker-compose.yml`. Override them with the envir
 
 The tests don't need Docker: they start their own Postgres.
 
+## Trying the API (Swagger UI)
+
+With the server running, open [http://localhost:8080/swagger](http://localhost:8080/swagger) to see every endpoint and try it with "Try it out". The page is described by [`resources/openapi/documentation.yaml`](resources/openapi/documentation.yaml), so add new endpoints there as well.
+
+Swagger UI is only served in Ktor's development mode, which is on by default. Start the server with `KTOR_DEVELOPMENT=false` to turn it off.
+
 ## Viewing diagrams (PlantUML)
 
 Diagrams for this project live in [`docs/diagrams`](docs/diagrams) as `.puml` files, each with an exported `.png` next to it so GitHub can show it without a plugin. To view and edit them in your IDE, install the PlantUML plugin and a local renderer.
