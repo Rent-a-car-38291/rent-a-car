@@ -82,6 +82,11 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
             statement.executeQuery().use { rows -> if (rows.next()) rows.toCar() else null }
         }
     }
+
+    override fun getCarById(id: Int): Car? {
+        val car = queryCar("SELECT * FROM cars WHERE id = ?", id)
+        return car
+    }
 }
 
 private data class TypeColumns(
