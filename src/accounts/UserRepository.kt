@@ -10,6 +10,7 @@ import javax.crypto.spec.PBEKeySpec
 import javax.sql.DataSource
 
 private const val UNIQUE_VIOLATION = "23505"
+internal const val MAX_PASSWORD_LENGTH = 128
 
 class UserRepository(private val dataSource: DataSource) {
     private val dummyHash by lazy { hash("dummy") }
@@ -61,7 +62,11 @@ class UserRepository(private val dataSource: DataSource) {
     }
 
     fun clear() {
-        dataSource.connection.use { it.createStatement().use { statement -> statement.execute("TRUNCATE users RESTART IDENTITY") } }
+        dataSource.connection.use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("DELETE FROM users WHERE id <> -1; ALTER TABLE users ALTER COLUMN id RESTART WITH 1")
+            }
+        }
     }
 
     private fun queryUser(sql: String, vararg parameters: Any): User? = dataSource.connection.use { connection ->
@@ -81,7 +86,9 @@ class UserRepository(private val dataSource: DataSource) {
     }
 
     // Hashes the password again with the stored salt and compares in constant time.
+    // A password above the maximum can't have been stored, so it never matches and is not hashed.
     private fun verify(password: String, passwordHash: String): Boolean {
+        if (password.length > MAX_PASSWORD_LENGTH) return false
         val salt = Base64.getDecoder().decode(passwordHash.substringBefore(':'))
         return MessageDigest.isEqual(hash(password, salt).toByteArray(), passwordHash.toByteArray())
     }

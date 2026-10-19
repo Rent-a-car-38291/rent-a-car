@@ -2,10 +2,20 @@ package com.example.cars
 
 import com.example.database.runScript
 import java.sql.ResultSet
+import java.sql.SQLException
 import javax.sql.DataSource
+
+private const val INSERT_CAR = """
+    INSERT INTO cars (type, owner_id, brand, license_plate, mileage, status, rate,
+        latitude, longitude, doors, body_style, model_year, power, transmission,
+        color, fuel_type, capacity, consumption)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    RETURNING *
+"""
 
 class PostgresCarRepository(private val dataSource: DataSource) : CarRepository {
     init {
+        dataSource.runScript("users.sql")
         dataSource.runScript("cars.sql")
     }
 
@@ -17,8 +27,26 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
         }
     }
 
+    override fun addCar(car: Car): Car {
+        // Translate the Kotlin subclass into the values for the type-specific columns.
+        val columns = when (car) {
+            is BEVCar -> TypeColumns("BEV", null, car.batteryCapacityKwh, car.consumptionKwhPer100Km)
+            is ICECar -> TypeColumns("ICE", car.fuelType.name, car.tankCapacityLitres, car.consumptionLitresPer100Km)
+            is FCEVCar -> TypeColumns("FCEV", null, car.tankCapacityKg, car.consumptionKgPer100Km)
+        }
+        return queryCarOrConflict(
+            INSERT_CAR,
+            columns.type, car.ownerId, car.brand, car.licensePlate, car.mileage,
+            car.status.name, car.rate, car.location.latitude, car.location.longitude,
+            car.doors, car.bodyStyle.name, car.modelYear, car.power,
+            car.transmission.name, car.color,
+            columns.fuelType, columns.capacity, columns.consumption,
+        ) ?: error("Insert returned no row")
+    }
+
     private fun ResultSet.toCar(): Car {
         val id = getInt("id")
+        val ownerId = getInt("owner_id")
         val brand = getString("brand")
         val licensePlate = getString("license_plate")
         val mileage = getInt("mileage")
@@ -34,10 +62,31 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
         val capacity = getDouble("capacity")
         val consumption = getDouble("consumption")
         return when (val type = getString("type")) {
-            "BEV" -> BEVCar(id, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption)
-            "ICE" -> ICECar(id, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, FuelType.valueOf(getString("fuel_type")), capacity, consumption)
-            "FCEV" -> FCEVCar(id, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption)
+            "BEV" -> BEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption)
+            "ICE" -> ICECar(id,ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, FuelType.valueOf(getString("fuel_type")), capacity, consumption)
+            "FCEV" -> FCEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption)
             else -> error("Unknown car type $type")
         }
     }
+
+    // The unique index on license_plate decides, so two requests at once can't both win.
+    private fun queryCarOrConflict(sql: String, vararg parameters: Any?): Car? = try {
+        queryCar(sql, *parameters)
+    } catch (e: SQLException) {
+        if (e.sqlState == "23505") throw LicensePlateTakenException() else throw e
+    }
+
+    private fun queryCar(sql: String, vararg parameters: Any?): Car? = dataSource.connection.use { connection ->
+        connection.prepareStatement(sql).use { statement ->
+            parameters.forEachIndexed { index, parameter -> statement.setObject(index + 1, parameter) }
+            statement.executeQuery().use { rows -> if (rows.next()) rows.toCar() else null }
+        }
+    }
 }
+
+private data class TypeColumns(
+    val type: String,
+    val fuelType: String?,
+    val capacity: Double,
+    val consumption: Double,
+)
