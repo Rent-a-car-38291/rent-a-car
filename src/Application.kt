@@ -21,8 +21,8 @@ fun Application.module() {
     configureRouting()
     val dataSource = connectDatabase()
     val users = UserRepository(dataSource)
-    configureCars(PostgresCarRepository(dataSource))
     configureSecurity(users)
+    configureCars(PostgresCarRepository(dataSource))
     configureAccounts(users)
     configureOrganizations(OrganizationRepository(dataSource))
 }

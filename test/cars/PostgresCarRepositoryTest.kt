@@ -47,4 +47,15 @@ class PostgresCarRepositoryTest {
 
         assertEquals(before, repository.allCars().size)
     }
+
+    @Test
+    fun AddingACarWithATakenLicensePlateThrows() {
+        val seeded = repository.allCars().first { it is ICECar }
+        val duplicate = AddCarRequest(
+            CarType.ICE, "Copy", seeded.licensePlate, 1, 1.0, Location(1.0, 2.0), 4, seeded.bodyStyle, 2020, 1, seeded.transmission, "x",
+            fuelType = FuelType.Petrol, capacity = 1.0, consumption = 1.0,
+        ).toCar(seeded.ownerId)
+
+        assertFailsWith<LicensePlateTakenException> { repository.addCar(duplicate) }
+    }
 }
