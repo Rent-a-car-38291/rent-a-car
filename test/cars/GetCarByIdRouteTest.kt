@@ -36,6 +36,16 @@ class GetCarByIdRouteTest {
         }
 
         override fun getCarById(id: Int): Car? = cars.find { it.id == id }
+
+        override fun deleteCarById(carId: Int, ownerId: Int): Boolean {
+            val index = cars.indexOfFirst { it.id == carId && it.ownerId == ownerId }
+            return if (index != -1) {
+                cars.removeAt(index)
+                true
+            } else {
+                false
+            }
+        }
     }
 
     private suspend fun HttpClient.signUpAndGetToken(): String {
