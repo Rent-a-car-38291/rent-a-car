@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Rent my car API
   version: 0.1.0
-  description: Cars and accounts are stored in PostgreSQL. Login tokens are kept in memory, so everyone logs in again after a restart.
+  description: Cars, accounts and organizations are stored in PostgreSQL. Login tokens are kept in memory, so everyone logs in again after a restart.
 paths:
   /cars:
     get:
@@ -172,6 +172,74 @@ paths:
           description: Someone else's account, or the current password is wrong
         "404":
           description: Unknown id
+  /organizations:
+    post:
+      tags: [Organizations]
+      summary: Create an organization
+      description: The logged-in user becomes its admin.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationRequest"
+      responses:
+        "201":
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+        "400":
+          description: Empty name
+        "401":
+          description: Missing or invalid token
+  /organizations/{id}/invites:
+    post:
+      tags: [Organizations]
+      summary: Create an invite code (admin only)
+      description: The code works once and expires after 7 days.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "201":
+          description: Invite created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteResponse"
+        "400":
+          description: Non-numeric id
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Not an admin of this organization
+        "404":
+          description: Unknown organization
+  /invites/{code}/accept:
+    post:
+      tags: [Organizations]
+      summary: Join an organization with an invite code
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Joined as MEMBER
+        "401":
+          description: Missing or invalid token
+        "404":
+          description: Unknown, used or expired code
+        "409":
+          description: Already a member
 components:
   parameters:
     id:
@@ -302,6 +370,22 @@ components:
       properties:
         latitude: { type: number, example: 52.3676 }
         longitude: { type: number, example: 4.9041 }
+    CreateOrganizationRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, example: Rent Co }
+    Organization:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer, example: 1 }
+        name: { type: string, example: Rent Co }
+    InviteResponse:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, example: 5c42d744-8a0e-4d6f-9a52-0c3f1e2b7d10 }
     CarRequest:
       type: object
       required: [type, brand, licensePlate, mileage, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption]
