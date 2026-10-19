@@ -8,4 +8,6 @@ interface CarRepository {
     fun findCar(id: Int): Car?
     fun addCar(car: Car): Car
     fun updateCar(car: Car): Car?
+    // false when the car doesn't exist (anymore).
+    fun deleteCar(id: Int): Boolean
 }

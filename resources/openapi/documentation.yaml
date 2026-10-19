@@ -74,6 +74,24 @@ paths:
           description: Unknown id
         "409":
           description: Another car already has this license plate
+    delete:
+      tags: [Cars]
+      summary: Remove your own car
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: Car removed
+        "400":
+          description: Non-numeric id
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's car
+        "404":
+          description: Unknown id
   /accounts:
     post:
       tags: [Accounts]

@@ -16,4 +16,6 @@ class InMemoryCarRepository : CarRepository {
         if (cars.any { it.id != car.id && it.licensePlate == car.licensePlate }) throw LicensePlateTakenException()
         return findCar(car.id)?.let { cars[cars.indexOf(it)] = car; car }
     }
+
+    override fun deleteCar(id: Int): Boolean = cars.removeIf { it.id == id }
 }

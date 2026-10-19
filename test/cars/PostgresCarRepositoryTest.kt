@@ -102,4 +102,18 @@ class PostgresCarRepositoryTest {
             repository.updateCar(request.copy(licensePlate = other.licensePlate).toCar(seededIce.ownerId, seededIce.id))
         }
     }
+
+    @Test
+    fun DeleteRemovesOnlyThatCar() {
+        val seeded = repository.allCars().first { it is ICECar }
+        val copy = repository.addCar(AddCarRequest(
+            CarType.ICE, "Copy", "DEL-1", 1, 1.0, Location(1.0, 2.0), 4, seeded.bodyStyle, 2020, 1, seeded.transmission, "x",
+            fuelType = FuelType.Petrol, capacity = 1.0, consumption = 1.0,
+        ).toCar(seeded.ownerId))
+
+        assertTrue(repository.deleteCar(copy.id))
+        assertNull(repository.findCar(copy.id))
+        assertNotNull(repository.findCar(seeded.id))
+        assertFalse(repository.deleteCar(copy.id))
+    }
 }

@@ -57,6 +57,18 @@ fun Application.configureCars(repository: CarRepository) {
                     }
                 }
             }
+
+            delete("/cars/{id}") {
+                val id = call.parameters.getOrFail<Int>("id")
+                val existing = repository.findCar(id)
+                when {
+                    existing == null -> call.respond(HttpStatusCode.NotFound)
+                    existing.ownerId != call.principal<User>()!!.id -> call.respond(HttpStatusCode.Forbidden)
+                    // false when the car was deleted meanwhile
+                    repository.deleteCar(id) -> call.respond(HttpStatusCode.NoContent)
+                    else -> call.respond(HttpStatusCode.NotFound)
+                }
+            }
         }
     }
 }
