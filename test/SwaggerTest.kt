@@ -15,6 +15,7 @@ class SwaggerTest {
         assertEquals(HttpStatusCode.OK, client.get("/swagger").status)
         assertTrue(client.get("/swagger/documentation.yaml").bodyAsText().contains("/cars:"))
         assertTrue(client.get("/swagger/documentation.yaml").bodyAsText().contains("/cars/{id}:"))
+        assertTrue(client.get("/swagger/documentation.yaml").bodyAsText().contains("/invites/{code}/accept:"))
         assertTrue(client.get("/swagger/documentation.yaml").bodyAsText().contains("/organizations:"))
     }
 
