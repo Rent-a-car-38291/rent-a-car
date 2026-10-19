@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 @SerialName("ICE")
 class ICECar (
     override val id: Int,
+    override val ownerId: Int,
     override val brand: String,
     override val licensePlate: String,
     override var mileage: Int,
