@@ -32,6 +32,8 @@ class PostCarRoutesTest {
             if (cars.any { it.licensePlate == car.licensePlate }) throw LicensePlateTakenException()
             return car.also(cars::add)
         }
+
+        override fun getCarById(id: Int): Car? = cars.find { it.id == id }
     }
 
     private fun carRequest(
