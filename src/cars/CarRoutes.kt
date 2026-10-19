@@ -31,6 +31,32 @@ fun Application.configureCars(repository: CarRepository) {
                     call.respond(HttpStatusCode.Conflict)
                 }
             }
+
+            get("/cars/{id}") {
+                val id = call.parameters["id"]
+
+                if (id == null) {
+                    call.respond(HttpStatusCode.BadRequest, "ID is missing")
+                    return@get
+                }
+
+                // Check if ID is numeric value
+                val carId = id.toIntOrNull()
+                if (carId == null) {
+                    call.respond(HttpStatusCode.BadRequest, "ID must be of numeric value")
+                    return@get
+                }
+
+                // Get car from database
+                val car = repository.getCarById(carId)
+                if (car == null) {
+                    call.respond(HttpStatusCode.NotFound, "Car with ID $id not found")
+                    return@get
+                }
+
+                // Return JSON response
+                call.respond(car)
+            }
         }
     }
 }
