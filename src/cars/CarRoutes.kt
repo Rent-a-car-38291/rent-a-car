@@ -12,7 +12,8 @@ import io.ktor.server.routing.*
 fun Application.configureCars(repository: CarRepository) {
     routing {
         get("/cars") {
-            call.respond(repository.allCars())
+            val cars = filterCars(repository.allCars(), call.request.queryParameters)
+            if (cars == null) call.respond(HttpStatusCode.BadRequest) else call.respond(cars)
         }
 
         authenticate {
