@@ -24,17 +24,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.*
 
 class PostCarRoutesTest {
-    private class InMemoryCarRepository : CarRepository {
-        val cars = mutableListOf<Car>()
-
-        override fun allCars(): List<Car> = cars.toList()
-
-        override fun addCar(car: Car): Car {
-            if (cars.any { it.licensePlate == car.licensePlate }) throw LicensePlateTakenException()
-            return car.also(cars::add)
-        }
-    }
-
     private fun carRequest(
         type: String,
         licensePlate: String,
