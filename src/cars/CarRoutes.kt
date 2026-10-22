@@ -9,12 +9,27 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.util.getOrFail
+import java.math.BigDecimal
+import java.math.RoundingMode
+
+private fun Double.roundTo(decimals: Int) = BigDecimal(this).setScale(decimals, RoundingMode.HALF_UP).toDouble()
 
 fun Application.configureCars(repository: CarRepository) {
     routing {
         get("/cars") {
             val cars = filterCars(repository.allCars(), call.request.queryParameters)
             if (cars == null) call.respond(HttpStatusCode.BadRequest) else call.respond(cars)
+        }
+
+        get("/cars/{id}/cost-per-km") {
+            val id = call.parameters["id"]?.toIntOrNull()
+            if (id == null) {
+                call.respond(HttpStatusCode.BadRequest)
+                return@get
+            }
+            val car = repository.findCar(id)
+            if (car == null) call.respond(HttpStatusCode.NotFound)
+            else call.respond(CostPerKmResponse(id, car.costPerKm(EnergyPrices.STANDARD).roundTo(4)))
         }
 
         authenticate {
