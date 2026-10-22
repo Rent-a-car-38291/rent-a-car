@@ -23,8 +23,10 @@ else
       Route --> Client : 404 Not Found
     else reservation.userId != user.id
       Route --> Client : 403 Forbidden
-    else a missing or non-integer field, a negative number\nor distanceKm above 10000
+    else a missing or non-integer field, a negative number,\ndistanceKm 0 or above 10000
       Route --> Client : 400 Bad Request
+    else reservation.date is after today
+      Route --> Client : 409 Conflict
     else
       Route -> Route : score = calculateScore(...)\npoints = bonusPoints(distanceKm, score)
       Route -> Repo : record(id, user.id, distanceKm, score, points)

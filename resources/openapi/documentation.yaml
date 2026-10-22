@@ -129,8 +129,8 @@ paths:
       tags: [Trips]
       summary: Record the trip of a reservation and award bonus points
       description: |
-        Only the renter of the reservation, once per reservation. The app sends what it measured; the server calculates the score and the points.
-        The score is 100 minus 5 for every hard acceleration or hard brake per 100 km, never below 0 (a trip of 0 km scores 0). The points are distanceKm * score / 100, rounded down, and are added to the renter's bonusPoints.
+        Only the renter of the reservation, once per reservation, and not before the date of the reservation. The app sends what it measured; the server calculates the score and the points.
+        The score is 100 minus 5 for every hard acceleration or hard brake per 100 km, never below 0. The points are distanceKm * score / 100, rounded down, and are added to the renter's bonusPoints.
       security:
         - bearerAuth: []
       parameters:
@@ -149,7 +149,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/TripResponse"
         "400":
-          description: Non-numeric id, a missing or non-integer field, a negative number, or more than 10000 km
+          description: Non-numeric id, a missing or non-integer field, a negative number, 0 km, or more than 10000 km
         "401":
           description: Missing or invalid token
         "403":
@@ -157,7 +157,7 @@ paths:
         "404":
           description: Unknown reservation
         "409":
-          description: The reservation already has a trip
+          description: The reservation already has a trip, or its date has not come yet
   /cars/{id}/availability:
     get:
       tags: [Reservations]
@@ -676,7 +676,7 @@ components:
       type: object
       required: [distanceKm, hardAccelerations, hardBrakes]
       properties:
-        distanceKm: { type: integer, minimum: 0, maximum: 10000, example: 100 }
+        distanceKm: { type: integer, minimum: 1, maximum: 10000, example: 100 }
         hardAccelerations: { type: integer, minimum: 0, example: 2 }
         hardBrakes: { type: integer, minimum: 0, example: 3 }
     Trip:

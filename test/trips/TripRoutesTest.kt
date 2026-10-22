@@ -5,6 +5,8 @@ import com.example.cars.CarStatus
 import com.example.cars.PostgresCarRepository
 import com.example.database.TestDatabase
 import com.example.database.useTestDatabase
+import com.example.reservations.Daypart
+import com.example.reservations.ZONE
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
@@ -23,6 +25,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.*
 import org.jetbrains.amper.ktor.module
+import java.time.LocalDate
 import kotlin.test.*
 
 class TripRoutesTest {
@@ -52,13 +55,15 @@ class TripRoutesTest {
         return Renter(id, Json.parseToJsonElement(login.bodyAsText()).jsonObject["token"]!!.jsonPrimitive.content)
     }
 
-    // Reserves a daypart of the car (a new date each time) and returns the reservation id.
-    private var day = 0
-    private suspend fun HttpClient.reserve(renter: Renter): Int {
+    // Reserves a daypart of the car and returns the reservation id. A trip only counts once the day has come,
+    // so the default is today, with a new daypart each time (a test makes at most three).
+    private var reservations = 0
+    private suspend fun HttpClient.reserve(renter: Renter, date: String = LocalDate.now(ZONE).toString()): Int {
+        val daypart = Daypart.entries[reservations++ % Daypart.entries.size]
         val response = post("/cars/$car/reservations") {
             bearerAuth(renter.token)
             contentType(ContentType.Application.Json)
-            setBody("""{"date":"2031-01-${"%02d".format(++day)}","daypart":"MORNING"}""")
+            setBody("""{"date":"$date","daypart":"$daypart"}""")
         }
         assertEquals(HttpStatusCode.Created, response.status)
         return Json.parseToJsonElement(response.bodyAsText()).jsonObject["id"]!!.jsonPrimitive.int
@@ -128,6 +133,7 @@ class TripRoutesTest {
         val reservation = client.reserve(jan)
 
         assertEquals(HttpStatusCode.BadRequest, client.trip(reservation, trip(-1), jan.token).status)
+        assertEquals(HttpStatusCode.BadRequest, client.trip(reservation, trip(0), jan.token).status)
         assertEquals(HttpStatusCode.BadRequest, client.trip(reservation, trip(10, accelerations = -1), jan.token).status)
         assertEquals(HttpStatusCode.BadRequest, client.trip(reservation, trip(10, brakes = -1), jan.token).status)
         assertEquals(HttpStatusCode.BadRequest, client.trip(reservation, trip(MAX_TRIP_KM + 1), jan.token).status)
@@ -136,6 +142,25 @@ class TripRoutesTest {
         assertEquals(HttpStatusCode.BadRequest, client.trip("abc", trip(10), jan.token).status)
         assertEquals(0, client.bonusPoints(jan))
         assertEquals(HttpStatusCode.Created, client.trip(reservation, trip(10), jan.token).status)
+    }
+
+    @Test
+    fun TheLongestTripEarnsItsPoints() = withApp {
+        val jan = client.signUp("jan@example.com")
+
+        val response = client.trip(client.reserve(jan), trip(MAX_TRIP_KM), jan.token)
+
+        assertEquals(HttpStatusCode.Created, response.status)
+        assertEquals(MAX_TRIP_KM, Json.parseToJsonElement(response.bodyAsText()).jsonObject["bonusPoints"]!!.jsonPrimitive.int)
+    }
+
+    @Test
+    fun AReservationInTheFutureGives409AndNoPoints() = withApp {
+        val jan = client.signUp("jan@example.com")
+        val reservation = client.reserve(jan, "2031-01-01")
+
+        assertEquals(HttpStatusCode.Conflict, client.trip(reservation, trip(10), jan.token).status)
+        assertEquals(0, client.bonusPoints(jan))
     }
 
     @Test

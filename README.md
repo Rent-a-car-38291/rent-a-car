@@ -70,7 +70,7 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 
 A car is rented per daypart: `MORNING` (06:00-12:00), `AFTERNOON` (12:00-18:00) or `EVENING` (18:00-24:00), once per car and date. Pass the `date` (`2026-10-12`) and `daypart` to `POST /cars/{id}/reservations`; `GET /cars/{id}/availability?date=2026-10-12` lists what is still free. A car in `Maintenance` can't be reserved. There is no `Rented` status.
 
-After driving, the renter sends the trip of their reservation to `POST /reservations/{id}/trip` with `distanceKm`, `hardAccelerations` and `hardBrakes` as the app measured them, once per reservation. The server calculates the `score` (100, minus 5 for every hard acceleration or brake per 100 km, never below 0) and awards `distanceKm * score / 100` points (rounded down) to the renter's `bonusPoints`, which accounts show.
+After driving, the renter sends the trip of their reservation to `POST /reservations/{id}/trip` with `distanceKm`, `hardAccelerations` and `hardBrakes` as the app measured them, once per reservation and not before its date. The server calculates the `score` (100, minus 5 for every hard acceleration or brake per 100 km, never below 0) and awards `distanceKm * score / 100` points (rounded down) to the renter's `bonusPoints`, which accounts show.
 
 A password needs 8 to 128 characters, and the email address must be unused. Everything under `/accounts/{id}` and `/logout` needs a login and only works on your own account. Routes that need a login take the token from `POST /login` in an `Authorization: Bearer <token>` header. Each endpoint has a [sequence diagram](docs/diagrams) with every status code.
 
