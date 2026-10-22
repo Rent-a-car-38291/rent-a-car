@@ -75,7 +75,7 @@ fun Application.configureCars(repository: CarRepository) {
                     else -> {
                         val request = call.receive<AddCarRequest>()
                         // toCar rejects invalid fields with an IllegalArgumentException.
-                        val car = runCatching { request.toCar(existing.ownerId, id) }.getOrNull()
+                        val car = runCatching { request.toCar(existing.ownerId, id, existing) }.getOrNull()
                         if (car == null || request.type != existing.type) {
                             call.respond(HttpStatusCode.BadRequest)
                             return@put

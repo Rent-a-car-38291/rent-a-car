@@ -68,13 +68,17 @@ data class AddCarRequest(
     val fuelType: FuelType? = null,      // ICE only
     val capacity: Double? = null,
     val consumption: Double? = null,
-    // optional, 0 when left out
-    val purchasePrice: Double = 0.0,
-    val insurancePerYear: Double = 0.0,
-    val roadTaxPerYear: Double = 0.0,
-    val maintenancePerYear: Double = 0.0,
+    // optional: 0 for a new car, and an update that leaves one out keeps the car's current value
+    val purchasePrice: Double? = null,
+    val insurancePerYear: Double? = null,
+    val roadTaxPerYear: Double? = null,
+    val maintenancePerYear: Double? = null,
 ) {
-    fun toCar(ownerId: Int, id: Int = 0): Car {
+    fun toCar(ownerId: Int, id: Int = 0, existing: Car? = null): Car {
+        val purchasePrice = purchasePrice ?: existing?.purchasePrice ?: 0.0
+        val insurancePerYear = insurancePerYear ?: existing?.insurancePerYear ?: 0.0
+        val roadTaxPerYear = roadTaxPerYear ?: existing?.roadTaxPerYear ?: 0.0
+        val maintenancePerYear = maintenancePerYear ?: existing?.maintenancePerYear ?: 0.0
         require(mileage >= 0) { "mileage must be >= 0" }
         require(listOf(purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear).all { it in 0.0..MAX_AMOUNT }) { "amounts must be between 0 and $MAX_AMOUNT" }
         require(rate in 0.0..999_999.99) { "rate must be between 0 and 999999.99" } // the column is numeric(8, 2)
