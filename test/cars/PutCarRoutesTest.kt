@@ -70,7 +70,7 @@ class PutCarRoutesTest {
         repository.cars += AddCarRequest(
             CarType.BEV, "Old Motors", "OLD-1", 100, 40.0, Location(1.0, 2.0), 4, BodyStyle.Sedan, 2020, 100,
             Transmission.Manual, "Red", capacity = 50.0, consumption = 15.0,
-        ).toCar(ownerId, 1).also { it.status = CarStatus.Rented }
+        ).toCar(ownerId, 1).also { it.status = CarStatus.Maintenance }
         return client to token
     }
 
@@ -85,7 +85,7 @@ class PutCarRoutesTest {
         assertEquals(65.0, body["rate"]!!.jsonPrimitive.content.toDouble())
         assertEquals("EV-100", body["licensePlate"]!!.jsonPrimitive.content)
         assertEquals(repository.cars.single().ownerId, body["ownerId"]!!.jsonPrimitive.int)
-        assertEquals(CarStatus.Rented.name, body["status"]!!.jsonPrimitive.content)
+        assertEquals(CarStatus.Maintenance.name, body["status"]!!.jsonPrimitive.content)
         assertEquals(6000, repository.cars.single().mileage)
     }
 

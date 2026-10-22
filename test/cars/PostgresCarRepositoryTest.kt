@@ -137,4 +137,14 @@ class PostgresCarRepositoryTest {
         assertTrue(upgraded.allCars().isNotEmpty())
         assertTrue(upgraded.allCars().all { it.purchasePrice == 0.0 && it.maintenancePerYear == 0.0 })
     }
+
+    @Test
+    fun CarsLeftRentedByAnOlderVersionBecomeAvailable() {
+        val id = repository.allCars().first { it.status == CarStatus.Available }.id
+        TestDatabase.dataSource.connection.use { it.createStatement().execute("UPDATE cars SET status = 'Rented' WHERE id = $id") }
+
+        val reopened = PostgresCarRepository(TestDatabase.dataSource)
+
+        assertEquals(CarStatus.Available, assertNotNull(reopened.findCar(id)).status)
+    }
 }
