@@ -12,7 +12,7 @@ import io.ktor.server.util.getOrFail
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-private fun Double.roundTo(decimals: Int) = BigDecimal(this).setScale(decimals, RoundingMode.HALF_UP).toDouble()
+private fun Double.roundTo(decimals: Int) = BigDecimal.valueOf(this).setScale(decimals, RoundingMode.HALF_UP).toDouble()
 
 fun Application.configureCars(repository: CarRepository) {
     routing {
