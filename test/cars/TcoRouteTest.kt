@@ -11,6 +11,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
@@ -100,5 +101,63 @@ class TcoRouteTest {
             assertEquals(HttpStatusCode.BadRequest, tco("/cars/7/tco?kmPerYear=$km", owner).status, "kmPerYear=$km")
         }
         assertEquals(HttpStatusCode.BadRequest, tco("/cars/abc/tco", owner).status)
+    }
+
+    private fun body(rate: Double = 40.0, extra: String = "") = """{
+        "type":"BEV","brand":"Test Motors","licensePlate":"EV-100","mileage":5000,"rate":$rate,
+        "location":{"latitude":52.3676,"longitude":4.9041},"doors":4,"bodyStyle":"Sedan","modelYear":2024,
+        "power":150,"transmission":"Automatic","color":"Blue","capacity":75.0,"consumption":16.2$extra
+    }"""
+
+    private suspend fun ApplicationTestBuilder.send(method: io.ktor.http.HttpMethod, path: String, token: String, json: String) =
+        client.request(path) {
+            this.method = method
+            bearerAuth(token)
+            contentType(ContentType.Application.Json)
+            setBody(json)
+        }
+
+    @Test
+    fun PostStoresTheCostFieldsAndAZeroCarStillShowsThem() = withApp { owner, _ ->
+        val withCosts = send(io.ktor.http.HttpMethod.Post, "/cars", owner, body(extra = ""","purchasePrice":25000.5,"insurancePerYear":600,"roadTaxPerYear":120.25,"maintenancePerYear":450"""))
+        assertEquals(HttpStatusCode.Created, withCosts.status)
+        val json = Json.parseToJsonElement(withCosts.bodyAsText()).jsonObject
+        assertEquals(25000.5, json["purchasePrice"]!!.jsonPrimitive.double)
+        assertEquals(120.25, json["roadTaxPerYear"]!!.jsonPrimitive.double)
+
+        val withoutCosts = Json.parseToJsonElement(send(io.ktor.http.HttpMethod.Post, "/cars", owner, body().replace("EV-100", "EV-101")).bodyAsText()).jsonObject
+        assertEquals(0.0, withoutCosts["purchasePrice"]!!.jsonPrimitive.double) // a default value is still in the JSON
+        assertEquals(0.0, withoutCosts["maintenancePerYear"]!!.jsonPrimitive.double)
+    }
+
+    @Test
+    fun NegativeCostFieldReturns400() = withApp { owner, _ ->
+        assertEquals(HttpStatusCode.BadRequest, send(io.ktor.http.HttpMethod.Post, "/cars", owner, body(extra = ""","purchasePrice":-1""")).status)
+    }
+
+    @Test
+    fun PutWithoutCostFieldsKeepsThem() = withApp { owner, _ ->
+        // car 7 has purchasePrice 10000 and 500 + 200 + 300 of yearly costs
+        val response = send(io.ktor.http.HttpMethod.Put, "/cars/7", owner, body(rate = 41.0).replace("EV-100", "EV-1"))
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+        assertEquals(10_000.0, json["purchasePrice"]!!.jsonPrimitive.double)
+        assertEquals(300.0, json["maintenancePerYear"]!!.jsonPrimitive.double)
+
+        val changed = send(io.ktor.http.HttpMethod.Put, "/cars/7", owner, body(extra = ""","purchasePrice":0""").replace("EV-100", "EV-1"))
+        assertEquals(0.0, Json.parseToJsonElement(changed.bodyAsText()).jsonObject["purchasePrice"]!!.jsonPrimitive.double)
+    }
+
+    @Test
+    fun TcoIsRoundedToTwoDecimals() = withApp { owner, _ ->
+        // 2000 + 0.0525 * 12345 = 2648.1125
+        val json = Json.parseToJsonElement(tco("/cars/7/tco?kmPerYear=12345", owner).bodyAsText()).jsonObject
+        assertEquals(2648.11, json["tcoPerYear"]!!.jsonPrimitive.double, 1e-9)
+    }
+
+    @Test
+    fun KmPerYearBeyondIntReturns400() = withApp { owner, _ ->
+        assertEquals(HttpStatusCode.BadRequest, tco("/cars/7/tco?kmPerYear=99999999999", owner).status)
     }
 }
