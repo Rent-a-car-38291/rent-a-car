@@ -64,7 +64,6 @@ package com.example.cars <<Folder>> {
   }
   enum CarStatus {
     Available
-    Rented
     Maintenance
   }
   enum BodyStyle {

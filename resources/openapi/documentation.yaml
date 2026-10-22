@@ -94,6 +94,55 @@ paths:
           description: Someone else's car
         "404":
           description: Unknown id
+  /cars/{id}/reservations:
+    post:
+      tags: [Reservations]
+      summary: Reserve a car for a daypart
+      description: The logged-in user is the renter. A car is rented per daypart (MORNING 06:00-12:00, AFTERNOON 12:00-18:00, EVENING 18:00-24:00, local time), once per car, date and daypart. Today can be reserved, the past can't.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReserveRequest"
+      responses:
+        "201":
+          description: Reserved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "400":
+          description: Malformed body, a date in the past or not a date, an unknown daypart, or a non-numeric id
+        "401":
+          description: Missing or invalid token
+        "404":
+          description: Unknown car
+        "409":
+          description: That daypart is taken, or the car is in Maintenance
+  /cars/{id}/availability:
+    get:
+      tags: [Reservations]
+      summary: Free dayparts of a car on a date
+      description: Empty when the car is in Maintenance.
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - { name: date, in: query, required: true, description: ISO date, schema: { type: string, format: date, example: "2026-10-12" } }
+      responses:
+        "200":
+          description: The free dayparts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Availability"
+        "400":
+          description: Non-numeric id, or a missing or invalid date
+        "404":
+          description: Unknown car
   /cars/{id}:
     put:
       tags: [Cars]
@@ -458,7 +507,7 @@ components:
         brand: { type: string, example: Peugeot }
         licensePlate: { type: string, example: 85-GHB-2 }
         mileage: { type: integer, example: 217349 }
-        status: { type: string, enum: [Available, Rented, Maintenance] }
+        status: { type: string, enum: [Available, Maintenance] }
         rate: { type: number, example: 25.0 }
         location: { $ref: "#/components/schemas/Location" }
         doors: { type: integer, example: 5 }
@@ -484,7 +533,7 @@ components:
         brand: { type: string, example: "Tesla Model 3" }
         licensePlate: { type: string, example: K-123-BV }
         mileage: { type: integer, example: 48210 }
-        status: { type: string, enum: [Available, Rented, Maintenance] }
+        status: { type: string, enum: [Available, Maintenance] }
         rate: { type: number, example: 55.0 }
         location: { $ref: "#/components/schemas/Location" }
         doors: { type: integer, example: 4 }
@@ -509,7 +558,7 @@ components:
         brand: { type: string, example: "Toyota Mirai" }
         licensePlate: { type: string, example: XT-482-H }
         mileage: { type: integer, example: 32500 }
-        status: { type: string, enum: [Available, Rented, Maintenance] }
+        status: { type: string, enum: [Available, Maintenance] }
         rate: { type: number, example: 70.0 }
         location: { $ref: "#/components/schemas/Location" }
         doors: { type: integer, example: 4 }
@@ -573,6 +622,28 @@ components:
         userId: { type: integer, example: 2 }
         organizationId: { type: integer, example: 1 }
         role: { type: string, enum: [ADMIN, MEMBER] }
+    ReserveRequest:
+      type: object
+      required: [date, daypart]
+      properties:
+        date: { type: string, format: date, example: "2026-10-12" }
+        daypart: { type: string, enum: [MORNING, AFTERNOON, EVENING] }
+    Reservation:
+      type: object
+      required: [id, carId, userId, date, daypart]
+      properties:
+        id: { type: integer, example: 1 }
+        carId: { type: integer, example: 3 }
+        userId: { type: integer, example: 2 }
+        date: { type: string, format: date, example: "2026-10-12" }
+        daypart: { type: string, enum: [MORNING, AFTERNOON, EVENING] }
+    Availability:
+      type: object
+      required: [carId, date, freeDayparts]
+      properties:
+        carId: { type: integer, example: 3 }
+        date: { type: string, format: date, example: "2026-10-12" }
+        freeDayparts: { type: array, items: { type: string, enum: [MORNING, AFTERNOON, EVENING] } }
     CarRequest:
       type: object
       required: [type, brand, licensePlate, mileage, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption]
