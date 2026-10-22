@@ -9,6 +9,8 @@ import javax.sql.DataSource
 object TestDatabase {
     private val postgres: EmbeddedPostgres by lazy { EmbeddedPostgres.start() }
 
+    val imagesDirectory: java.nio.file.Path by lazy { java.nio.file.Files.createTempDirectory("rent-a-car-images").also { it.toFile().deleteOnExit() } }
+
     val dataSource: DataSource get() = postgres.postgresDatabase
 
     val config: ApplicationConfig
@@ -16,6 +18,7 @@ object TestDatabase {
             "database.url" to postgres.getJdbcUrl("postgres", "postgres"),
             "database.user" to "postgres",
             "database.password" to "",
+            "images.directory" to imagesDirectory.toString(),
         )
 }
 
