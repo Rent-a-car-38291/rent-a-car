@@ -48,7 +48,7 @@ class TcoRouteTest {
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users)
             configureAccounts(users, OrganizationRepository(TestDatabase.dataSource))
-            configureCars(repository)
+            configureCars(repository, OrganizationRepository(TestDatabase.dataSource))
         }
         val (ownerId, owner) = client.signUp("owner@example.com")
         val (_, other) = client.signUp("other@example.com")

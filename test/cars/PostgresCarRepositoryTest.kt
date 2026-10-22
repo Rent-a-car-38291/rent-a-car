@@ -1,6 +1,7 @@
 package com.example.cars
 
 import com.example.database.TestDatabase
+import com.example.organizations.OrganizationRepository
 import kotlin.test.*
 
 class PostgresCarRepositoryTest {
@@ -121,7 +122,7 @@ class PostgresCarRepositoryTest {
             assertEquals(450.0, found.maintenancePerYear)
             assertEquals(0.0, assertNotNull(repository.updateCar(request.copy(purchasePrice = 0.0).toCar(seeded.ownerId, added.id))).purchasePrice)
         } finally {
-            repository.deleteCarById(added.id, seeded.ownerId)
+            repository.deleteCarById(added.id)
         }
     }
 
@@ -146,5 +147,38 @@ class PostgresCarRepositoryTest {
         val reopened = PostgresCarRepository(TestDatabase.dataSource)
 
         assertEquals(CarStatus.Available, assertNotNull(reopened.findCar(id)).status)
+    }
+
+    @Test
+    fun ACarsTableWithoutOrganizationsIsUpgradedAndTakesOrganizationCars() {
+        TestDatabase.dataSource.connection.use {
+            it.createStatement().execute("ALTER TABLE cars DROP COLUMN organization_id")
+            it.createStatement().execute("ALTER TABLE cars ALTER COLUMN owner_id SET NOT NULL")
+        }
+
+        val upgraded = PostgresCarRepository(TestDatabase.dataSource)
+
+        val organization = OrganizationRepository(TestDatabase.dataSource).create("Upgrade Co", adminId = -1)
+        val template = upgraded.allCars().first { it is BEVCar }
+        val car = upgraded.addCar(
+            AddCarRequest(CarType.BEV, "Org Motors", "UPG-1", 1, 1.0, Location(1.0, 2.0), 4, template.bodyStyle, 2020, 1, template.transmission, "x", capacity = 1.0, consumption = 1.0)
+                .toCar(ownerId = null, organizationId = organization.id),
+        )
+        try {
+            assertEquals(organization.id, assertNotNull(upgraded.findCar(car.id)).organizationId)
+            assertNull(upgraded.findCar(car.id)!!.ownerId)
+        } finally {
+            upgraded.deleteCarById(car.id)
+            OrganizationRepository(TestDatabase.dataSource).clear()
+        }
+    }
+
+    @Test
+    fun ACarHasAnOwnerOrAnOrganizationButNotBothOrNeither() {
+        val template = repository.allCars().first { it is BEVCar }
+        val request = AddCarRequest(CarType.BEV, "Odd Motors", "ODD-1", 1, 1.0, Location(1.0, 2.0), 4, template.bodyStyle, 2020, 1, template.transmission, "x", capacity = 1.0, consumption = 1.0)
+
+        assertFails { repository.addCar(request.toCar(ownerId = null)) }
+        assertFails { repository.addCar(request.toCar(ownerId = -1, organizationId = 1)) }
     }
 }
