@@ -89,6 +89,7 @@ data class AddCarRequest(
         require(rate in 0.0..999_999.99) { "rate must be between 0 and 999999.99" } // the column is numeric(8, 2)
         val capacity = requireNotNull(capacity) { "capacity is required" }
         val consumption = requireNotNull(consumption) { "consumption is required" }
+        require(capacity >= 0 && consumption >= 0) { "capacity and consumption must be >= 0" } // a negative consumption would give a negative cost per km
         return when (type) {
             CarType.BEV -> BEVCar(
                 id = id,

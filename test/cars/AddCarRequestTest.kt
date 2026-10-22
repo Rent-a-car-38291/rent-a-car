@@ -48,6 +48,13 @@ class AddCarRequestTest {
     }
 
     @Test
+    fun CapacityAndConsumptionCannotBeNegative() {
+        assertFailsWith<IllegalArgumentException> { request().copy(capacity = -1.0).toCar(1) }
+        assertFailsWith<IllegalArgumentException> { request().copy(consumption = -0.1).toCar(1) }
+        assertEquals(0.0, (request().copy(capacity = 0.0, consumption = 0.0).toCar(1) as BEVCar).consumptionKwhPer100Km)
+    }
+
+    @Test
     fun MileageAndRateHaveBounds() {
         assertEquals(0, request().copy(mileage = 0).toCar(1).mileage)
         assertFailsWith<IllegalArgumentException> { request().copy(mileage = -1).toCar(1) }
