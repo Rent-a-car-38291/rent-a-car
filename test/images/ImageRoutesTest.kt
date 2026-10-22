@@ -146,4 +146,22 @@ class ImageRoutesTest {
         assertFalse(Files.exists(TestDatabase.imagesDirectory.resolve(name)))
         assertEquals(HttpStatusCode.NotFound, client.get(url).status)
     }
+
+    @Test
+    fun ABodyThatIsNotMultipartIsABadRequest() = withCar {
+        val response = client.post("/cars/$carId/images") {
+            bearerAuth(owner)
+            contentType(ContentType.Application.Json)
+            setBody("{}")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun ACarHoldsAtMostTenPhotos() = withCar {
+        repeat(MAX_IMAGES_PER_CAR) { assertEquals(HttpStatusCode.Created, upload(jpeg).status) }
+
+        assertEquals(HttpStatusCode.Conflict, upload(jpeg).status)
+    }
 }
