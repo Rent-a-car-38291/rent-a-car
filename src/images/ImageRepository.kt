@@ -70,5 +70,5 @@ class ImageRepository(dataSource: DataSource, private val directory: Path) {
 
     // Call after the car is deleted: the rows are gone with it, the files are not.
     // shortcut: files of a car removed by deleting its owner's account stay on disk, sweep them when disk space matters.
-    fun deleteFiles(images: List<Image>) = images.forEach { Files.deleteIfExists(directory.resolve(it.url.substringAfterLast('/'))) }
+    fun deleteFiles(images: List<Image>) = images.forEach { runCatching { Files.deleteIfExists(directory.resolve(it.url.substringAfterLast('/'))) } }
 }
