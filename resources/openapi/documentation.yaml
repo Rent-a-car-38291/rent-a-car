@@ -42,6 +42,38 @@ paths:
           description: Missing or invalid token
         "409":
           description: Another car already has this license plate
+  /cars/{id}:
+    put:
+      tags: [Cars]
+      summary: Update your own car
+      description: Same body as POST /cars. The owner and the status stay as they are, and the type can't change.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CarRequest"
+      responses:
+        "200":
+          description: Car updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Car"
+        "400":
+          description: Non-numeric id, invalid field, unknown field or a different type
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's car
+        "404":
+          description: Unknown id
+        "409":
+          description: Another car already has this license plate
   /accounts:
     post:
       tags: [Accounts]

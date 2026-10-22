@@ -23,29 +23,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.*
 
 class PostCarRoutesTest {
-    private class InMemoryCarRepository : CarRepository {
-        val cars = mutableListOf<Car>()
-
-        override fun allCars(): List<Car> = cars.toList()
-
-        override fun addCar(car: Car): Car {
-            if (cars.any { it.licensePlate == car.licensePlate }) throw LicensePlateTakenException()
-            return car.also(cars::add)
-        }
-
-        override fun getCarById(id: Int): Car? = cars.find { it.id == id }
-
-        override fun deleteCarById(carId: Int, ownerId: Int): Boolean {
-            val index = cars.indexOfFirst { it.id == carId && it.ownerId == ownerId }
-            return if (index != -1) {
-                cars.removeAt(index)
-                true
-            } else {
-                false
-            }
-        }
-    }
-
     private fun carRequest(
         type: String,
         licensePlate: String,
