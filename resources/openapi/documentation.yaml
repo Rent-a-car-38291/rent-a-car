@@ -69,6 +69,31 @@ paths:
           description: Non-numeric id
         "404":
           description: Unknown id
+  /cars/{id}/tco:
+    get:
+      tags: [Cars]
+      summary: Total cost of ownership per year
+      description: Owner only. Depreciation (the purchase price spread over 10 years) plus insurance, road tax, maintenance and the energy cost for kmPerYear at the standard prices, rounded to 2 decimals. kmPerYear is a whole number of km and defaults to 15000.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - { name: kmPerYear, in: query, description: Km driven per year, schema: { type: integer, minimum: 0, default: 15000, example: 12000 } }
+      responses:
+        "200":
+          description: The TCO per year
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tco"
+        "400":
+          description: Non-numeric id, or a negative or non-numeric kmPerYear
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's car
+        "404":
+          description: Unknown id
   /cars/{id}:
     put:
       tags: [Cars]
@@ -365,8 +390,6 @@ paths:
           description: The last admin can't leave
 components:
   parameters:
-components:
-  parameters:
     id:
       name: id
       in: path
@@ -447,6 +470,10 @@ components:
         fuelType: { type: string, enum: [Petrol, Diesel, LPG] }
         tankCapacityLitres: { type: number, example: 50.0 }
         consumptionLitresPer100Km: { type: number, example: 6.1 }
+        purchasePrice: { type: number, example: 25000.0, description: "EUR, 0 when not given" }
+        insurancePerYear: { type: number, example: 600.0, description: "EUR, 0 when not given" }
+        roadTaxPerYear: { type: number, example: 120.0, description: "EUR, 0 when not given" }
+        maintenancePerYear: { type: number, example: 450.0, description: "EUR, 0 when not given" }
     BEVCar:
       type: object
       required: [type, id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, batteryCapacityKwh, consumptionKwhPer100Km]
@@ -468,6 +495,10 @@ components:
         color: { type: string, example: White }
         batteryCapacityKwh: { type: number, example: 60.0 }
         consumptionKwhPer100Km: { type: number, example: 14.5 }
+        purchasePrice: { type: number, example: 25000.0, description: "EUR, 0 when not given" }
+        insurancePerYear: { type: number, example: 600.0, description: "EUR, 0 when not given" }
+        roadTaxPerYear: { type: number, example: 120.0, description: "EUR, 0 when not given" }
+        maintenancePerYear: { type: number, example: 450.0, description: "EUR, 0 when not given" }
     FCEVCar:
       type: object
       required: [type, id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, tankCapacityKg, consumptionKgPer100Km]
@@ -489,12 +520,24 @@ components:
         color: { type: string, example: Blue }
         tankCapacityKg: { type: number, example: 5.6 }
         consumptionKgPer100Km: { type: number, example: 0.76 }
+        purchasePrice: { type: number, example: 25000.0, description: "EUR, 0 when not given" }
+        insurancePerYear: { type: number, example: 600.0, description: "EUR, 0 when not given" }
+        roadTaxPerYear: { type: number, example: 120.0, description: "EUR, 0 when not given" }
+        maintenancePerYear: { type: number, example: 450.0, description: "EUR, 0 when not given" }
     CostPerKm:
       type: object
       required: [carId, costPerKm, currency]
       properties:
         carId: { type: integer, example: 1 }
         costPerKm: { type: number, example: 0.0525 }
+        currency: { type: string, example: EUR }
+    Tco:
+      type: object
+      required: [carId, kmPerYear, tcoPerYear, currency]
+      properties:
+        carId: { type: integer, example: 1 }
+        kmPerYear: { type: integer, example: 12000 }
+        tcoPerYear: { type: number, example: 4200.0 }
         currency: { type: string, example: EUR }
     Location:
       type: object
@@ -549,3 +592,7 @@ components:
         fuelType: { type: string, enum: [Petrol, Diesel, LPG], description: Required for ICE }
         capacity: { type: number, example: 75.0, description: "Battery in kWh (BEV), tank in litres (ICE) or kg (FCEV)" }
         consumption: { type: number, example: 16.2, description: Per 100 km, in the unit of the capacity }
+        purchasePrice: { type: number, example: 25000.0, description: "EUR, 0 when left out" }
+        insurancePerYear: { type: number, example: 600.0, description: "EUR, 0 when left out" }
+        roadTaxPerYear: { type: number, example: 120.0, description: "EUR, 0 when left out" }
+        maintenancePerYear: { type: number, example: 450.0, description: "EUR, 0 when left out" }

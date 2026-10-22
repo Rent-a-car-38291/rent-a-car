@@ -1,0 +1,35 @@
+@startuml
+title GET /cars/{id}/tco?kmPerYear=12000
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "CarRoutes.kt" as Route
+participant "CarRepository" as Repo
+participant "Car\n(ICECar | BEVCar | FCEVCar)" as Car
+
+Client -> Auth : GET /cars/{id}/tco
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt id is not a number
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Repo : findCar(id)
+    Repo --> Route : Car?
+    alt unknown id
+      Route --> Client : 404 Not Found
+    else car.ownerId != user.id
+      Route --> Client : 403 Forbidden
+    else kmPerYear is negative or not a whole number
+      Route --> Client : 400 Bad Request
+    else
+      Route -> Car : tcoPerYear(kmPerYear, EnergyPrices.STANDARD)
+      Car --> Route : purchasePrice / 10 + insurance + road tax\n+ maintenance + costPerKm * kmPerYear
+      Route --> Client : 200 OK\n{carId, kmPerYear, tcoPerYear, currency: "EUR"}
+    end
+  end
+end
+
+@enduml

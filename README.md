@@ -57,6 +57,7 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 | -------- | ------------------------- | ------------------------------ | ------- | --------------------------------- |
 | `GET`    | `/cars`                   | List all cars                  | `200`   |                                   |
 | `GET`    | `/cars/{id}/cost-per-km`  | Energy cost of one km          | `200`   | `400`, `404`                      |
+| `GET`    | `/cars/{id}/tco`          | Total cost of ownership a year | `200`   | `400`, `401`, `403`, `404`        |
 | `POST`   | `/accounts`               | Register an account            | `201`   | `400`, `409`                      |
 | `POST`   | `/login`                  | Get a token                    | `200`   | `401`                             |
 | `POST`   | `/logout`                 | Revoke the token you used      | `204`   | `401`                             |
