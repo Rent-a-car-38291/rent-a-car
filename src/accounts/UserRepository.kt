@@ -31,6 +31,7 @@ internal object Users : Table("users") {
     val name = text("name")
     val email = text("email")
     val passwordHash = text("password_hash")
+    val bonusPoints = integer("bonus_points").default(0)
     override val primaryKey = PrimaryKey(id)
 
     // One account per email address, ignoring case.
@@ -42,6 +43,8 @@ internal object Users : Table("users") {
 // ponytail: no migration tool (SchemaUtils.create only creates missing tables), add one (Flyway) when the schema has to change on a database that already has data.
 internal fun Database.createUsers() = transaction(this) {
     SchemaUtils.create(Users)
+    // SchemaUtils.create leaves an older table alone, so add the columns added later.
+    exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS bonus_points INTEGER NOT NULL DEFAULT 0")
     // Reserved owner for the sample fleet; its random password hash has no known password.
     // Checked first: a users table from the old SQL script has a GENERATED ALWAYS id, which refuses an explicit id even when the row exists.
     if (Users.selectAll().where { Users.id eq -1 }.empty()) {
@@ -54,7 +57,7 @@ internal fun Database.createUsers() = transaction(this) {
     }
 }
 
-private fun ResultRow.toUser() = User(this[Users.id], this[Users.name], this[Users.email], this[Users.passwordHash])
+private fun ResultRow.toUser() = User(this[Users.id], this[Users.name], this[Users.email], this[Users.passwordHash], this[Users.bonusPoints])
 
 class UserRepository(private val dataSource: DataSource) {
     private val db = Database.connect(dataSource)
