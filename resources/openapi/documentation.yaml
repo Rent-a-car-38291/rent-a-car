@@ -7,16 +7,25 @@ paths:
   /cars:
     get:
       tags: [Cars]
-      summary: List all cars
+      summary: List cars
+      description: The filters can be combined. With a distance filter the cars are sorted nearest first.
+      parameters:
+        - { name: type, in: query, schema: { type: string, enum: [BEV, ICE, FCEV] } }
+        - { name: maxRate, in: query, description: Highest rate, schema: { type: number, example: 40 } }
+        - { name: lat, in: query, description: Latitude (together with lon), schema: { type: number, example: 51.59 } }
+        - { name: lon, in: query, description: Longitude (together with lat), schema: { type: number, example: 4.78 } }
+        - { name: maxDistanceKm, in: query, description: Needs lat and lon, schema: { type: number, example: 5 } }
       responses:
         "200":
-          description: All cars
+          description: The matching cars
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/Car"
+        "400":
+          description: Unknown type, a non-numeric value, only one of lat and lon, or maxDistanceKm without lat and lon
     post:
       tags: [Cars]
       summary: Offer a car
