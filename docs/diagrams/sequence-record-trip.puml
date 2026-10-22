@@ -1,0 +1,45 @@
+@startuml
+title POST /reservations/{id}/trip
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "TripRoutes.kt" as Route
+participant "ReservationRepository" as Reservations
+participant "TripRepository" as Repo
+database "trips\nUNIQUE (reservation_id)" as Db
+
+Client -> Auth : POST /reservations/{id}/trip\n{distanceKm, hardAccelerations, hardBrakes}
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt id is not a number
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Reservations : find(id)
+    Reservations --> Route : Reservation?
+    alt unknown id
+      Route --> Client : 404 Not Found
+    else reservation.userId != user.id
+      Route --> Client : 403 Forbidden
+    else a missing or non-integer field, a negative number\nor distanceKm above 10000
+      Route --> Client : 400 Bad Request
+    else
+      Route -> Route : score = calculateScore(...)\npoints = bonusPoints(distanceKm, score)
+      Route -> Repo : record(id, user.id, distanceKm, score, points)
+      Repo -> Db : INSERT trip (one transaction with the\nUPDATE users SET bonus_points += points)
+      alt reservation already has a trip
+        Db --> Repo : conflict, nothing inserted
+        Repo --> Route : null
+        Route --> Client : 409 Conflict
+      else
+        Db --> Repo : trip, new total
+        Repo --> Route : Trip, bonusPoints
+        Route --> Client : 201 Created\n{trip, pointsAwarded, bonusPoints}
+      end
+    end
+  end
+end
+
+@enduml
