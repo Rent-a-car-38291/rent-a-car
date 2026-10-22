@@ -6,6 +6,7 @@ import com.example.accounts.configureSecurity
 import com.example.configureSerialization
 import com.example.database.TestDatabase
 import com.example.database.useTestDatabase
+import com.example.organizations.OrganizationRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
@@ -45,7 +46,7 @@ class GetCarByIdRouteTest {
             configureSerialization()
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users)
-            configureAccounts(users)
+            configureAccounts(users, OrganizationRepository(TestDatabase.dataSource))
             configureCars(repository)
         }
     }
