@@ -51,6 +51,24 @@ paths:
           description: Missing or invalid token
         "409":
           description: Another car already has this license plate
+  /cars/{id}/cost-per-km:
+    get:
+      tags: [Cars]
+      summary: Running cost per km
+      description: Energy cost of one km at the standard prices (petrol 2.10, diesel 1.90, LPG 1.00 per litre, electricity 0.35 per kWh, hydrogen 12.00 per kg), rounded to 4 decimals. No login needed.
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: The cost per km
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CostPerKm"
+        "400":
+          description: Non-numeric id
+        "404":
+          description: Unknown id
   /cars/{id}:
     put:
       tags: [Cars]
@@ -471,6 +489,13 @@ components:
         color: { type: string, example: Blue }
         tankCapacityKg: { type: number, example: 5.6 }
         consumptionKgPer100Km: { type: number, example: 0.76 }
+    CostPerKm:
+      type: object
+      required: [carId, costPerKm, currency]
+      properties:
+        carId: { type: integer, example: 1 }
+        costPerKm: { type: number, example: 0.0525 }
+        currency: { type: string, example: EUR }
     Location:
       type: object
       required: [latitude, longitude]
