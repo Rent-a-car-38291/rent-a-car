@@ -1,0 +1,61 @@
+@startuml
+title Organization cars: POST /cars with an organizationId, and DELETE /cars/{id}
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "CarRoutes.kt" as Route
+participant "OrganizationRepository" as Orgs
+participant "CarRepository" as Repo
+
+== POST /cars {"organizationId": 1, ...} ==
+Client -> Auth : POST /cars
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  Route -> Orgs : findMembership(organizationId, user.id)
+  Orgs --> Route : Membership?
+  alt not a member (or unknown organization)
+    Route --> Client : 403 Forbidden
+  else invalid or missing fields
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Repo : addCar(car with ownerId = null,\norganizationId = 1)
+    alt license plate taken
+      Repo --> Route : LicensePlateTakenException
+      Route --> Client : 409 Conflict
+    else
+      Repo --> Route : Car
+      Route --> Client : 201 Created\n{ownerId: null, organizationId: 1, ...}
+    end
+  end
+end
+
+== DELETE /cars/{id}  (PUT and GET /cars/{id}/tco use canManage: any member) ==
+Client -> Auth : DELETE /cars/{id}
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt id is not a number
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Repo : findCar(id)
+    Repo --> Route : Car?
+    alt unknown id
+      Route --> Client : 404 Not Found
+    else
+      Route -> Orgs : findMembership(car.organizationId, user.id)
+      Orgs --> Route : Membership?
+      alt private car and car.ownerId != user.id,\nor organization car and the user is not an ADMIN
+        Route --> Client : 403 Forbidden
+      else
+        Route -> Repo : deleteCarById(id)
+        Route --> Client : 204 No Content
+      end
+    end
+  end
+end
+
+@enduml

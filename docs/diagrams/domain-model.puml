@@ -156,8 +156,8 @@ Car <|-- ICECar
 Car <|-- BEVCar
 Car <|-- FCEVCar
 
-Car "0..*" --> "1" User : owner
-Car "0..*" --> "0..1" Organization
+Car "0..*" --> "0..1" User : owner (private car)
+Car "0..*" --> "0..1" Organization : (organization car)
 Car "1" *-- "0..*" Image
 Car ..> EnergyPrices
 Reservation "0..*" --> "1" Car
@@ -169,7 +169,7 @@ Invite "0..*" --> "1" Organization
 
 note "One reservation per car, date and daypart" as N1
 N1 .. Reservation
-note "Organizations and invites are extra (#35–#38)" as N2
+note "A car has an owner or an organization, never both.\nOrganizations and invites are extra (#35–#38)" as N2
 N2 .. Organization
 
 @enduml
