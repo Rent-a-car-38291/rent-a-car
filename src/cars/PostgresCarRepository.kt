@@ -2,6 +2,7 @@ package com.example.cars
 
 import com.example.accounts.Users
 import com.example.accounts.createUsers
+import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.and
@@ -20,12 +21,13 @@ import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import java.math.BigDecimal
 import javax.sql.DataSource
 
 private object Cars : Table("cars") {
     val id = integer("id").autoIncrement()
-    val ownerId = integer("owner_id").references(Users.id)
+    val ownerId = integer("owner_id").references(Users.id, onDelete = ReferenceOption.CASCADE)
     val type = text("type").check { it inList listOf("BEV", "ICE", "FCEV") }
     val brand = text("brand")
     val licensePlate = text("license_plate").uniqueIndex()
@@ -77,6 +79,8 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
         db.createUsers()
         transaction(db) {
             SchemaUtils.create(Cars)
+            // CREATE TABLE IF NOT EXISTS leaves an older table alone, so replace its foreign key: a deleted user takes the cars along.
+            exec("ALTER TABLE cars DROP CONSTRAINT IF EXISTS cars_owner_id_fkey, ADD CONSTRAINT cars_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE")
             if (Cars.selectAll().empty()) {
                 Cars.batchInsert(SEED_CARS) { row ->
                     this[Cars.ownerId] = -1
@@ -104,13 +108,45 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
 
     override fun allCars(): List<Car> = transaction(db) { Cars.selectAll().orderBy(Cars.id).map { it.toCar() } }
 
-    override fun addCar(car: Car): Car {
-        // Translate the Kotlin subclass into the values for the type-specific columns.
-        val columns = when (car) {
-            is BEVCar -> TypeColumns("BEV", null, car.batteryCapacityKwh, car.consumptionKwhPer100Km)
-            is ICECar -> TypeColumns("ICE", car.fuelType.name, car.tankCapacityLitres, car.consumptionLitresPer100Km)
-            is FCEVCar -> TypeColumns("FCEV", null, car.tankCapacityKg, car.consumptionKgPer100Km)
+    // Translate the Kotlin subclass into the values for the type-specific columns.
+    private fun typeColumns(car: Car) = when (car) {
+        is BEVCar -> TypeColumns("BEV", null, car.batteryCapacityKwh, car.consumptionKwhPer100Km)
+        is ICECar -> TypeColumns("ICE", car.fuelType.name, car.tankCapacityLitres, car.consumptionLitresPer100Km)
+        is FCEVCar -> TypeColumns("FCEV", null, car.tankCapacityKg, car.consumptionKgPer100Km)
+    }
+
+    // null when the car doesn't exist (anymore). The owner, type, id and status of a car never change here,
+    // so an update can't undo a change made meanwhile.
+    override fun updateCar(car: Car): Car? {
+        val columns = typeColumns(car)
+        return try {
+            transaction(db) {
+                val updated = Cars.update({ Cars.id eq car.id }) {
+                    it[brand] = car.brand
+                    it[licensePlate] = car.licensePlate
+                    it[mileage] = car.mileage
+                    it[rate] = BigDecimal.valueOf(car.rate)
+                    it[latitude] = car.location.latitude
+                    it[longitude] = car.location.longitude
+                    it[doors] = car.doors
+                    it[bodyStyle] = car.bodyStyle.name
+                    it[modelYear] = car.modelYear
+                    it[power] = car.power
+                    it[transmission] = car.transmission.name
+                    it[color] = car.color
+                    it[fuelType] = columns.fuelType
+                    it[capacity] = columns.capacity
+                    it[consumption] = columns.consumption
+                }
+                if (updated > 0) findCar(car.id) else null
+            }
+        } catch (e: ExposedSQLException) {
+            if (e.sqlState == "23505") throw LicensePlateTakenException() else throw e
         }
+    }
+
+    override fun addCar(car: Car): Car {
+        val columns = typeColumns(car)
         // The unique index on license_plate decides, so two requests at once can't both win.
         return try {
             transaction(db) {
@@ -165,7 +201,7 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
         }
     }
 
-    override fun getCarById(id: Int): Car? = transaction(db) { Cars.selectAll().where { Cars.id eq id }.singleOrNull()?.toCar() }
+    override fun findCar(id: Int): Car? = transaction(db) { Cars.selectAll().where { Cars.id eq id }.singleOrNull()?.toCar() }
 
     override fun deleteCarById(carId: Int, ownerId: Int): Boolean =
         transaction(db) { Cars.deleteWhere { (Cars.id eq carId) and (Cars.ownerId eq ownerId) } > 0 }

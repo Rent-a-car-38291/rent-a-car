@@ -9,6 +9,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -17,6 +18,7 @@ import org.jetbrains.exposed.v1.jdbc.insertIgnore
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -100,6 +102,36 @@ class OrganizationRepository(dataSource: DataSource) {
         Memberships.selectAll()
             .where { (Memberships.organizationId eq organizationId) and (Memberships.userId eq userId) }
             .singleOrNull()?.let { Membership(userId, organizationId, Role.valueOf(it[Memberships.role])) }
+    }
+
+    fun setRole(organizationId: Int, userId: Int, role: Role): ChangeResult = change(organizationId, userId, role)
+
+    fun remove(organizationId: Int, userId: Int): ChangeResult = change(organizationId, userId, null)
+
+    // shortcut: checked just before the account is deleted, so an admin demoted or an admin added in between isn't noticed, lock the rows when that matters.
+    fun isLastAdmin(userId: Int): Boolean = transaction(db) {
+        Memberships.selectAll().where { (Memberships.userId eq userId) and (Memberships.role eq Role.ADMIN.name) }.any { mine ->
+            Memberships.selectAll().where {
+                (Memberships.organizationId eq mine[Memberships.organizationId]) and (Memberships.role eq Role.ADMIN.name) and (Memberships.userId neq userId)
+            }.empty()
+        }
+    }
+
+    // Sets the role of a member, or removes the member when role is null. The row locks make two changes at once
+    // wait for each other, so an organization can't lose its last admin.
+    private fun change(organizationId: Int, userId: Int, role: Role?): ChangeResult = transaction(db) {
+        val roles = Memberships.selectAll().where { Memberships.organizationId eq organizationId }.forUpdate()
+            .associate { it[Memberships.userId] to Role.valueOf(it[Memberships.role]) }
+        val current = roles[userId]
+        when {
+            current == null -> ChangeResult.NOT_A_MEMBER
+            current == Role.ADMIN && role != Role.ADMIN && roles.values.count { it == Role.ADMIN } == 1 -> ChangeResult.LAST_ADMIN
+            else -> {
+                val member = (Memberships.organizationId eq organizationId) and (Memberships.userId eq userId)
+                if (role == null) Memberships.deleteWhere { member } else Memberships.update({ member }) { it[Memberships.role] = role.name }
+                ChangeResult.DONE
+            }
+        }
     }
 
     fun clear() {

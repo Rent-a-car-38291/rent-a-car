@@ -5,7 +5,9 @@ import com.example.database.TestDatabase
 import com.example.database.useTestDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
@@ -199,5 +201,185 @@ class OrganizationRoutesTest {
 
         assertEquals(HttpStatusCode.Conflict, client.accept(code, admin).status)
         assertEquals(HttpStatusCode.NoContent, client.accept(code, token).status)
+    }
+
+    private suspend fun HttpClient.setRole(organizationId: Int, userId: Int, role: String, token: String? = null) =
+        put("/organizations/$organizationId/members/$userId") {
+            token?.let { bearerAuth(it) }
+            contentType(ContentType.Application.Json)
+            setBody("""{"role":"$role"}""")
+        }
+
+    private suspend fun HttpClient.removeMember(organizationId: Int, userId: Int, token: String? = null) =
+        delete("/organizations/$organizationId/members/$userId") { token?.let { bearerAuth(it) } }
+
+    private data class Team(val organizationId: Int, val adminId: Int, val admin: String, val memberId: Int, val member: String, val outsiderId: Int, val outsider: String)
+
+    // An organization with an admin and a member, plus a user outside it.
+    private suspend fun HttpClient.team(): Team {
+        val (adminId, admin) = signUp()
+        val (memberId, member) = signUp("piet@example.com")
+        val (outsiderId, outsider) = signUp("kees@example.com")
+        val organizationId = createOrganization(admin)
+        accept(inviteCode(organizationId, admin), member)
+        return Team(organizationId, adminId, admin, memberId, member, outsiderId, outsider)
+    }
+
+    private fun role(organizationId: Int, userId: Int) =
+        OrganizationRepository(TestDatabase.dataSource).findMembership(organizationId, userId)?.role
+
+    @Test
+    fun AdminPromotesAMemberAndTheyCanThenInvite() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val t = client.team()
+
+        val response = client.setRole(t.organizationId, t.memberId, "ADMIN", t.admin)
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals("ADMIN", response.json()["role"]!!.jsonPrimitive.content)
+        assertEquals(HttpStatusCode.Created, client.invite(t.organizationId, t.member).status)
+    }
+
+    @Test
+    fun AdminDemotesAnotherAdmin() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val t = client.team()
+        client.setRole(t.organizationId, t.memberId, "ADMIN", t.admin)
+
+        assertEquals(HttpStatusCode.OK, client.setRole(t.organizationId, t.adminId, "MEMBER", t.member).status)
+        assertEquals(Role.MEMBER, role(t.organizationId, t.adminId))
+    }
+
+    @Test
+    fun SetRoleByAMemberOrOutsiderReturnsForbidden() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val t = client.team()
+
+        assertEquals(HttpStatusCode.Forbidden, client.setRole(t.organizationId, t.memberId, "ADMIN", t.member).status)
+        assertEquals(HttpStatusCode.Forbidden, client.setRole(t.organizationId, t.memberId, "ADMIN", t.outsider).status)
+        assertEquals(Role.MEMBER, role(t.organizationId, t.memberId))
+    }
+
+    @Test
+    fun SetRoleWithoutValidTokenReturnsUnauthorized() = testApplication {
+        useTestDatabase()
+        application { module() }
+
+        assertEquals(HttpStatusCode.Unauthorized, client.setRole(1, 1, "ADMIN").status)
+    }
+
+    @Test
+    fun SetRoleOfUnknownOrganizationOrMemberReturnsNotFound() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val t = client.team()
+
+        assertEquals(HttpStatusCode.NotFound, client.setRole(999, t.memberId, "ADMIN", t.admin).status)
+        assertEquals(HttpStatusCode.NotFound, client.setRole(t.organizationId, t.outsiderId, "ADMIN", t.admin).status)
+    }
+
+    @Test
+    fun SetRoleWithInvalidRoleReturnsBadRequest() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val t = client.team()
+
+        assertEquals(HttpStatusCode.BadRequest, client.setRole(t.organizationId, t.memberId, "OWNER", t.admin).status)
+    }
+
+    @Test
+    fun DemotingTheLastAdminReturnsConflict() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val t = client.team()
+
+        assertEquals(HttpStatusCode.Conflict, client.setRole(t.organizationId, t.adminId, "MEMBER", t.admin).status)
+        assertEquals(Role.ADMIN, role(t.organizationId, t.adminId))
+    }
+
+    @Test
+    fun AdminRemovesAMember() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val t = client.team()
+
+        assertEquals(HttpStatusCode.NoContent, client.removeMember(t.organizationId, t.memberId, t.admin).status)
+        assertNull(role(t.organizationId, t.memberId))
+    }
+
+    @Test
+    fun MemberLeaves() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val t = client.team()
+
+        assertEquals(HttpStatusCode.NoContent, client.removeMember(t.organizationId, t.memberId, t.member).status)
+        assertNull(role(t.organizationId, t.memberId))
+    }
+
+    @Test
+    fun MemberRemovingSomeoneElseReturnsForbidden() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val t = client.team()
+
+        assertEquals(HttpStatusCode.Forbidden, client.removeMember(t.organizationId, t.adminId, t.member).status)
+        assertEquals(HttpStatusCode.Forbidden, client.removeMember(t.organizationId, t.memberId, t.outsider).status)
+        assertEquals(Role.ADMIN, role(t.organizationId, t.adminId))
+    }
+
+    @Test
+    fun RemoveWithoutValidTokenReturnsUnauthorized() = testApplication {
+        useTestDatabase()
+        application { module() }
+
+        assertEquals(HttpStatusCode.Unauthorized, client.removeMember(1, 1).status)
+    }
+
+    @Test
+    fun RemoveUnknownOrganizationOrMemberReturnsNotFound() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val t = client.team()
+
+        assertEquals(HttpStatusCode.NotFound, client.removeMember(999, t.memberId, t.admin).status)
+        assertEquals(HttpStatusCode.NotFound, client.removeMember(t.organizationId, t.outsiderId, t.admin).status)
+        assertEquals(HttpStatusCode.NotFound, client.removeMember(t.organizationId, t.outsiderId, t.outsider).status)
+    }
+
+    @Test
+    fun TheLastAdminCantLeaveOrBeRemoved() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val t = client.team()
+
+        assertEquals(HttpStatusCode.Conflict, client.removeMember(t.organizationId, t.adminId, t.admin).status)
+        assertEquals(Role.ADMIN, role(t.organizationId, t.adminId))
+    }
+
+    @Test
+    fun AnAdminCanLeaveWhenAnotherAdminRemains() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val t = client.team()
+        client.setRole(t.organizationId, t.memberId, "ADMIN", t.admin)
+
+        assertEquals(HttpStatusCode.NoContent, client.removeMember(t.organizationId, t.adminId, t.admin).status)
+    }
+
+    @Test
+    fun TheLastAdminCantDeleteTheirAccountUntilAnotherAdminExists() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val t = client.team()
+
+        assertEquals(HttpStatusCode.Conflict, client.delete("/accounts/${t.adminId}") { bearerAuth(t.admin) }.status)
+
+        client.setRole(t.organizationId, t.memberId, "ADMIN", t.admin)
+        assertEquals(HttpStatusCode.NoContent, client.delete("/accounts/${t.adminId}") { bearerAuth(t.admin) }.status)
+        assertNull(role(t.organizationId, t.adminId))
     }
 }

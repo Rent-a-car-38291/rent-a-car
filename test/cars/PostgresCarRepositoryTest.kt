@@ -49,6 +49,36 @@ class PostgresCarRepositoryTest {
     }
 
     @Test
+    fun UpdateCarChangesTheFieldsAndFindCarReadsThemBack() {
+        val original = repository.allCars().first()
+        val changed = AddCarRequest(
+            original.type, "Changed", original.licensePlate, 1, 9.99, Location(1.0, 2.0), original.doors, original.bodyStyle,
+            original.modelYear, original.power, original.transmission, original.color,
+            fuelType = FuelType.Diesel, capacity = 1.0, consumption = 2.0,
+        ).toCar(original.ownerId, original.id).also { it.status = CarStatus.Maintenance }
+
+        try {
+            assertEquals("Changed", assertNotNull(repository.updateCar(changed)).brand)
+            assertEquals(9.99, assertNotNull(repository.findCar(original.id)).rate)
+            assertEquals(original.status, repository.findCar(original.id)?.status) // the status is not part of an update
+        } finally {
+            repository.updateCar(original)
+        }
+        assertEquals(original.brand, repository.findCar(original.id)?.brand)
+    }
+
+    @Test
+    fun UpdateAndFindOfUnknownCarReturnNull() {
+        val car = repository.allCars().first()
+
+        assertNull(repository.findCar(-5))
+        assertNull(repository.updateCar(AddCarRequest(
+            car.type, "x", "x", 1, 1.0, Location(1.0, 2.0), 4, car.bodyStyle, 2020, 1, car.transmission, "x",
+            fuelType = FuelType.Diesel, capacity = 1.0, consumption = 1.0,
+        ).toCar(car.ownerId, -5)))
+    }
+
+    @Test
     fun AddingACarWithATakenLicensePlateThrows() {
         val seeded = repository.allCars().first { it is ICECar }
         val duplicate = AddCarRequest(
@@ -57,5 +87,19 @@ class PostgresCarRepositoryTest {
         ).toCar(seeded.ownerId)
 
         assertFailsWith<LicensePlateTakenException> { repository.addCar(duplicate) }
+    }
+
+    @Test
+    fun UpdatingACarToATakenLicensePlateThrows() {
+        val seededIce = repository.allCars().first { it is ICECar }
+        val other = repository.allCars().first { it is ICECar && it.id != seededIce.id }
+        val request = AddCarRequest(
+            CarType.ICE, "Copy", "x", 1, 1.0, Location(1.0, 2.0), 4, seededIce.bodyStyle, 2020, 1, seededIce.transmission, "x",
+            fuelType = FuelType.Petrol, capacity = 1.0, consumption = 1.0,
+        )
+
+        assertFailsWith<LicensePlateTakenException> {
+            repository.updateCar(request.copy(licensePlate = other.licensePlate).toCar(seededIce.ownerId, seededIce.id))
+        }
     }
 }

@@ -6,6 +6,7 @@ import com.example.accounts.configureSecurity
 import com.example.configureSerialization
 import com.example.database.TestDatabase
 import com.example.database.useTestDatabase
+import com.example.organizations.OrganizationRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
@@ -23,29 +24,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.*
 
 class PostCarRoutesTest {
-    private class InMemoryCarRepository : CarRepository {
-        val cars = mutableListOf<Car>()
-
-        override fun allCars(): List<Car> = cars.toList()
-
-        override fun addCar(car: Car): Car {
-            if (cars.any { it.licensePlate == car.licensePlate }) throw LicensePlateTakenException()
-            return car.also(cars::add)
-        }
-
-        override fun getCarById(id: Int): Car? = cars.find { it.id == id }
-
-        override fun deleteCarById(carId: Int, ownerId: Int): Boolean {
-            val index = cars.indexOfFirst { it.id == carId && it.ownerId == ownerId }
-            return if (index != -1) {
-                cars.removeAt(index)
-                true
-            } else {
-                false
-            }
-        }
-    }
-
     private fun carRequest(
         type: String,
         licensePlate: String,
@@ -89,7 +67,7 @@ class PostCarRoutesTest {
             configureSerialization()
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users)
-            configureAccounts(users)
+            configureAccounts(users, OrganizationRepository(TestDatabase.dataSource))
             configureCars(repository)
         }
         val (userId, token) = client.signUp()
@@ -135,7 +113,7 @@ class PostCarRoutesTest {
             configureSerialization()
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users)
-            configureAccounts(users)
+            configureAccounts(users, OrganizationRepository(TestDatabase.dataSource))
             configureCars(repository)
         }
 
@@ -155,7 +133,7 @@ class PostCarRoutesTest {
             configureSerialization()
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users)
-            configureAccounts(users)
+            configureAccounts(users, OrganizationRepository(TestDatabase.dataSource))
             configureCars(repository)
         }
     }
