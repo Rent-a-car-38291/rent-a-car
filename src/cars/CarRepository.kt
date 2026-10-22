@@ -5,6 +5,8 @@ class LicensePlateTakenException : RuntimeException()
 
 interface CarRepository {
     fun allCars(): List<Car>
+    fun findCar(id: Int): Car?
     fun addCar(car: Car): Car
-    fun getCarById(id: Int): Car?
+    fun updateCar(car: Car): Car?
+    fun deleteCarById(carId: Int, ownerId: Int): Boolean
 }

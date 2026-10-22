@@ -23,6 +23,7 @@ fun Application.module() {
     val users = UserRepository(dataSource)
     configureSecurity(users)
     configureCars(PostgresCarRepository(dataSource))
-    configureAccounts(users)
-    configureOrganizations(OrganizationRepository(dataSource))
+    val organizations = OrganizationRepository(dataSource)
+    configureAccounts(users, organizations)
+    configureOrganizations(organizations)
 }

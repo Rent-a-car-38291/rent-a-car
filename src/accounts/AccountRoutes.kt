@@ -1,5 +1,6 @@
 package com.example.accounts
 
+import com.example.organizations.OrganizationRepository
 import io.ktor.http.*
 import io.ktor.http.auth.*
 import io.ktor.server.application.*
@@ -16,7 +17,7 @@ private fun isValid(name: String, email: String) = name.isNotEmpty() && EMAIL_PA
 
 private fun ApplicationCall.bearerToken() = (request.parseAuthorizationHeader() as? HttpAuthHeader.Single)?.blob
 
-fun Application.configureAccounts(users: UserRepository) {
+fun Application.configureAccounts(users: UserRepository, organizations: OrganizationRepository) {
     routing {
         post("/accounts") {
             val request = call.receive<RegisterRequest>() // Ktor answers unreadable bodies with 400 or 415
@@ -97,6 +98,7 @@ fun Application.configureAccounts(users: UserRepository) {
                 val status = when {
                     users.find(id) == null -> HttpStatusCode.NotFound
                     id != call.principal<User>()?.id -> HttpStatusCode.Forbidden
+                    organizations.isLastAdmin(id) -> HttpStatusCode.Conflict // an organization always keeps an admin
                     else -> {
                         users.delete(id)
                         TokenRepository.revokeAll(id)

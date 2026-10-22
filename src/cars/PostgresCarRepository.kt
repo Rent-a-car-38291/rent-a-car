@@ -13,6 +13,15 @@ private const val INSERT_CAR = """
     RETURNING *
 """
 
+// The owner, type and id of a car never change, and the status is left alone so an update can't undo a change made meanwhile.
+private const val UPDATE_CAR = """
+    UPDATE cars SET brand = ?, license_plate = ?, mileage = ?, rate = ?,
+        latitude = ?, longitude = ?, doors = ?, body_style = ?, model_year = ?, power = ?, transmission = ?,
+        color = ?, fuel_type = ?, capacity = ?, consumption = ?
+    WHERE id = ?
+    RETURNING *
+"""
+
 class PostgresCarRepository(private val dataSource: DataSource) : CarRepository {
     init {
         dataSource.runScript("users.sql")
@@ -27,13 +36,28 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
         }
     }
 
+    override fun findCar(id: Int): Car? = queryCar("SELECT * FROM cars WHERE id = ?", id)
+
+    // Translate the Kotlin subclass into the values for the type-specific columns.
+    private fun typeColumns(car: Car) = when (car) {
+        is BEVCar -> TypeColumns("BEV", null, car.batteryCapacityKwh, car.consumptionKwhPer100Km)
+        is ICECar -> TypeColumns("ICE", car.fuelType.name, car.tankCapacityLitres, car.consumptionLitresPer100Km)
+        is FCEVCar -> TypeColumns("FCEV", null, car.tankCapacityKg, car.consumptionKgPer100Km)
+    }
+
+    // null when the car doesn't exist (anymore).
+    override fun updateCar(car: Car): Car? {
+        val columns = typeColumns(car)
+        return queryCarOrConflict(
+            UPDATE_CAR,
+            car.brand, car.licensePlate, car.mileage, car.rate,
+            car.location.latitude, car.location.longitude, car.doors, car.bodyStyle.name, car.modelYear, car.power,
+            car.transmission.name, car.color, columns.fuelType, columns.capacity, columns.consumption, car.id,
+        )
+    }
+
     override fun addCar(car: Car): Car {
-        // Translate the Kotlin subclass into the values for the type-specific columns.
-        val columns = when (car) {
-            is BEVCar -> TypeColumns("BEV", null, car.batteryCapacityKwh, car.consumptionKwhPer100Km)
-            is ICECar -> TypeColumns("ICE", car.fuelType.name, car.tankCapacityLitres, car.consumptionLitresPer100Km)
-            is FCEVCar -> TypeColumns("FCEV", null, car.tankCapacityKg, car.consumptionKgPer100Km)
-        }
+        val columns = typeColumns(car)
         return queryCarOrConflict(
             INSERT_CAR,
             columns.type, car.ownerId, car.brand, car.licensePlate, car.mileage,
@@ -83,9 +107,17 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
         }
     }
 
-    override fun getCarById(id: Int): Car? {
-        val car = queryCar("SELECT * FROM cars WHERE id = ?", id)
-        return car
+    override fun deleteCarById(carId: Int, ownerId: Int): Boolean {
+        val rowsAffected = dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                "DELETE FROM cars WHERE id = ? AND owner_id = ?"
+            ).use { statement ->
+                statement.setInt(1, carId)
+                statement.setInt(2, ownerId)
+                statement.executeUpdate()
+            }
+        }
+        return rowsAffected > 0
     }
 }
 
