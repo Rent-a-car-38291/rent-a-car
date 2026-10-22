@@ -16,22 +16,17 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.*
 
 class FilterCarsRoutesTest {
-    private class FixedCarRepository(private val cars: List<Car>) : CarRepository {
-        override fun allCars() = cars
-        override fun addCar(car: Car) = car
-    }
-
     private fun car(type: CarType, plate: String, rate: Double, lat: Double, lon: Double) = AddCarRequest(
         type, "Test", plate, 100, rate, Location(lat, lon), 4, BodyStyle.Sedan, 2020, 100, Transmission.Manual, "Red",
         fuelType = FuelType.Petrol.takeIf { type == CarType.ICE }, capacity = 50.0, consumption = 5.0,
     ).toCar(1)
 
     // Breda centre, about 2 km from Breda centre, and Amsterdam (far away).
-    private val repository = FixedCarRepository(listOf(
+    private val repository = InMemoryCarRepository().apply { cars.addAll(listOf(
         car(CarType.BEV, "FAR", 30.0, 52.37, 4.90),
         car(CarType.ICE, "NEAR", 50.0, 51.60, 4.80),
         car(CarType.BEV, "NEARER", 40.0, 51.59, 4.78),
-    ))
+    )) }
 
     private suspend fun plates(query: String, block: suspend (HttpStatusCode, List<String>) -> Unit) = testApplication {
         useTestDatabase()
