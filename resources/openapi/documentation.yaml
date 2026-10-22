@@ -825,8 +825,8 @@ components:
         transmission: { type: string, enum: [Manual, Automatic], example: Automatic }
         color: { type: string, example: Blue }
         fuelType: { type: string, enum: [Petrol, Diesel, LPG], description: Required for ICE }
-        capacity: { type: number, example: 75.0, description: "Battery in kWh (BEV), tank in litres (ICE) or kg (FCEV)" }
-        consumption: { type: number, example: 16.2, description: Per 100 km, in the unit of the capacity }
+        capacity: { type: number, minimum: 0, example: 75.0, description: "Battery in kWh (BEV), tank in litres (ICE) or kg (FCEV)" }
+        consumption: { type: number, minimum: 0, example: 16.2, description: Per 100 km, in the unit of the capacity }
         organizationId: { type: integer, description: "POST only: the car belongs to this organization (you must be a member). On PUT it can be left out or must match the car's current organization" }
         purchasePrice: { type: number, example: 25000.0, description: "EUR. Left out: 0 on POST, the current value on PUT" }
         insurancePerYear: { type: number, example: 600.0, description: "EUR. Left out: 0 on POST, the current value on PUT" }
