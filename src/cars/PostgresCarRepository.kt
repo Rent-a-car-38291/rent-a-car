@@ -106,6 +106,19 @@ class PostgresCarRepository(private val dataSource: DataSource) : CarRepository 
             statement.executeQuery().use { rows -> if (rows.next()) rows.toCar() else null }
         }
     }
+
+    override fun deleteCarById(carId: Int, ownerId: Int): Boolean {
+        val rowsAffected = dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                "DELETE FROM cars WHERE id = ? AND owner_id = ?"
+            ).use { statement ->
+                statement.setInt(1, carId)
+                statement.setInt(2, ownerId)
+                statement.executeUpdate()
+            }
+        }
+        return rowsAffected > 0
+    }
 }
 
 private data class TypeColumns(
