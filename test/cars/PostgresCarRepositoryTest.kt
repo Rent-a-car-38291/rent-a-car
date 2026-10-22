@@ -102,4 +102,39 @@ class PostgresCarRepositoryTest {
             repository.updateCar(request.copy(licensePlate = other.licensePlate).toCar(seededIce.ownerId, seededIce.id))
         }
     }
+
+    @Test
+    fun CostFieldsAreStoredAndSeededCarsHaveNone() {
+        assertEquals(0.0, repository.allCars().first().purchasePrice)
+        val seeded = repository.allCars().first { it is BEVCar }
+        val request = AddCarRequest(
+            CarType.BEV, "Costly", "COST-1", 1, 1.0, Location(1.0, 2.0), 4, seeded.bodyStyle, 2020, 1, seeded.transmission, "x",
+            capacity = 1.0, consumption = 1.0, purchasePrice = 25_000.5, insurancePerYear = 600.0, roadTaxPerYear = 120.25, maintenancePerYear = 450.0,
+        )
+
+        val added = repository.addCar(request.toCar(seeded.ownerId))
+        try {
+            val found = assertNotNull(repository.findCar(added.id))
+            assertEquals(25_000.5, found.purchasePrice)
+            assertEquals(600.0, found.insurancePerYear)
+            assertEquals(120.25, found.roadTaxPerYear)
+            assertEquals(450.0, found.maintenancePerYear)
+            assertEquals(0.0, assertNotNull(repository.updateCar(request.copy(purchasePrice = 0.0).toCar(seeded.ownerId, added.id))).purchasePrice)
+        } finally {
+            repository.deleteCarById(added.id, seeded.ownerId)
+        }
+    }
+
+    @Test
+    fun ACarsTableWithoutTheCostColumnsIsUpgraded() {
+        val db = org.jetbrains.exposed.v1.jdbc.Database.connect(TestDatabase.dataSource)
+        org.jetbrains.exposed.v1.jdbc.transactions.transaction(db) {
+            exec("ALTER TABLE cars DROP COLUMN purchase_price, DROP COLUMN insurance_per_year, DROP COLUMN road_tax_per_year, DROP COLUMN maintenance_per_year")
+        }
+
+        val upgraded = PostgresCarRepository(TestDatabase.dataSource)
+
+        assertTrue(upgraded.allCars().isNotEmpty())
+        assertTrue(upgraded.allCars().all { it.purchasePrice == 0.0 && it.maintenancePerYear == 0.0 })
+    }
 }
