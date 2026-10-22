@@ -48,7 +48,7 @@ curl http://localhost:8080/cars
 `./kotlin test` runs everything; a single class runs with `./kotlin test --include-classes=com.example.cars.CarFilterTest`.
 
 - **Unit tests** check one piece of logic and need no server or database: `CarFilterTest`, `AddCarRequestTest`, `CostPerKmTest`, `TcoTest`, `TripScoreTest`, `DaypartTest`. They run in milliseconds.
-- **Integration tests** (`*RoutesTest`, `*RepositoryTest`) start the application with `testApplication` and a real Postgres that the tests start themselves, and check status codes and what ends up in the database. `CarAccessTest` is a unit test of the access rules that uses that Postgres for the memberships.
+- **Integration tests** (the route and repository tests) start the application with `testApplication` and a real Postgres that the tests start themselves, and check status codes and what ends up in the database. `CarAccessTest` is a unit test of the access rules that uses that Postgres for the memberships.
 
 A rule gets a unit test for each edge value; a route gets an integration test for each status code it can answer.
 

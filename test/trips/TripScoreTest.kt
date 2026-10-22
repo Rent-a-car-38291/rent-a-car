@@ -46,7 +46,7 @@ class TripScoreRoundingTest {
     fun TheScoreIsRoundedToTheNearestPoint() {
         assertEquals(97, calculateScore(150, 1, 0)) // 100 - 5 * 0.667 = 96.67
         assertEquals(98, calculateScore(300, 1, 0)) // 100 - 5 * 0.333 = 98.33
-        assertEquals(0, calculateScore(3, 1, 0)) // 166 events per 100 km
+        assertEquals(0, calculateScore(3, 1, 0)) // 33 events per 100 km: a penalty of 166, clamped to 0
     }
 
     @Test
