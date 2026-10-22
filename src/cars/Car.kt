@@ -1,6 +1,10 @@
 package com.example.cars
 import kotlinx.serialization.Serializable
 
+const val DEPRECIATION_YEARS = 10 // ponytail: one fixed period for every car, derive it from modelYear when that matters
+const val STANDARD_KM_PER_YEAR = 15_000
+const val MAX_AMOUNT = 99_999_999.99 // the money columns are numeric(10, 2)
+
 @Serializable
 sealed class Car {
     abstract val id: Int
@@ -18,12 +22,25 @@ sealed class Car {
     abstract val transmission: Transmission
     abstract val color: String
 
+    abstract val purchasePrice: Double
+    abstract val insurancePerYear: Double
+    abstract val roadTaxPerYear: Double
+    abstract val maintenancePerYear: Double
+
+    // Total cost of ownership per year in EUR: depreciation (the purchase price spread over DEPRECIATION_YEARS),
+    // insurance, road tax, maintenance and the energy for kmPerYear.
+    fun tcoPerYear(kmPerYear: Int, prices: EnergyPrices) =
+        purchasePrice / DEPRECIATION_YEARS + insurancePerYear + roadTaxPerYear + maintenancePerYear + costPerKm(prices) * kmPerYear
+
     // Energy cost of one km in EUR; consumption is per 100 km.
     abstract fun costPerKm(prices: EnergyPrices): Double
 }
 
 @Serializable
 data class CostPerKmResponse(val carId: Int, val costPerKm: Double, val currency: String)
+
+@Serializable
+data class TcoResponse(val carId: Int, val kmPerYear: Int, val tcoPerYear: Double, val currency: String)
 
 enum class CarType { BEV, ICE, FCEV }
 
@@ -51,9 +68,15 @@ data class AddCarRequest(
     val fuelType: FuelType? = null,      // ICE only
     val capacity: Double? = null,
     val consumption: Double? = null,
+    // optional, 0 when left out
+    val purchasePrice: Double = 0.0,
+    val insurancePerYear: Double = 0.0,
+    val roadTaxPerYear: Double = 0.0,
+    val maintenancePerYear: Double = 0.0,
 ) {
     fun toCar(ownerId: Int, id: Int = 0): Car {
         require(mileage >= 0) { "mileage must be >= 0" }
+        require(listOf(purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear).all { it in 0.0..MAX_AMOUNT }) { "amounts must be between 0 and $MAX_AMOUNT" }
         require(rate in 0.0..999_999.99) { "rate must be between 0 and 999999.99" } // the column is numeric(8, 2)
         val capacity = requireNotNull(capacity) { "capacity is required" }
         val consumption = requireNotNull(consumption) { "consumption is required" }
@@ -75,6 +98,10 @@ data class AddCarRequest(
                 color = color,
                 batteryCapacityKwh = capacity,
                 consumptionKwhPer100Km = consumption,
+                purchasePrice = purchasePrice,
+                insurancePerYear = insurancePerYear,
+                roadTaxPerYear = roadTaxPerYear,
+                maintenancePerYear = maintenancePerYear,
             )
             CarType.ICE -> {
                 val fuel = requireNotNull(fuelType) { "fuelType is required for ICE" }
@@ -95,7 +122,11 @@ data class AddCarRequest(
                     color = color,
                     fuelType = fuel,
                     tankCapacityLitres = capacity,
-                    consumptionLitresPer100Km =  consumption
+                    consumptionLitresPer100Km = consumption,
+                    purchasePrice = purchasePrice,
+                    insurancePerYear = insurancePerYear,
+                    roadTaxPerYear = roadTaxPerYear,
+                    maintenancePerYear = maintenancePerYear,
                 )
             }
             CarType.FCEV -> FCEVCar(
@@ -114,7 +145,11 @@ data class AddCarRequest(
                 transmission = transmission,
                 color = color,
                 tankCapacityKg = capacity,
-                consumptionKgPer100Km =  consumption
+                consumptionKgPer100Km = consumption,
+                purchasePrice = purchasePrice,
+                insurancePerYear = insurancePerYear,
+                roadTaxPerYear = roadTaxPerYear,
+                maintenancePerYear = maintenancePerYear,
             )
         }
     }

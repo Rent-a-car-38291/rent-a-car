@@ -47,7 +47,13 @@ private object Cars : Table("cars") {
     // Tank or battery size and consumption per 100 km: kWh for BEV, litres for ICE, kg for FCEV.
     val capacity = double("capacity")
     val consumption = double("consumption")
+    val purchasePrice = money("purchase_price")
+    val insurancePerYear = money("insurance_per_year")
+    val roadTaxPerYear = money("road_tax_per_year")
+    val maintenancePerYear = money("maintenance_per_year")
     override val primaryKey = PrimaryKey(id)
+
+    private fun money(name: String) = decimal(name, 10, 2).default(BigDecimal.ZERO).check { it greaterEq BigDecimal.ZERO }
 
     init {
         check { ((type eq "ICE") and fuelType.isNotNull()) or ((type neq "ICE") and fuelType.isNull()) }
@@ -81,6 +87,11 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
             // SchemaUtils.create leaves an older table alone, so replace the foreign key of a table the old SQL script made:
             // a deleted user takes the cars along. Same name as the declaration above, so a new table ends up with one.
             exec("ALTER TABLE cars DROP CONSTRAINT IF EXISTS cars_owner_id_fkey, ADD CONSTRAINT cars_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE")
+            // Same for the columns added later.
+            exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS purchase_price NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (purchase_price >= 0)")
+            exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS insurance_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (insurance_per_year >= 0)")
+            exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS road_tax_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (road_tax_per_year >= 0)")
+            exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS maintenance_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (maintenance_per_year >= 0)")
             if (Cars.selectAll().empty()) SEED_CARS.forEach(::insertCar)
         }
     }
@@ -116,6 +127,10 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
                     it[fuelType] = columns.fuelType
                     it[capacity] = columns.capacity
                     it[consumption] = columns.consumption
+                    it[purchasePrice] = BigDecimal.valueOf(car.purchasePrice)
+                    it[insurancePerYear] = BigDecimal.valueOf(car.insurancePerYear)
+                    it[roadTaxPerYear] = BigDecimal.valueOf(car.roadTaxPerYear)
+                    it[maintenancePerYear] = BigDecimal.valueOf(car.maintenancePerYear)
                 }
                 if (updated > 0) findCar(car.id) else null
             }
@@ -146,6 +161,10 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
             it[fuelType] = columns.fuelType
             it[capacity] = columns.capacity
             it[consumption] = columns.consumption
+            it[purchasePrice] = BigDecimal.valueOf(car.purchasePrice)
+            it[insurancePerYear] = BigDecimal.valueOf(car.insurancePerYear)
+            it[roadTaxPerYear] = BigDecimal.valueOf(car.roadTaxPerYear)
+            it[maintenancePerYear] = BigDecimal.valueOf(car.maintenancePerYear)
         }.resultedValues!!.single().toCar()
     }
 
@@ -173,10 +192,14 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
         val color = this[Cars.color]
         val capacity = this[Cars.capacity]
         val consumption = this[Cars.consumption]
+        val purchasePrice = this[Cars.purchasePrice].toDouble()
+        val insurancePerYear = this[Cars.insurancePerYear].toDouble()
+        val roadTaxPerYear = this[Cars.roadTaxPerYear].toDouble()
+        val maintenancePerYear = this[Cars.maintenancePerYear].toDouble()
         return when (val type = this[Cars.type]) {
-            "BEV" -> BEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption)
-            "ICE" -> ICECar(id,ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, FuelType.valueOf(this[Cars.fuelType]!!), capacity, consumption)
-            "FCEV" -> FCEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption)
+            "BEV" -> BEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear)
+            "ICE" -> ICECar(id,ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, FuelType.valueOf(this[Cars.fuelType]!!), capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear)
+            "FCEV" -> FCEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear)
             else -> error("Unknown car type $type")
         }
     }

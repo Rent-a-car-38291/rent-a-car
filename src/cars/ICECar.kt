@@ -21,7 +21,11 @@ class ICECar (
     override val color: String,
     val fuelType: FuelType,
     val tankCapacityLitres: Double,
-    val consumptionLitresPer100Km: Double
+    val consumptionLitresPer100Km: Double,
+    override val purchasePrice: Double = 0.0,
+    override val insurancePerYear: Double = 0.0,
+    override val roadTaxPerYear: Double = 0.0,
+    override val maintenancePerYear: Double = 0.0,
 ) : Car() {
     override fun costPerKm(prices: EnergyPrices) = consumptionLitresPer100Km / 100 * prices.perLitre(fuelType)
 }
