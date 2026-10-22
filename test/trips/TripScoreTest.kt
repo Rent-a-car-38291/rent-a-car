@@ -40,3 +40,19 @@ class TripScoreTest {
         assertEquals(MAX_TRIP_KM, bonusPoints(MAX_TRIP_KM, calculateScore(MAX_TRIP_KM, 0, 0)))
     }
 }
+
+class TripScoreRoundingTest {
+    @Test
+    fun TheScoreIsRoundedToTheNearestPoint() {
+        assertEquals(97, calculateScore(150, 1, 0)) // 100 - 5 * 0.667 = 96.67
+        assertEquals(98, calculateScore(300, 1, 0)) // 100 - 5 * 0.333 = 98.33
+        assertEquals(0, calculateScore(3, 1, 0)) // 166 events per 100 km
+    }
+
+    @Test
+    fun TheScoreStaysBetween0And100AndNeverRisesWithMoreEvents() {
+        val scores = (0..40).map { calculateScore(100, it, 0) }
+        assertTrue(scores.all { it in 0..100 })
+        assertEquals(scores.sortedDescending(), scores)
+    }
+}
