@@ -10,6 +10,7 @@ import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertIgnore
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -38,17 +39,19 @@ internal object Users : Table("users") {
     }
 }
 
-// ponytail: no migration tool, add one (Flyway) when the schema has to change on a database that already has data.
+// ponytail: no migration tool (SchemaUtils.create only creates missing tables), add one (Flyway) when the schema has to change on a database that already has data.
 internal fun Database.createUsers() = transaction(this) {
     SchemaUtils.create(Users)
     // Reserved owner for the sample fleet; its random password hash has no known password.
-    Users.insertIgnore {
-        it[id] = -1
-        it[name] = "Sample fleet"
-        it[email] = "sample-fleet@rent-a-car.invalid"
-        it[passwordHash] = "ej0M8Ts0bX5FqZlbL0eW7A==:tSdgcA12/mS+4UQvxObL5qo/ieZi7VUbZQubxBaG6hg="
+    // Checked first: a users table from the old SQL script has a GENERATED ALWAYS id, which refuses an explicit id even when the row exists.
+    if (Users.selectAll().where { Users.id eq -1 }.empty()) {
+        Users.insert {
+            it[id] = -1
+            it[name] = "Sample fleet"
+            it[email] = "sample-fleet@rent-a-car.invalid"
+            it[passwordHash] = "ej0M8Ts0bX5FqZlbL0eW7A==:tSdgcA12/mS+4UQvxObL5qo/ieZi7VUbZQubxBaG6hg="
+        }
     }
-    Unit
 }
 
 private fun ResultRow.toUser() = User(this[Users.id], this[Users.name], this[Users.email], this[Users.passwordHash])
