@@ -25,7 +25,9 @@ else
       Route -> Access : canManage(user, car)
       alt owner, or member of the organization
         Route -> Route : read the part "file",\nat most 5 MB + 1 byte
-        alt no file part
+        alt car already has 10 photos
+          Route --> Client : 409 Conflict
+        else no file part
           Route --> Client : 400 Bad Request
         else more than 5 MB
           Route --> Client : 413 Payload Too Large
@@ -34,7 +36,7 @@ else
         else
           Route -> Repo : add(carId, type, bytes)
           Repo -> Repo : write uploads/<random uuid>.<jpg|png>\ninsert the row with its url
-          Repo --> Route : Image
+          Repo --> Route : Image (null when the car was just deleted: 404)
           Route --> Client : 201 Created\n{id, carId, url}
         end
       else
