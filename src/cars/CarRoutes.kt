@@ -29,7 +29,7 @@ fun Application.configureCars(repository: CarRepository) {
             }
             val car = repository.findCar(id)
             if (car == null) call.respond(HttpStatusCode.NotFound)
-            else call.respond(CostPerKmResponse(id, car.costPerKm(EnergyPrices.STANDARD).roundTo(4)))
+            else call.respond(CostPerKmResponse(id, car.costPerKm(EnergyPrices.STANDARD).roundTo(4), "EUR"))
         }
 
         authenticate {

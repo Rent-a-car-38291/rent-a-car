@@ -23,7 +23,7 @@ sealed class Car {
 }
 
 @Serializable
-data class CostPerKmResponse(val carId: Int, val costPerKm: Double, val currency: String = "EUR")
+data class CostPerKmResponse(val carId: Int, val costPerKm: Double, val currency: String)
 
 enum class CarType { BEV, ICE, FCEV }
 
