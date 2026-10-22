@@ -48,7 +48,7 @@ class ReservationRepository(dataSource: DataSource) {
     }
 
     // null when the daypart is taken: the unique index decides, so two requests at once can't both win.
-    // shortcut: a car deleted just before the insert also gives null, so the route answers 409 instead of 404.
+    // shortcut: a car or user deleted just before the insert also gives null, so the route answers 409 instead of 404 or 401.
     fun reserve(carId: Int, userId: Int, date: LocalDate, daypart: Daypart): Reservation? = try {
         transaction(db) {
             Reservations.insert {

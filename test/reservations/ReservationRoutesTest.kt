@@ -95,6 +95,8 @@ class ReservationRoutesTest {
         assertEquals(HttpStatusCode.BadRequest, client.reserve(availableCar, "2030-03-05", "NIGHT", token).status)
         assertEquals(HttpStatusCode.BadRequest, client.reserve(availableCar, "tomorrow", "MORNING", token).status)
         assertEquals(HttpStatusCode.BadRequest, client.reserve(availableCar, "2030-02-30", "MORNING", token).status)
+        assertEquals(HttpStatusCode.BadRequest, client.reserve(availableCar, "+999999999-01-01", "MORNING", token).status)
+        assertEquals(HttpStatusCode.BadRequest, client.get("/cars/$availableCar/availability?date=%2B999999999-01-01").status)
     }
 
     @Test

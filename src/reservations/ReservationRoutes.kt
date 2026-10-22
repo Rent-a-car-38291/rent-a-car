@@ -17,8 +17,9 @@ import java.time.ZoneId
 // "Today" for the past-date check; ponytail: one fixed zone, make it a setting when cars outside the Netherlands are rented.
 internal val ZONE = ZoneId.of("Europe/Amsterdam")
 
+// The year bound keeps out dates (+999999999-01-01) that parse but that Postgres refuses.
 private fun parseDate(text: String?): LocalDate? = try {
-    text?.let(LocalDate::parse)
+    text?.let(LocalDate::parse)?.takeIf { it.year in 2000..2200 }
 } catch (e: DateTimeException) {
     null
 }
