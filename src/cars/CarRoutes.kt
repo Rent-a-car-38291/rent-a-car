@@ -57,6 +57,62 @@ fun Application.configureCars(repository: CarRepository) {
                     }
                 }
             }
+
+            get("/cars/{id}") {
+                val id = call.parameters["id"]
+
+                if (id == null) {
+                    call.respond(HttpStatusCode.BadRequest, "ID is missing")
+                    return@get
+                }
+
+                // Check if ID is numeric value
+                val carId = id.toIntOrNull()
+                if (carId == null) {
+                    call.respond(HttpStatusCode.BadRequest, "ID must be of numeric value")
+                    return@get
+                }
+
+                // Get car from database
+                val car = repository.findCar(carId)
+                if (car == null) {
+                    call.respond(HttpStatusCode.NotFound, "Car with ID $id not found")
+                    return@get
+                }
+
+                // Return JSON response
+                call.respond(car)
+            }
+
+            delete("/cars/{id}") {
+                val user = call.principal<User>()!!
+                val id = call.parameters["id"]
+
+                if (id == null) {
+                    call.respond(HttpStatusCode.BadRequest, "ID is missing")
+                    return@delete
+                }
+
+                val carId = id.toIntOrNull()
+                if (carId == null) {
+                    call.respond(HttpStatusCode.BadRequest, "ID must be of numeric value")
+                    return@delete
+                }
+
+                if (repository.findCar(carId) != null) {
+                    val delete = repository.deleteCarById(carId, user.id)
+
+                    if (delete) {
+                        call.respond(HttpStatusCode.NoContent)
+                    }
+                    else {
+                        call.respond(HttpStatusCode.Forbidden)
+                    }
+                }
+                else {
+                    call.respond(HttpStatusCode.NotFound, "Car with ID $id not found")
+                }
+            }
         }
     }
 }
