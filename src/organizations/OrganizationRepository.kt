@@ -24,7 +24,7 @@ import java.time.OffsetDateTime
 import java.util.UUID
 import javax.sql.DataSource
 
-private object Organizations : Table("organizations") {
+internal object Organizations : Table("organizations") {
     val id = integer("id").autoIncrement()
     val name = text("name")
     override val primaryKey = PrimaryKey(id)
@@ -46,12 +46,17 @@ private object Invites : Table("invites") {
     override val primaryKey = PrimaryKey(code)
 }
 
+// Also used by the cars, which can belong to an organization.
+internal fun Database.createOrganizations() {
+    createUsers() // memberships reference users
+    transaction(this) { SchemaUtils.create(Organizations, Memberships, Invites) }
+}
+
 class OrganizationRepository(dataSource: DataSource) {
     private val db = Database.connect(dataSource)
 
     init {
-        db.createUsers() // memberships reference users
-        transaction(db) { SchemaUtils.create(Organizations, Memberships, Invites) }
+        db.createOrganizations()
     }
 
     // One transaction, so the organization never exists without its admin.
@@ -135,6 +140,7 @@ class OrganizationRepository(dataSource: DataSource) {
     }
 
     fun clear() {
-        transaction(db) { exec("TRUNCATE organizations RESTART IDENTITY CASCADE") }
+        // Not TRUNCATE ... CASCADE: that would empty the cars table, which references organizations.
+        transaction(db) { exec("DELETE FROM organizations; DO \$\$ BEGIN PERFORM setval(pg_get_serial_sequence('organizations', 'id'), 1, false); END \$\$") }
     }
 }

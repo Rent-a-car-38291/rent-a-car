@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 @SerialName("BEV")
 class BEVCar (
     override val id: Int,
-    override val ownerId: Int,
+    override val ownerId: Int?,
     override val brand: String,
     override val licensePlate: String,
     override var mileage: Int,
@@ -25,6 +25,7 @@ class BEVCar (
     override val insurancePerYear: Double = 0.0,
     override val roadTaxPerYear: Double = 0.0,
     override val maintenancePerYear: Double = 0.0,
+    override val organizationId: Int? = null,
 ) : Car() {
     override fun costPerKm(prices: EnergyPrices) = consumptionKwhPer100Km / 100 * prices.electricityPerKwh
 }
