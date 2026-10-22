@@ -44,3 +44,6 @@ application-local.conf
 build/reports/
 build/test-results/
 .kotlin/
+
+# Uploaded car photos
+uploads/
