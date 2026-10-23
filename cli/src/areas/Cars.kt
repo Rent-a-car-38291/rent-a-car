@@ -5,6 +5,10 @@ import kotlinx.serialization.json.*
 
 private val carColumns = listOf("id", "type", "brand", "licensePlate", "rate", "status", "averageRating", "location.latitude", "location.longitude")
 private val daypartNames = listOf("MORNING", "AFTERNOON", "EVENING")
+private val bodyStyles = listOf("Hatchback", "SUV", "Sedan", "Stationwagon", "Cabrio", "Coupe", "MPV", "Other")
+private val transmissions = listOf("Manual", "Automatic")
+private val fuelTypes = listOf("Petrol", "Diesel", "LPG")
+private val sortFields = listOf("rate", "-rate", "range", "-range", "costPerKm", "-costPerKm")
 
 fun Console.daypart(): String = choose("Daypart", daypartNames, default = 1)
 
@@ -19,9 +23,15 @@ val carsMenu = Menu("Cars", needsLogin = false, items = listOf(
         val lat = io.optionalDouble("Your latitude, to sort by distance")
         val lon = lat?.let { io.double("Your longitude") }
         val maxDistance = lat?.let { io.optionalDouble("Furthest distance in km") }
+        val bodyStyle = io.optionalOneOf("Body style", bodyStyles)
+        val transmission = io.optionalOneOf("Transmission", transmissions)
+        val fuelType = io.optionalOneOf("Fuel of a petrol, diesel or LPG car", fuelTypes)
+        val minRange = io.optionalDouble("Shortest range in km")
+        val sort = io.optionalOneOf("Sort by (a leading - reverses)", sortFields)
         ctx.call("GET", "/cars", mapOf(
             "type" to type, "maxRate" to maxRate?.toString(), "date" to date?.toString(), "daypart" to daypart,
             "lat" to lat?.toString(), "lon" to lon?.toString(), "maxDistanceKm" to maxDistance?.toString(),
+            "bodyStyle" to bodyStyle, "transmission" to transmission, "fuelType" to fuelType, "minRange" to minRange?.toString(), "sort" to sort,
         ), hints = mapOf(400 to "The server did not accept the filters. The type is BEV, ICE or FCEV and the date cannot be in the past."))
             ?.let { io.table(it.jsonArray, carColumns) }
     },
@@ -97,12 +107,12 @@ private fun carForm(io: Console, current: JsonObject?): JsonObject {
             put("longitude", io.double("Longitude", location?.get("longitude")?.jsonPrimitive?.double ?: 4.78))
         }
         put("doors", io.int("Doors", cur("doors")?.toInt() ?: 5, 1, 9))
-        put("bodyStyle", pick("Body style", "bodyStyle", listOf("Hatchback", "SUV", "Sedan", "Stationwagon", "Cabrio", "Coupe", "MPV", "Other")))
+        put("bodyStyle", pick("Body style", "bodyStyle", bodyStyles))
         put("modelYear", io.int("Model year", cur("modelYear")?.toInt() ?: 2024, 1900, 2100))
         put("power", io.int("Power in kW", cur("power")?.toInt() ?: 100, min = 1))
-        put("transmission", pick("Transmission", "transmission", listOf("Manual", "Automatic")))
+        put("transmission", pick("Transmission", "transmission", transmissions))
         put("color", io.text("Color", cur("color")))
-        if (type == "ICE") put("fuelType", pick("Fuel", "fuelType", listOf("Petrol", "Diesel", "LPG")))
+        if (type == "ICE") put("fuelType", pick("Fuel", "fuelType", fuelTypes))
         put("capacity", io.double("Tank or battery size in $unit", curAny(capacityKeys)?.toDouble(), min = 0.0))
         put("consumption", io.double("Consumption per 100 km in $unit", curAny(consumptionKeys)?.toDouble(), min = 0.0))
         // Costs are optional: left empty they are 0 for a new car and unchanged on an update.

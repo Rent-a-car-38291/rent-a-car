@@ -10,13 +10,30 @@ class MenuTest {
     fun `a visitor browses the cars and sees only the public menus`() {
         val api = FakeApi("GET /cars" to cars)
 
-        // start: 3 = browse as visitor, 1 = Cars, 1 = list (four skipped filters), then back out of every menu
-        val output = runScript(api, "3", "1", "1", "", "", "", "", "0", "0", "0")
+        // start: 3 = browse as visitor, 1 = Cars, 1 = list (nine skipped filters), then back out of every menu
+        val output = runScript(api, "3", "1", "1", "", "", "", "", "", "", "", "", "", "0", "0", "0")
 
         assertEquals(listOf("GET /cars"), api.calls)
         assertTrue("Peugeot" in output && "85-GHB-2" in output)
         assertFalse("Reservations" in output, "visitors do not see menus that need a login")
         assertTrue("Goodbye!" in output)
+    }
+
+    @Test
+    fun `the car list sends the new filters and sort, matched in any case, and asks again for a wrong value`() {
+        val api = FakeApi("GET /cars" to cars)
+
+        // type, max rate, date, latitude skipped; body style 'suv' (any case), transmission 'cvt' is refused and asked again, 'automatic';
+        // fuel skipped, minimum range 400, sort '-costPerKm'
+        val output = runScript(api, "3", "1", "1", "", "", "", "", "suv", "cvt", "automatic", "", "400", "-costperkm", "0", "0", "0")
+
+        assertTrue("Please choose one of: Manual, Automatic." in output)
+        val query = api.queries.single()
+        assertEquals("SUV", query["bodyStyle"])
+        assertEquals("Automatic", query["transmission"])
+        assertNull(query["fuelType"])
+        assertEquals("400.0", query["minRange"])
+        assertEquals("-costPerKm", query["sort"])
     }
 
     @Test
@@ -121,7 +138,7 @@ class MenuTest {
                 throw ServerUnreachable("Cannot reach the server at http://localhost:1")
         }
 
-        val output = runScript(api, "3", "1", "1", "", "", "", "", "0", "0", "0")
+        val output = runScript(api, "3", "1", "1", "", "", "", "", "", "", "", "", "", "0", "0", "0")
 
         assertTrue("! Cannot reach the server" in output)
     }
