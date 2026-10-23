@@ -56,6 +56,13 @@ fun Application.configureCars(
             }
         }
 
+        // A constant segment wins over /cars/{id}, so this stays public like the other cost routes.
+        get("/cars/compare") {
+            val distanceKm = parseQuoteDistance(call.request.queryParameters["distanceKm"])
+            if (distanceKm == null) call.respond(HttpStatusCode.BadRequest)
+            else call.respond(compareTypes(repository.allCars(), distanceKm, EnergyPrices.STANDARD))
+        }
+
         get("/cars/{id}/cost-per-km") {
             val id = call.parameters["id"]?.toIntOrNull()
             if (id == null) {
