@@ -90,6 +90,7 @@ abstract class Car {
   + isAvailable(date : LocalDate, daypart : Daypart) : Boolean
   + freeDayparts(date : LocalDate) : List<Daypart>
   + addImage(url : String) : Image
+  + averageRating() : Double
 }
 
 class ICECar {
@@ -131,6 +132,12 @@ class Trip {
   + bonusPoints() : Int
 }
 
+class Rating {
+  + id : Int
+  + stars : Int
+  + comment : String
+}
+
 class Organization {
   + id : Int
   + name : String
@@ -163,6 +170,7 @@ Car ..> EnergyPrices
 Reservation "0..*" --> "1" Car
 Reservation "0..*" --> "1" User : renter
 Trip "0..1" --> "1" Reservation
+Rating "0..1" --> "1" Reservation : after the trip
 User "0..*" -- "0..*" Organization
 (User, Organization) .. Membership
 Invite "0..*" --> "1" Organization
