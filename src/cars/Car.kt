@@ -1,7 +1,7 @@
 package com.example.cars
 import kotlinx.serialization.Serializable
 
-const val DEPRECIATION_YEARS = 10 // ponytail: one fixed period for every car, derive it from modelYear when that matters
+const val DEPRECIATION_YEARS = 10 // shortcut: one fixed period for every car, derive it from modelYear when that matters
 const val STANDARD_KM_PER_YEAR = 15_000
 const val MAX_AMOUNT = 99_999_999.99 // the money columns are numeric(10, 2)
 

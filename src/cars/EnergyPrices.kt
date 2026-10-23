@@ -1,6 +1,6 @@
 package com.example.cars
 
-// Prices in EUR. ponytail: fixed values, load them from config or a price feed when they have to follow the market.
+// Prices in EUR. shortcut: fixed values, load them from config or a price feed when they have to follow the market.
 data class EnergyPrices(
     val petrolPerLitre: Double,
     val dieselPerLitre: Double,
