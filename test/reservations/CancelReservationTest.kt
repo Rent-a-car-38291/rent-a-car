@@ -66,16 +66,16 @@ class CancelReservationTest {
 
         assertEquals(HttpStatusCode.NoContent, client.cancel(reservation.id.toString(), jan.second).status)
 
-        assertNull(repository.find(reservation.id))
+        assertEquals(ReservationStatus.CANCELLED, repository.find(reservation.id)!!.status) // kept, not deleted
         assertEquals(HttpStatusCode.Created, client.reserve(tomorrow, "MORNING", piet.second).status)
     }
 
     @Test
-    fun CancellingTwiceGives404TheSecondTime() = withApp("jan@example.com") { (jan) ->
+    fun CancellingTwiceGives409TheSecondTime() = withApp("jan@example.com") { (jan) ->
         val reservation = repository.reserve(car, jan.first, tomorrow, Daypart.AFTERNOON)!!
         assertEquals(HttpStatusCode.NoContent, client.cancel(reservation.id.toString(), jan.second).status)
 
-        assertEquals(HttpStatusCode.NotFound, client.cancel(reservation.id.toString(), jan.second).status)
+        assertEquals(HttpStatusCode.Conflict, client.cancel(reservation.id.toString(), jan.second).status)
     }
 
     @Test
@@ -114,9 +114,9 @@ class CancelReservationTest {
         val reservation = repository.reserve(car, jan.first, tomorrow, Daypart.MORNING)!!
         assertNotNull(trips.record(reservation.id, jan.first, 10, 100, 10))
 
-        assertEquals(CancelResult.HAS_TRIP, repository.cancel(reservation.id))
+        assertEquals(CancelResult.NOT_ALLOWED, repository.cancel(reservation.id))
 
-        assertNotNull(repository.find(reservation.id))
+        assertEquals(ReservationStatus.COMPLETED, repository.find(reservation.id)!!.status)
         assertNull(trips.record(reservation.id, jan.first, 10, 100, 10)) // still there: a second trip is refused
     }
 

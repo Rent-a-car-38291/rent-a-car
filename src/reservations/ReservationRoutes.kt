@@ -73,6 +73,11 @@ fun Application.configureReservations(cars: CarRepository, reservations: Reserva
                 }
             }
 
+            get("/reservations") {
+                val filter = parseReservationFilter(call.request.queryParameters).getOrNull()
+                if (filter == null) call.respond(HttpStatusCode.BadRequest) else call.respond(reservations.list(call.principal<User>()!!.id, filter))
+            }
+
             delete("/reservations/{id}") {
                 val user = call.principal<User>()!!
                 val id = call.parameters["id"]?.toIntOrNull()
@@ -85,7 +90,7 @@ fun Application.configureReservations(cars: CarRepository, reservations: Reserva
                     else -> call.respond(when (reservations.cancel(id)) {
                         CancelResult.CANCELLED -> HttpStatusCode.NoContent
                         CancelResult.GONE -> HttpStatusCode.NotFound
-                        CancelResult.HAS_TRIP -> HttpStatusCode.Conflict
+                        CancelResult.NOT_ALLOWED -> HttpStatusCode.Conflict
                     })
                 }
             }
