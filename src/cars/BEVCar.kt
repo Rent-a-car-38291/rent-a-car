@@ -21,4 +21,6 @@ class BEVCar (
     override val color: String,
     val batteryCapacityKwh: Double,
     val consumptionKwhPer100Km: Double
-) : Car()
+) : Car() {
+    override fun costPerKm(prices: EnergyPrices) = consumptionKwhPer100Km / 100 * prices.electricityPerKwh
+}

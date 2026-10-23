@@ -1,0 +1,25 @@
+@startuml
+title GET /cars/{id}/cost-per-km
+autonumber
+
+actor Client
+participant "CarRoutes.kt" as Route
+participant "CarRepository" as Repo
+participant "Car\n(ICECar | BEVCar | FCEVCar)" as Car
+
+Client -> Route : GET /cars/{id}/cost-per-km
+alt id is not a number
+  Route --> Client : 400 Bad Request
+else
+  Route -> Repo : findCar(id)
+  Repo --> Route : Car?
+  alt unknown id
+    Route --> Client : 404 Not Found
+  else
+    Route -> Car : costPerKm(EnergyPrices.STANDARD)
+    Car --> Route : consumption / 100 * price of its energy
+    Route --> Client : 200 OK\n{carId, costPerKm, currency: "EUR"}
+  end
+end
+
+@enduml

@@ -17,7 +17,13 @@ sealed class Car {
     abstract val power: Int
     abstract val transmission: Transmission
     abstract val color: String
+
+    // Energy cost of one km in EUR; consumption is per 100 km.
+    abstract fun costPerKm(prices: EnergyPrices): Double
 }
+
+@Serializable
+data class CostPerKmResponse(val carId: Int, val costPerKm: Double, val currency: String)
 
 enum class CarType { BEV, ICE, FCEV }
 
