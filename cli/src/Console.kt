@@ -40,6 +40,10 @@ class Console(private val input: BufferedReader, val out: PrintStream) {
     /** A blank answer gives null, for filters and optional fields. */
     fun optionalText(label: String): String? = readLine("$label (Enter to skip):").ifEmpty { null }
 
+    /** A blank answer gives null; otherwise one of [options], typed in any case, returned as spelled in the list. */
+    fun optionalOneOf(label: String, options: List<String>): String? =
+        optional("$label (${options.joinToString(", ")})") { raw -> options.find { it.equals(raw, ignoreCase = true) }?.let { it to null } ?: (null to "Please choose one of: ${options.joinToString(", ")}.") }
+
     fun int(label: String, default: Int? = null, min: Int = Int.MIN_VALUE, max: Int = Int.MAX_VALUE): Int =
         ask(label, default?.toString()) { parseInt(it, min, max) }
 

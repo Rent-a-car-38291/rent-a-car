@@ -99,7 +99,7 @@ docker compose up -d
 ```
 
 1. **Register** (name, email, a password of 8+ characters). You are logged in and the main menu opens.
-2. **Cars > List and search cars**: press Enter on every filter to see the fleet; try type `BEV`. **Car details** shows photos and ratings.
+2. **Cars > List and search cars**: press Enter on every filter to see the fleet; try type `BEV`, or sort by `costPerKm` to see the cheapest car per km first. **Car details** shows photos and ratings.
 3. **Costs > Quote a trip**: pick a car and a distance. **Cost per km** shows the energy price.
 4. **Reservations > Reserve a car**: pick a car, press Enter for today and pick a daypart. **My reservations** shows them with their status.
 5. **Trips > Start my trip**, then **End my trip** (distance, hard accelerations, hard brakes): you earn bonus points. **Rate the car** afterwards.
@@ -117,7 +117,7 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 
 | Method   | Path                      | Description                    | Success | Errors                            |
 | -------- | ------------------------- | ------------------------------ | ------- | --------------------------------- |
-| `GET`    | `/cars`                   | List cars, optionally free on a date and daypart | `200` | `400`                    |
+| `GET`    | `/cars`                   | List, filter and sort cars     | `200`   | `400`                             |
 | `POST`   | `/cars`                   | Offer a car                    | `201`   | `400`, `401`, `403`, `409`        |
 | `PUT`    | `/cars/{id}`              | Update a car you may manage    | `200`   | `400`, `401`, `403`, `404`, `409` |
 | `DELETE` | `/cars/{id}`              | Delete a car you may delete    | `204`   | `400`, `401`, `403`, `404`        |
@@ -147,6 +147,8 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 | `PUT`    | `/accounts/{id}`          | Update your own name and email | `200`   | `400`, `401`, `403`, `404`, `409` |
 | `PUT`    | `/accounts/{id}/password` | Change your own password       | `204`   | `400`, `401`, `403`, `404`        |
 | `DELETE` | `/accounts/{id}`          | Delete your own account        | `204`   | `400`, `401`, `403`, `404`        |
+
+Cars are found with the query parameters of `GET /cars`, which all combine: `type`, `maxRate`, `bodyStyle`, `transmission`, `fuelType` (only combustion cars have one), `minRange` (km on a full tank or battery) and a location (`lat`, `lon`, `maxDistanceKm`). `sort` orders by `rate`, `range` or `costPerKm` (energy cost per km at the standard prices), with a leading `-` for descending, for example `GET /cars?sort=costPerKm` lists the cheapest car per km first; equal values keep the fleet order. With a location the nearest car always comes first and `sort` is only checked. An unknown filter or sort value gives `400`.
 
 A car is rented per daypart: `MORNING` (06:00-12:00), `AFTERNOON` (12:00-18:00) or `EVENING` (18:00-24:00), once per car and date. Pass the `date` (`2026-10-12`) and `daypart` to `POST /cars/{id}/reservations`; `GET /cars/{id}/availability?date=2026-10-12` lists what is still free. `GET /cars?date=2026-10-12&daypart=MORNING` lists only the cars that are free then (not reserved, not in `Maintenance`) and combines with the other filters; `date` and `daypart` come together, and a missing, invalid or past value gives `400`. A car in `Maintenance` can't be reserved. There is no `Rented` status. A reservation has a `status`: `RESERVED` (upcoming), `COMPLETED` (its trip was recorded) or `CANCELLED`. The renter can cancel with `DELETE /reservations/{id}` until the daypart starts (its `from` time): the reservation stays in the list as `CANCELLED` and its daypart is free again for anyone (only one active reservation per car, date and daypart). After the daypart starts, with a trip or a started trip, or when it is already completed or cancelled, the answer is `409`; a trip can't be recorded or started on a cancelled reservation (`409`). `GET /reservations` lists your own reservations, newest first, with an optional `status` filter and `limit` (1-100, default 20) and `offset` paging; an invalid value gives `400`.
 
