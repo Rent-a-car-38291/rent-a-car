@@ -73,6 +73,25 @@ paths:
           description: Non-numeric id
         "404":
           description: Unknown id
+  /cars/{id}/quote:
+    get:
+      tags: [Cars]
+      summary: Quote a trip before reserving
+      description: Energy cost of the distance at the standard prices plus the car's rental rate as stored (it is not scaled by distance or duration). Energy cost and rate are rounded to 2 decimals first, and total is their sum. No login needed.
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - { name: distanceKm, in: query, required: true, description: Distance of the trip, 1 to 10000, schema: { type: number, minimum: 1, maximum: 10000, example: 120 } }
+      responses:
+        "200":
+          description: The quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
+        "400":
+          description: Non-numeric id, or a missing, non-numeric or out-of-range distanceKm
+        "404":
+          description: Unknown id
   /cars/{id}/tco:
     get:
       tags: [Cars]
@@ -870,6 +889,16 @@ components:
       properties:
         carId: { type: integer, example: 1 }
         costPerKm: { type: number, example: 0.0525 }
+        currency: { type: string, example: EUR }
+    Quote:
+      type: object
+      required: [carId, distanceKm, energyCost, rentalRate, total, currency]
+      properties:
+        carId: { type: integer, example: 1 }
+        distanceKm: { type: number, example: 120 }
+        energyCost: { type: number, example: 6.3 }
+        rentalRate: { type: number, example: 55.0 }
+        total: { type: number, example: 61.3 }
         currency: { type: string, example: EUR }
     Image:
       type: object

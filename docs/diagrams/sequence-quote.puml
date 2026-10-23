@@ -1,0 +1,26 @@
+@startuml
+title GET /cars/{id}/quote?distanceKm=
+autonumber
+
+actor Client
+participant "CarRoutes.kt" as Route
+participant "CarRepository" as Repo
+participant "Car\n(ICECar | BEVCar | FCEVCar)" as Car
+
+Client -> Route : GET /cars/{id}/quote?distanceKm=120
+alt id is not a number, or distanceKm is missing,\nnot a number or outside 1..10000
+  Route --> Client : 400 Bad Request
+else
+  Route -> Repo : findCar(id)
+  Repo --> Route : Car?
+  alt unknown id
+    Route --> Client : 404 Not Found
+  else
+    Route -> Car : costPerKm(EnergyPrices.STANDARD)
+    Car --> Route : cost per km
+    Route -> Route : energyCost = costPerKm * distanceKm (2 decimals)\nrentalRate = car.rate (2 decimals)\ntotal = energyCost + rentalRate
+    Route --> Client : 200 OK\n{carId, distanceKm, energyCost, rentalRate, total, currency: "EUR"}
+  end
+end
+
+@enduml
