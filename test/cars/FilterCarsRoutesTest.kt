@@ -84,4 +84,46 @@ class FilterCarsRoutesTest {
         checkBadRequest("?lat=51.59&lon=4.78&maxDistanceKm=far")
         checkBadRequest("?lat=95&lon=4.78")
     }
+
+    @Test
+    fun SortsByRateInBothDirections() {
+        check("?sort=rate", listOf("FAR", "NEARER", "NEAR"))
+        check("?sort=-rate", listOf("NEAR", "NEARER", "FAR"))
+    }
+
+    // The test cars all use 5 per 100 km: 0.0175 EUR per km for the BEVs at the standard prices and 0.105 for the petrol car.
+    @Test
+    fun SortsByCostPerKmWithTheCheapestFirstAndByRange() {
+        check("?sort=costPerKm", listOf("FAR", "NEARER", "NEAR"))
+        check("?sort=-costPerKm", listOf("NEAR", "FAR", "NEARER"))
+        check("?sort=range", listOf("FAR", "NEAR", "NEARER"))
+    }
+
+    @Test
+    fun FiltersOnBodyStyleTransmissionFuelAndRange() {
+        check("?bodyStyle=Sedan", listOf("FAR", "NEAR", "NEARER"))
+        check("?bodyStyle=SUV", emptyList())
+        check("?transmission=Manual", listOf("FAR", "NEAR", "NEARER"))
+        check("?transmission=Automatic", emptyList())
+        check("?fuelType=Petrol", listOf("NEAR"))
+        check("?minRange=1000", listOf("FAR", "NEAR", "NEARER")) // capacity 50 per 5 per 100 km is 1000 km
+        check("?minRange=1000.1", emptyList())
+    }
+
+    @Test
+    fun NewFiltersCombineWithTheOldOnesAndALocationStillSortsNearestFirst() {
+        check("?type=BEV&bodyStyle=Sedan&sort=-rate", listOf("NEARER", "FAR"))
+        check("?sort=-rate&lat=51.59&lon=4.78", listOf("NEARER", "NEAR", "FAR"))
+    }
+
+    @Test
+    fun InvalidSortsAndNewFiltersReturnBadRequest() {
+        checkBadRequest("?sort=price")
+        checkBadRequest("?sort=")
+        checkBadRequest("?bodyStyle=Truck")
+        checkBadRequest("?transmission=cvt")
+        checkBadRequest("?fuelType=Hydrogen")
+        checkBadRequest("?minRange=-1")
+        checkBadRequest("?minRange=far")
+    }
 }
