@@ -27,14 +27,14 @@ class EndToEndTest {
         try {
             val port = runBlocking { server.engine.resolvedConnectors().first().port }
 
-            // register (logs in) > Cars, List with four skipped filters, back
+            // register (logs in) > Cars, List with nine skipped filters, back
             // > Reservations, Reserve car 1 on today (default) in the afternoon, back
             // > Trips, Start (reservation 1), End (reservation 1: 100 km, 2 hard accelerations, 0 brakes), back
             // > Insights, Leaderboard with the default limit, back > Log out > Quit
             val output = runScript(
                 HttpApi("http://localhost:$port"),
                 "1", "Sam", "sam@example.com", "secret123",
-                "1", "1", "", "", "", "", "0",
+                "1", "1", "", "", "", "", "", "", "", "", "", "0",
                 "3", "1", "1", "", "2", "0",
                 "4", "1", "1", "2", "1", "100", "2", "0", "0",
                 "5", "1", "", "0",
