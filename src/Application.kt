@@ -12,6 +12,8 @@ import com.example.images.ImageRepository
 import com.example.images.configureImages
 import com.example.organizations.OrganizationRepository
 import com.example.organizations.configureOrganizations
+import com.example.ratings.RatingRepository
+import com.example.ratings.configureRatings
 import com.example.reservations.ReservationRepository
 import com.example.reservations.configureReservations
 import com.example.trips.TripRepository
@@ -33,10 +35,12 @@ fun Application.module() {
     val cars = PostgresCarRepository(dataSource)
     val images = ImageRepository(dataSource, Path.of(environment.config.property("images.directory").getString()))
     val reservations = ReservationRepository(dataSource)
-    configureCars(cars, organizations, images, reservations)
+    val ratings = RatingRepository(dataSource)
+    configureCars(cars, organizations, images, reservations, ratings)
     configureImages(cars, organizations, images)
     configureReservations(cars, reservations)
     configureTrips(reservations, TripRepository(dataSource), cars, organizations)
+    configureRatings(reservations, ratings, cars)
     configureAccounts(users, organizations)
     configureOrganizations(organizations)
 }
