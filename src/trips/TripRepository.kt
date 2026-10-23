@@ -2,11 +2,14 @@ package com.example.trips
 
 import com.example.accounts.Users
 import com.example.cars.Cars
+import com.example.cars.MAX_MILEAGE
 import com.example.reservations.ReservationStatus
 import com.example.reservations.Reservations
 import com.example.reservations.createReservations
 import com.example.reservations.Daypart
 import org.jetbrains.exposed.v1.core.Case
+import org.jetbrains.exposed.v1.core.CustomFunction
+import org.jetbrains.exposed.v1.core.IntegerColumnType
 import org.jetbrains.exposed.v1.core.LongColumnType
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ReferenceOption
@@ -123,7 +126,8 @@ class TripRepository(dataSource: DataSource) {
                 Reservations.update({ Reservations.id eq reservationId }) { it[status] = ReservationStatus.COMPLETED.name }
                 // An increment in the statement itself, so a trip never overwrites a mileage that changed meanwhile.
                 val carId = Reservations.select(Reservations.carId).where { Reservations.id eq reservationId }.single()[Reservations.carId]
-                Cars.update({ Cars.id eq carId }) { it[mileage] = mileage + distanceKm }
+                // Capped at MAX_MILEAGE, so a car near the limit can still be updated with the mileage it shows.
+                Cars.update({ Cars.id eq carId }) { it[mileage] = CustomFunction("LEAST", IntegerColumnType(), mileage + distanceKm, intLiteral(MAX_MILEAGE)) }
                 Users.update({ Users.id eq userId }) { it[bonusPoints] = bonusPoints + points }
                 val total = Users.selectAll().where { Users.id eq userId }.single()[Users.bonusPoints]
                 Trip(inserted[Trips.id], reservationId, distanceKm, score, startedAt?.toInstant()?.toString(), minutes) to total

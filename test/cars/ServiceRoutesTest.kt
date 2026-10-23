@@ -177,4 +177,24 @@ class ServiceRoutesTest {
 
         assertEquals(1_100, client.car(jan, id)["mileage"]!!.jsonPrimitive.int)
     }
+
+    @Test
+    fun TheMileageStopsAtTheLimitSoTheCarCanStillBeUpdated() = withApp {
+        val jan = client.signUp("jan@example.com")
+        val id = client.addCarId(jan, MAX_MILEAGE - 5)
+        val reservation = client.post("/cars/$id/reservations") {
+            bearerAuth(jan)
+            contentType(ContentType.Application.Json)
+            setBody("""{"date":"${LocalDate.now(com.example.reservations.ZONE)}","daypart":"MORNING"}""")
+        }.let { Json.parseToJsonElement(it.bodyAsText()).jsonObject["id"]!!.jsonPrimitive.int }
+
+        val trip = client.post("/reservations/$reservation/trip") {
+            bearerAuth(jan)
+            contentType(ContentType.Application.Json)
+            setBody("""{"distanceKm":100,"hardAccelerations":0,"hardBrakes":0}""")
+        }
+
+        assertEquals(HttpStatusCode.Created, trip.status)
+        assertEquals(MAX_MILEAGE, client.car(jan, id)["mileage"]!!.jsonPrimitive.int)
+    }
 }
