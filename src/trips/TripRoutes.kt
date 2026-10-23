@@ -82,7 +82,7 @@ fun Application.configureTrips(reservations: ReservationRepository, trips: TripR
 }
 
 // The reservation of the path when it belongs to the logged-in user; otherwise answers 400, 404 or 403 and returns null.
-private suspend fun ApplicationCall.ownReservation(reservations: ReservationRepository): Reservation? {
+internal suspend fun ApplicationCall.ownReservation(reservations: ReservationRepository): Reservation? {
     val id = parameters["id"]?.toIntOrNull()
     val reservation = id?.let(reservations::find)
     val status = when {

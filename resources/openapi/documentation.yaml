@@ -8,7 +8,7 @@ paths:
     get:
       tags: [Cars]
       summary: List cars
-      description: The filters can be combined. With a distance filter the cars are sorted nearest first. With date and daypart only the cars that are free then are listed (not reserved, not in Maintenance).
+      description: The filters can be combined. With a distance filter the cars are sorted nearest first. With date and daypart only the cars that are free then are listed (not reserved, not in Maintenance). Every car has an averageRating (null without ratings), calculated for all cars in one query.
       parameters:
         - { name: date, in: query, description: "ISO date, today or later. Together with daypart", schema: { type: string, format: date, example: "2026-10-12" } }
         - { name: daypart, in: query, description: Together with date, schema: { type: string, enum: [MORNING, AFTERNOON, EVENING] } }
@@ -393,6 +393,56 @@ paths:
           description: Someone else's account
         "404":
           description: Unknown id
+  /reservations/{id}/rating:
+    post:
+      tags: [Ratings]
+      summary: Rate the car of your reservation
+      description: Once per reservation, after its trip is finished (a trip that was started but not ended is not finished). stars is 1 to 5 and the comment is optional, trimmed, and at most 500 characters.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RatingRequest"
+      responses:
+        "201":
+          description: Rating saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rating"
+        "400":
+          description: Non-numeric id, a missing or non-integer stars, stars outside 1 to 5, or a comment above 500 characters
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's reservation
+        "404":
+          description: Unknown reservation
+        "409":
+          description: The reservation has no finished trip, or was already rated
+  /cars/{id}/ratings:
+    get:
+      tags: [Ratings]
+      summary: The ratings of a car
+      description: Newest first, with the average (one decimal, null without ratings) and the count. A rating has no data of the renter. All ratings are in one list, there is no paging.
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: The ratings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarRatings"
+        "400":
+          description: Non-numeric id
+        "404":
+          description: Unknown car
   /cars/{id}/availability:
     get:
       tags: [Reservations]
@@ -416,7 +466,7 @@ paths:
     get:
       tags: [Cars]
       summary: Get a car
-      description: The car, with the urls of its photos in `images` (oldest first).
+      description: The car, with the urls of its photos in `images` (oldest first) and its `averageRating` (null without ratings).
       security:
         - bearerAuth: []
       parameters:
@@ -811,7 +861,7 @@ components:
         id: { type: integer, example: 1 }
         name: { type: string, example: Jan }
         email: { type: string, example: jan@example.com }
-        bonusPoints: { type: integer, example: 0, description: Earned by driving calmly, see POST /reservations/{id}/trip }
+        bonusPoints: { type: integer, example: 0, description: "Earned by driving calmly, see POST /reservations/{id}/trip" }
     TokenResponse:
       type: object
       required: [token]
@@ -855,6 +905,7 @@ components:
         insurancePerYear: { type: number, example: 600.0, description: EUR }
         roadTaxPerYear: { type: number, example: 120.0, description: EUR }
         maintenancePerYear: { type: number, example: 450.0, description: EUR }
+        averageRating: { type: number, nullable: true, example: 4.3, description: "Average of the ratings, one decimal, null without ratings. Only in GET /cars and GET /cars/{id}" }
     BEVCar:
       type: object
       required: [type, id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, batteryCapacityKwh, consumptionKwhPer100Km, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear]
@@ -881,6 +932,7 @@ components:
         insurancePerYear: { type: number, example: 600.0, description: EUR }
         roadTaxPerYear: { type: number, example: 120.0, description: EUR }
         maintenancePerYear: { type: number, example: 450.0, description: EUR }
+        averageRating: { type: number, nullable: true, example: 4.3, description: "Average of the ratings, one decimal, null without ratings. Only in GET /cars and GET /cars/{id}" }
     FCEVCar:
       type: object
       required: [type, id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, tankCapacityKg, consumptionKgPer100Km, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear]
@@ -907,6 +959,7 @@ components:
         insurancePerYear: { type: number, example: 600.0, description: EUR }
         roadTaxPerYear: { type: number, example: 120.0, description: EUR }
         maintenancePerYear: { type: number, example: 450.0, description: EUR }
+        averageRating: { type: number, nullable: true, example: 4.3, description: "Average of the ratings, one decimal, null without ratings. Only in GET /cars and GET /cars/{id}" }
     CostPerKm:
       type: object
       required: [carId, costPerKm, currency]
@@ -1040,6 +1093,29 @@ components:
         averageScore: { type: number, nullable: true, example: 83.3 }
         bestDaypart: { type: string, enum: [MORNING, AFTERNOON, EVENING], nullable: true }
         bonusPoints: { type: integer, example: 75 }
+    RatingRequest:
+      type: object
+      required: [stars]
+      properties:
+        stars: { type: integer, minimum: 1, maximum: 5, example: 4 }
+        comment: { type: string, maxLength: 500, example: Clean and quiet }
+    Rating:
+      type: object
+      required: [id, reservationId, carId, stars, comment]
+      properties:
+        id: { type: integer, example: 1 }
+        reservationId: { type: integer, example: 7 }
+        carId: { type: integer, example: 3 }
+        stars: { type: integer, minimum: 1, maximum: 5, example: 4 }
+        comment: { type: string, nullable: true, example: Clean and quiet }
+    CarRatings:
+      type: object
+      required: [carId, averageRating, ratingCount, ratings]
+      properties:
+        carId: { type: integer, example: 3 }
+        averageRating: { type: number, nullable: true, example: 4.3 }
+        ratingCount: { type: integer, example: 3 }
+        ratings: { type: array, items: { $ref: "#/components/schemas/Rating" } }
     Availability:
       type: object
       required: [carId, date, freeDayparts]
