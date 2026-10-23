@@ -55,6 +55,17 @@ fun Application.configureCars(
             else call.respond(CostPerKmResponse(id, car.costPerKm(EnergyPrices.STANDARD).roundTo(4), "EUR"))
         }
 
+        get("/cars/{id}/quote") {
+            val id = call.parameters["id"]?.toIntOrNull()
+            val distanceKm = parseQuoteDistance(call.request.queryParameters["distanceKm"])
+            if (id == null || distanceKm == null) {
+                call.respond(HttpStatusCode.BadRequest)
+                return@get
+            }
+            val car = repository.findCar(id)
+            if (car == null) call.respond(HttpStatusCode.NotFound) else call.respond(car.quote(distanceKm, EnergyPrices.STANDARD))
+        }
+
         authenticate {
             post("/cars") {
                 val user = call.principal<User>()!!
