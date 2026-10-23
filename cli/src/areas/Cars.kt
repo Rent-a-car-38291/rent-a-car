@@ -2,6 +2,8 @@ package com.example.cli.areas
 
 import com.example.cli.*
 import kotlinx.serialization.json.*
+import java.nio.file.Files
+import java.nio.file.Path
 
 private val carColumns = listOf("id", "type", "brand", "licensePlate", "rate", "status", "averageRating", "location.latitude", "location.longitude")
 private val daypartNames = listOf("MORNING", "AFTERNOON", "EVENING")
@@ -76,6 +78,17 @@ val carsMenu = Menu("Cars", needsLogin = false, items = listOf(
         val id = ctx.pickCar() ?: return@MenuItem
         ctx.call("PUT", "/cars/$id/service")?.let { ctx.io.say("Car #$id is marked as serviced at its current mileage.") }
     },
+    MenuItem("Add a photo to a car I manage") { ctx ->
+        val id = ctx.pickCar() ?: return@MenuItem
+        val photo = readPhoto(Path.of(ctx.io.text("Path of the JPEG or PNG file").removeSurrounding("\"").removeSurrounding("'")))
+        if (photo.problem != null) return@MenuItem ctx.io.say("! ${photo.problem}")
+        ctx.upload("/cars/$id/images", photo.name, photo.contentType!!, photo.bytes!!, hints = mapOf(
+            400 to "The server did not accept the file. Use a JPEG or PNG picture.",
+            403 to "You do not manage that car.",
+            409 to "That car already has 10 photos.",
+            413 to "The server says the file is too large (5 MB at most).",
+        ))?.jsonObject?.let { ctx.io.say("Photo added: ${it.str("url")}") }
+    },
 ))
 
 /** Creates a car; with an [organizationId] it belongs to that organization instead of to you. */
@@ -130,3 +143,27 @@ private fun carForm(io: Console, current: JsonObject?): JsonObject {
         }
     }
 }
+
+private const val MAX_PHOTO_BYTES = 5 * 1024 * 1024 // same limit as the server
+private val PNG_START = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+private val JPEG_START = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte())
+
+/** A photo file that was checked, or the [problem] to tell the user. */
+class Photo(val name: String, val contentType: String? = null, val bytes: ByteArray? = null, val problem: String? = null)
+
+/** Reads the file and checks what the server checks too (a real JPEG or PNG, at most 5 MB), so the user hears it before the upload. */
+internal fun readPhoto(path: Path): Photo {
+    val name = path.fileName?.toString() ?: "photo"
+    if (!Files.isRegularFile(path)) return Photo(name, problem = "There is no file at $path.")
+    if (!Files.isReadable(path)) return Photo(name, problem = "The file at $path cannot be read.")
+    if (Files.size(path) > MAX_PHOTO_BYTES) return Photo(name, problem = "The file is larger than 5 MB.")
+    val bytes = Files.readAllBytes(path)
+    val contentType = when {
+        bytes.startsWith(PNG_START) -> "image/png"
+        bytes.startsWith(JPEG_START) -> "image/jpeg"
+        else -> return Photo(name, problem = "That is not a JPEG or PNG picture.")
+    }
+    return Photo(name, contentType, bytes)
+}
+
+private fun ByteArray.startsWith(prefix: ByteArray) = size >= prefix.size && prefix.indices.all { this[it] == prefix[it] }

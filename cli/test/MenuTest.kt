@@ -159,6 +159,8 @@ class MenuTest {
             override var token: String? = null
             override fun call(method: String, path: String, query: Map<String, String?>, body: kotlinx.serialization.json.JsonElement?): ApiResponse =
                 throw ServerUnreachable("Cannot reach the server at http://localhost:1")
+            override fun upload(path: String, fileName: String, contentType: String, bytes: ByteArray): ApiResponse =
+                throw ServerUnreachable("Cannot reach the server at http://localhost:1")
         }
 
         val output = runScript(api, "3", "1", "1", "", "", "", "", "", "", "", "", "", "0", "0", "0")
