@@ -28,12 +28,13 @@ val carsMenu = Menu("Cars", needsLogin = false, items = listOf(
         val fuelType = io.optionalOneOf("Fuel of a petrol, diesel or LPG car", fuelTypes)
         val minRange = io.optionalDouble("Shortest range in km")
         val sort = io.optionalOneOf("Sort by (a leading - reverses)", sortFields)
-        ctx.call("GET", "/cars", mapOf(
+        ctx.callPages("/cars", mapOf(
             "type" to type, "maxRate" to maxRate?.toString(), "date" to date?.toString(), "daypart" to daypart,
             "lat" to lat?.toString(), "lon" to lon?.toString(), "maxDistanceKm" to maxDistance?.toString(),
             "bodyStyle" to bodyStyle, "transmission" to transmission, "fuelType" to fuelType, "minRange" to minRange?.toString(), "sort" to sort,
-        ), hints = mapOf(400 to "The server did not accept the filters. The type is BEV, ICE or FCEV, the date cannot be in the past and the shortest range cannot be negative."))
-            ?.let { io.table(it.jsonArray, carColumns) }
+        ), hints = mapOf(400 to "The server did not accept the filters. The type is BEV, ICE or FCEV, the date cannot be in the past and the shortest range cannot be negative.")) {
+            io.table(it, carColumns)
+        }
     },
     MenuItem("Car details, photos and ratings") { ctx ->
         val id = ctx.pickCar() ?: return@MenuItem

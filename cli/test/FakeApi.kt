@@ -13,12 +13,14 @@ class FakeApi(vararg answers: Pair<String, ApiResponse>) : Api {
     val calls = mutableListOf<String>()
     val queries = mutableListOf<Map<String, String?>>()
     val bodies = mutableListOf<JsonElement?>()
+    /** Answers that depend on the query (pages); returning null falls back to [answers]. */
+    var handler: ((String, Map<String, String?>) -> ApiResponse?)? = null
 
     override fun call(method: String, path: String, query: Map<String, String?>, body: JsonElement?): ApiResponse {
         calls += "$method $path"
         queries += query
         bodies += body
-        return answers["$method $path"] ?: ApiResponse(404, null)
+        return handler?.invoke("$method $path", query) ?: answers["$method $path"] ?: ApiResponse(404, null)
     }
 }
 

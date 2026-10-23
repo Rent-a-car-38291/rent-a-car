@@ -24,7 +24,16 @@ class Context(val api: Api, val io: Console, val session: Session = Session()) {
         query: Map<String, String?> = emptyMap(),
         body: JsonElement? = null,
         hints: Map<Int, String> = emptyMap(),
-    ): JsonElement? {
+    ): JsonElement? = callForResponse(method, path, query, body, hints)?.let { it.body ?: JsonObject(emptyMap()) }
+
+    /** Like [call], but returns the whole successful response, so the caller can read the total of a page. */
+    fun callForResponse(
+        method: String,
+        path: String,
+        query: Map<String, String?> = emptyMap(),
+        body: JsonElement? = null,
+        hints: Map<Int, String> = emptyMap(),
+    ): ApiResponse? {
         val response = try {
             api.call(method, path, query, body)
         } catch (e: ServerUnreachable) {
@@ -34,10 +43,28 @@ class Context(val api: Api, val io: Console, val session: Session = Session()) {
         if (!response.ok) {
             // A 403 on an account route usually means a mistyped account id: ask again next time.
             if (response.status == 403 && path.startsWith("/accounts/")) session.accountId = null
-            io.say("! ${errorMessage(response.status, hints)}")
+            io.say("! ${errorMessage(response.status, hints, response.errorText)}")
             return null
         }
-        return response.body ?: JsonObject(emptyMap())
+        return response
+    }
+
+    /**
+     * Shows a long list page by page: [show] gets each page and, while the server says there is more, the user can
+     * ask for the next one. [query] can carry a `limit` (the page size) like any other parameter.
+     */
+    fun callPages(path: String, query: Map<String, String?> = emptyMap(), hints: Map<Int, String> = emptyMap(), show: (JsonArray) -> Unit) {
+        var offset = 0
+        while (true) {
+            val response = callForResponse("GET", path, query + ("offset" to offset.toString()), hints = hints) ?: return
+            val page = response.body as? JsonArray ?: return
+            show(page)
+            offset += page.size
+            val total = response.total ?: return
+            if (page.isEmpty() || offset >= total) return
+            io.say("  Showing $offset of $total.")
+            if (!io.confirm("Show the next page?")) return
+        }
     }
 
     /** The account id, asked once when this run did not register the account. */
@@ -51,16 +78,23 @@ class Context(val api: Api, val io: Console, val session: Session = Session()) {
         session.organizations.clear()
     }
 
-    /** Lists the cars from the server and lets the user pick one by number. Returns the car's id. */
+    /** Lists the cars from the server and lets the user pick one by number, or ask for the next cars. Returns the car's id. */
     fun pickCar(query: Map<String, String?> = emptyMap()): Int? {
-        val cars = call("GET", "/cars", query)?.jsonArray ?: return null
-        if (cars.isEmpty()) {
-            io.say("  No cars found.")
-            return null
+        var offset = 0
+        while (true) {
+            val response = callForResponse("GET", "/cars", query + ("offset" to offset.toString())) ?: return null
+            val cars = (response.body as? JsonArray)?.map { it.jsonObject } ?: return null
+            if (cars.isEmpty()) {
+                io.say("  No cars found.")
+                return null
+            }
+            val more = response.total?.let { offset + cars.size < it } == true
+            val next = "More cars..."
+            val options = cars.map { c -> "#${c.str("id")} ${c.str("brand")} (${c.str("type")}, ${c.str("licensePlate")}, EUR ${c.str("rate")})" } + listOfNotNull(next.takeIf { more })
+            val choice = io.choose("Which car?", options)
+            if (choice != next || !more) return cars[options.indexOf(choice)].str("id").toInt()
+            offset += cars.size
         }
-        return io.choose("Which car?", cars.map { it.jsonObject }, { c ->
-            "#${c.str("id")} ${c.str("brand")} (${c.str("type")}, ${c.str("licensePlate")}, EUR ${c.str("rate")})"
-        }).str("id").toInt()
     }
 
     /** Picks one of the known items (made in this run) by number, or lets the user type an id. */
