@@ -1,0 +1,22 @@
+@startuml
+title Every error has the same body
+autonumber
+
+actor Client
+participant "Ktor\n(routing, authentication,\nContentNegotiation)" as Ktor
+participant "Routes\n(*Routes.kt)" as Route
+participant "Errors.kt\nStatusPages" as Errors
+
+Client -> Ktor : any request
+alt a route answers with an error status
+  Ktor -> Route : handle
+  Route --> Errors : respond(HttpStatusCode.NotFound)\nor respondError(NotFound, "Car with ID 5 not found")
+else Ktor answers itself (unknown route, missing token, wrong method)
+  Ktor --> Errors : 404, 401 + WWW-Authenticate: Bearer, 405
+else an exception is thrown
+  Route --> Errors : unreadable body (400), wrong content type (415),\nanything else (500, logged, details not shown)
+end
+Errors -> Errors : code = status in lower case (not_found),\nmessage = the one of this request or the default of the status
+Errors --> Client : 400 / 401 / 403 / 404 / 405 / 409 / 413 / 415 / 429 / 500\n{"error": "not_found", "message": "Car with ID 5 not found"}\n(Retry-After stays on a 429)
+
+@enduml
