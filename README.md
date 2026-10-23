@@ -193,7 +193,7 @@ Every error response (`400`, `401`, `403`, `404`, `405`, `409`, `413`, `415`, `4
 { "error": "not_found", "message": "Car with ID 5 not found" }
 ```
 
-`error` is a code that does not change (the status in lower case with underscores), `message` is a text for people. A `401` carries `WWW-Authenticate: Bearer` and a `429` keeps its `Retry-After` header. An unexpected failure is a `500` that never shows the details; they are only in the server log. See [`sequence-errors`](docs/diagrams/sequence-errors.png).
+`error` is a code that does not change (the status in lower case with underscores), `message` is a text for people. A `401` carries `WWW-Authenticate: Bearer` and a `429` keeps its `Retry-After` header. An unexpected failure is a `500` that never shows the details; they are only in the server log. Only a `406` (the client does not accept JSON) cannot have this body. See [`sequence-errors`](docs/diagrams/sequence-errors.png).
 
 Lists are paged with `limit` (1 to 100, default 20) and `offset` (default 0), and `400` for any other value. The body is the page, a plain list; the size of the whole list is in the `X-Total-Count` header, so a client can page through everything:
 

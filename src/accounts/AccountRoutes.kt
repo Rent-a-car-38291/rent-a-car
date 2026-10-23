@@ -1,6 +1,7 @@
 package com.example.accounts
 
 import com.example.organizations.OrganizationRepository
+import com.example.respondError
 import io.ktor.http.*
 import io.ktor.http.auth.*
 import io.ktor.server.application.*
@@ -51,7 +52,7 @@ fun Application.configureAccounts(
             }
             val user = users.authenticate(request.email.trim(), request.password)
             if (user == null) {
-                call.respond(HttpStatusCode.Unauthorized)
+                call.respondError(HttpStatusCode.Unauthorized, "Wrong email or password.")
                 return@post
             }
             loginLimiter.reset(request.email)
