@@ -1,0 +1,19 @@
+product: jvm/app
+
+settings:
+  kotlin:
+    serialization: json
+  ktor: enabled
+  jvm:
+    mainClass: com.example.cli.MainKt
+
+test-dependencies:
+  - ../
+  - $ktor.server.core
+  - $ktor.server.netty
+  # The end-to-end test starts the real server (module ../) on a random port with its own Postgres, like the server's tests do.
+  - io.zonky.test:embedded-postgres:2.2.2
+  - io.zonky.test.postgres:embedded-postgres-binaries-linux-amd64:17.11.0
+  - io.zonky.test.postgres:embedded-postgres-binaries-darwin-arm64v8:17.11.0
+  - io.zonky.test.postgres:embedded-postgres-binaries-darwin-amd64:17.11.0
+  - io.zonky.test.postgres:embedded-postgres-binaries-windows-amd64:17.11.0

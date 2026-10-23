@@ -55,6 +55,22 @@ paths:
           description: You are not a member of the organization, or it doesn't exist
         "409":
           description: Another car already has this license plate
+  /cars/compare:
+    get:
+      tags: [Cars]
+      summary: Compare car types for a distance
+      description: Per type (BEV, ICE, FCEV) the average over its cars of the energy cost at the standard prices and the CO2 for the distance, both rounded to 2 decimals. A type without cars is left out, and the types come in the order BEV, ICE, FCEV. The rental rate is not part of it. CO2 is tank to wheel with our own rounded approximations per litre (petrol 2.3 kg, diesel 2.7 kg, LPG 1.5 kg), so electric and hydrogen cars count as 0. ICE averages its petrol, diesel and LPG cars together. No login needed.
+      parameters:
+        - { name: distanceKm, in: query, required: true, description: Distance, 1 to 10000, schema: { type: number, minimum: 1, maximum: 10000, example: 100 } }
+      responses:
+        "200":
+          description: The comparison
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Compare"
+        "400":
+          description: A missing, non-numeric or out-of-range distanceKm
   /cars/{id}/cost-per-km:
     get:
       tags: [Cars]
@@ -994,6 +1010,22 @@ components:
         energyCost: { type: number, example: 6.3 }
         rentalRate: { type: number, example: 55.0 }
         total: { type: number, example: 61.3 }
+        currency: { type: string, example: EUR }
+    Compare:
+      type: object
+      required: [distanceKm, types, currency]
+      properties:
+        distanceKm: { type: number, example: 100 }
+        types:
+          type: array
+          items:
+            type: object
+            required: [type, cars, averageCost, co2Kg]
+            properties:
+              type: { type: string, enum: [BEV, ICE, FCEV] }
+              cars: { type: integer, description: Cars of this type in the fleet, example: 3 }
+              averageCost: { type: number, description: Average energy cost for the distance, example: 5.25 }
+              co2Kg: { type: number, description: Average CO2 for the distance, in kg, example: 13.8 }
         currency: { type: string, example: EUR }
     Image:
       type: object
