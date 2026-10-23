@@ -614,6 +614,12 @@ paths:
           description: Missing field or a body that isn't JSON
         "401":
           description: Wrong email or password
+        "429":
+          description: 5 failed logins for this email within 15 minutes. The email is locked until the oldest of those failures is 15 minutes old, also for the correct password. Unknown emails count too, so the answer doesn't show whether an account exists.
+          headers:
+            Retry-After:
+              description: Seconds until the email may try again
+              schema: { type: integer, example: 840 }
   /logout:
     post:
       tags: [Accounts]

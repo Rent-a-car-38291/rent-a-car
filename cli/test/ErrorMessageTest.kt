@@ -5,7 +5,7 @@ import kotlin.test.*
 class ErrorMessageTest {
     @Test
     fun `every status code the API uses has its own friendly text`() {
-        val texts = listOf(400, 401, 403, 404, 409, 413, 500).map { errorMessage(it) }
+        val texts = listOf(400, 401, 403, 404, 409, 413, 429, 500).map { errorMessage(it) }
 
         assertEquals(texts.size, texts.toSet().size)
         assertTrue(texts.none { it.startsWith("Unexpected") })
