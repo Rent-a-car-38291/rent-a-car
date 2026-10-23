@@ -36,7 +36,7 @@ fun Application.module() {
     configureCars(cars, organizations, images, reservations)
     configureImages(cars, organizations, images)
     configureReservations(cars, reservations)
-    configureTrips(reservations, TripRepository(dataSource))
+    configureTrips(reservations, TripRepository(dataSource), cars, organizations)
     configureAccounts(users, organizations)
     configureOrganizations(organizations)
 }

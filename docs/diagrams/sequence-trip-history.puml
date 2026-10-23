@@ -1,0 +1,50 @@
+@startuml
+title GET /trips and GET /cars/{id}/trips
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "TripRoutes.kt" as Route
+participant "CarRepository" as Cars
+participant "TripRepository" as Repo
+database "trips JOIN reservations" as Db
+
+Client -> Auth : GET /trips?from&to&limit&offset\nor GET /cars/{id}/trips?...
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else GET /trips
+  Auth -> Route : user
+  Route -> Route : parseTripFilter(query)
+  alt invalid date, from after to,\nlimit outside 1..100, negative offset
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Repo : history(user.id, null, filter)
+    Repo -> Db : SELECT ... WHERE reservations.user_id = user.id\nAND date BETWEEN from AND to\nORDER BY date, daypart, id DESC LIMIT/OFFSET
+    Db --> Repo : rows
+    Repo --> Route : List<TripHistoryItem>
+    Route --> Client : 200 OK\n[{id, reservationId, carId, date, daypart, distanceKm, score}]
+  end
+else GET /cars/{id}/trips
+  Auth -> Route : user
+  alt id is not a number
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Cars : findCar(id)
+    Cars --> Route : Car?
+    alt unknown id
+      Route --> Client : 404 Not Found
+    else not canManage(user, car)
+      Route --> Client : 403 Forbidden
+    else invalid filter
+      Route --> Client : 400 Bad Request
+    else
+      Route -> Repo : history(null, id, filter)
+      Repo -> Db : same query for reservations.car_id = id
+      Db --> Repo : rows
+      Repo --> Route : List<TripHistoryItem>
+      Route --> Client : 200 OK
+    end
+  end
+end
+
+@enduml

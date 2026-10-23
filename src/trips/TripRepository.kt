@@ -3,9 +3,17 @@ package com.example.trips
 import com.example.accounts.Users
 import com.example.reservations.Reservations
 import com.example.reservations.createReservations
+import com.example.reservations.Daypart
+import org.jetbrains.exposed.v1.core.Case
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ReferenceOption
+import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.intLiteral
+import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.plus
 import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -60,5 +68,27 @@ class TripRepository(dataSource: DataSource) {
         }
     } catch (e: ExposedSQLException) {
         if (e.sqlState == FOREIGN_KEY_VIOLATION) null else throw e
+    }
+
+    // One joined query. Pass the renter (the logged-in user's own trips) or the car (the trips of a car), or both.
+    // Newest first: the date, then the daypart, then the order the trips were recorded in.
+    fun history(userId: Int?, carId: Int?, filter: TripFilter): List<TripHistoryItem> = transaction(db) {
+        val daypartRank = Case()
+            .When(Reservations.daypart eq Daypart.EVENING.name, intLiteral(Daypart.EVENING.ordinal))
+            .When(Reservations.daypart eq Daypart.AFTERNOON.name, intLiteral(Daypart.AFTERNOON.ordinal))
+            .Else(intLiteral(Daypart.MORNING.ordinal))
+        (Trips innerJoin Reservations).selectAll()
+            .where {
+                (userId?.let { Reservations.userId eq it } ?: Op.TRUE) and
+                    (carId?.let { Reservations.carId eq it } ?: Op.TRUE) and
+                    (filter.from?.let { Reservations.date greaterEq it } ?: Op.TRUE) and
+                    (filter.to?.let { Reservations.date lessEq it } ?: Op.TRUE)
+            }
+            .orderBy(Reservations.date to SortOrder.DESC, daypartRank to SortOrder.DESC, Trips.id to SortOrder.DESC)
+            .limit(filter.limit).offset(filter.offset.toLong())
+            .map {
+                TripHistoryItem(it[Trips.id], it[Trips.reservationId], it[Reservations.carId], it[Reservations.date].toString(),
+                    Daypart.valueOf(it[Reservations.daypart]), it[Trips.distanceKm], it[Trips.score])
+            }
     }
 }

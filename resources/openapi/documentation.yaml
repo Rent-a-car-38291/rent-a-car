@@ -236,6 +236,61 @@ paths:
           description: Unknown reservation
         "409":
           description: The reservation already has a trip, or its date has not come yet
+  /trips:
+    get:
+      tags: [Trips]
+      summary: Your trip history
+      description: The trips of the logged-in user, newest first (by date, then daypart). The filters can be combined.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/tripFrom"
+        - $ref: "#/components/parameters/tripTo"
+        - $ref: "#/components/parameters/tripLimit"
+        - $ref: "#/components/parameters/tripOffset"
+      responses:
+        "200":
+          description: The trips, an empty list when there are none
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TripHistoryItem"
+        "400":
+          description: A from or to that is not an ISO date, from after to, a limit outside 1-100, a negative offset or a non-numeric value
+        "401":
+          description: Missing or invalid token
+  /cars/{id}/trips:
+    get:
+      tags: [Trips]
+      summary: The trips of a car
+      description: Everyone's trips with this car, newest first. Only for those who manage the car, the owner of a private car or a member of the organization of an organization car.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/tripFrom"
+        - $ref: "#/components/parameters/tripTo"
+        - $ref: "#/components/parameters/tripLimit"
+        - $ref: "#/components/parameters/tripOffset"
+      responses:
+        "200":
+          description: The trips, an empty list when there are none
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TripHistoryItem"
+        "400":
+          description: Non-numeric id, or an invalid filter (see GET /trips)
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Not a car you manage
+        "404":
+          description: Unknown car
   /cars/{id}/availability:
     get:
       tags: [Reservations]
@@ -599,6 +654,24 @@ components:
       in: path
       required: true
       schema: { type: integer, example: 1 }
+    tripFrom:
+      name: from
+      in: query
+      description: First date of the reservation, inclusive
+      schema: { type: string, format: date, example: "2026-10-01" }
+    tripTo:
+      name: to
+      in: query
+      description: Last date of the reservation, inclusive
+      schema: { type: string, format: date, example: "2026-10-31" }
+    tripLimit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    tripOffset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
   securitySchemes:
     bearerAuth:
       type: http
@@ -825,6 +898,17 @@ components:
         trip: { $ref: "#/components/schemas/Trip" }
         pointsAwarded: { type: integer, example: 75, description: Points this trip earned }
         bonusPoints: { type: integer, example: 75, description: The renter's total after this trip }
+    TripHistoryItem:
+      type: object
+      required: [id, reservationId, carId, date, daypart, distanceKm, score]
+      properties:
+        id: { type: integer, example: 1 }
+        reservationId: { type: integer, example: 4 }
+        carId: { type: integer, example: 3 }
+        date: { type: string, format: date, example: "2026-10-12" }
+        daypart: { type: string, enum: [MORNING, AFTERNOON, EVENING] }
+        distanceKm: { type: integer, example: 100 }
+        score: { type: integer, minimum: 0, maximum: 100, example: 75 }
     Availability:
       type: object
       required: [carId, date, freeDayparts]
