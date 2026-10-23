@@ -1,5 +1,6 @@
 package org.jetbrains.amper.ktor
 
+import com.example.accounts.TokenRepository
 import com.example.accounts.UserRepository
 import com.example.accounts.configureAccounts
 import com.example.accounts.configureSecurity
@@ -30,7 +31,8 @@ fun Application.module() {
     configureRouting()
     val dataSource = connectDatabase()
     val users = UserRepository(dataSource)
-    configureSecurity(users)
+    val tokens = TokenRepository(dataSource)
+    configureSecurity(users, tokens)
     val organizations = OrganizationRepository(dataSource)
     val cars = PostgresCarRepository(dataSource)
     val images = ImageRepository(dataSource, Path.of(environment.config.property("images.directory").getString()))
@@ -41,6 +43,6 @@ fun Application.module() {
     configureReservations(cars, reservations)
     configureTrips(reservations, TripRepository(dataSource), cars, organizations)
     configureRatings(reservations, ratings, cars)
-    configureAccounts(users, organizations)
+    configureAccounts(users, organizations, tokens)
     configureOrganizations(organizations)
 }
