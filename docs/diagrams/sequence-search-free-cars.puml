@@ -1,0 +1,27 @@
+@startuml
+title GET /cars?date=2026-10-12&daypart=MORNING
+autonumber
+
+actor Client
+participant "CarRoutes.kt" as Route
+participant "CarRepository" as Cars
+participant "ReservationRepository" as Repo
+
+Client -> Route : GET /cars?date=...&daypart=...&type=...
+alt only one of date and daypart, an invalid value, or a past date
+  Route --> Client : 400 Bad Request
+else
+  Route -> Cars : allCars()
+  Cars --> Route : List<Car>
+  Route -> Repo : reservedCarIds(date, daypart)\n(one query for all cars)
+  Repo --> Route : Set<carId>
+  Route -> Route : drop cars in Maintenance\nand cars with a reservation
+  alt invalid type, maxRate, lat, lon or maxDistanceKm
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Route : filterCars(type, maxRate, distance)
+    Route --> Client : 200 OK\n[free cars]
+  end
+end
+
+@enduml

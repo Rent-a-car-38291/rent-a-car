@@ -3,6 +3,9 @@ package com.example.cars
 import com.example.accounts.User
 import com.example.images.ImageRepository
 import com.example.organizations.OrganizationRepository
+import com.example.reservations.ReservationRepository
+import com.example.reservations.ZONE
+import com.example.reservations.parseFreeSlot
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.auth.authenticate
@@ -14,13 +17,30 @@ import io.ktor.server.util.getOrFail
 import kotlinx.serialization.json.*
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDate
 
 private fun Double.roundTo(decimals: Int) = BigDecimal.valueOf(this).setScale(decimals, RoundingMode.HALF_UP).toDouble()
 
-fun Application.configureCars(repository: CarRepository, organizations: OrganizationRepository, images: ImageRepository? = null) {
+// reservations is optional like images: without it the date and daypart parameters are ignored.
+fun Application.configureCars(
+    repository: CarRepository,
+    organizations: OrganizationRepository,
+    images: ImageRepository? = null,
+    reservations: ReservationRepository? = null,
+) {
     routing {
         get("/cars") {
-            val cars = filterCars(repository.allCars(), call.request.queryParameters)
+            val query = call.request.queryParameters
+            val slot = parseFreeSlot(query["date"], query["daypart"], LocalDate.now(ZONE)).getOrElse {
+                call.respond(HttpStatusCode.BadRequest)
+                return@get
+            }
+            // filterCars validates the other parameters first, so an invalid request doesn't reach the reservations.
+            var cars = filterCars(repository.allCars(), query)
+            if (cars != null && slot != null && reservations != null) {
+                val reserved = reservations.reservedCarIds(slot.date, slot.daypart)
+                cars = cars.filter { it.status != CarStatus.Maintenance && it.id !in reserved }
+            }
             if (cars == null) call.respond(HttpStatusCode.BadRequest) else call.respond(cars)
         }
 

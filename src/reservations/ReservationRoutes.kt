@@ -20,10 +20,21 @@ import java.time.ZoneId
 internal val ZONE = ZoneId.of("Europe/Amsterdam")
 
 // The year bound keeps out dates (+999999999-01-01) that parse but that Postgres refuses.
-private fun parseDate(text: String?): LocalDate? = try {
+internal fun parseDate(text: String?): LocalDate? = try {
     text?.let(LocalDate::parse)?.takeIf { it.year in 2000..2200 }
 } catch (e: DateTimeException) {
     null
+}
+
+class FreeSlot(val date: LocalDate, val daypart: Daypart)
+
+// The date and daypart of a free-cars search: success(null) when neither is given, a failure when only one is given,
+// one is invalid, or the date is in the past.
+fun parseFreeSlot(date: String?, daypart: String?, today: LocalDate): Result<FreeSlot?> {
+    if (date == null && daypart == null) return Result.success(null)
+    val parsedDate = parseDate(date)?.takeIf { !it.isBefore(today) }
+    val parsedDaypart = Daypart.entries.find { it.name == daypart }
+    return if (parsedDate == null || parsedDaypart == null) Result.failure(IllegalArgumentException()) else Result.success(FreeSlot(parsedDate, parsedDaypart))
 }
 
 fun Application.configureReservations(cars: CarRepository, reservations: ReservationRepository, clock: Clock = Clock.system(ZONE)) {

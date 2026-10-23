@@ -47,7 +47,7 @@ curl http://localhost:8080/cars
 
 `./kotlin test` runs everything; a single class runs with `./kotlin test --include-classes=com.example.cars.CarFilterTest`.
 
-- **Unit tests** check one piece of logic and need no server or database: `CarFilterTest`, `AddCarRequestTest`, `CostPerKmTest`, `TcoTest`, `TripScoreTest`, `DaypartTest`. They run in milliseconds.
+- **Unit tests** check one piece of logic and need no server or database: `CarFilterTest`, `AddCarRequestTest`, `CostPerKmTest`, `TcoTest`, `TripScoreTest`, `DaypartTest`, `FreeSlotTest`. They run in milliseconds.
 - **Integration tests** (the route and repository tests) start the application with `testApplication` and a real Postgres that the tests start themselves, and check status codes and what ends up in the database. `CarAccessTest` is a unit test of the access rules that uses that Postgres for the memberships.
 
 A rule gets a unit test for each edge value; a route gets an integration test for each status code it can answer.
@@ -64,7 +64,7 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 
 | Method   | Path                      | Description                    | Success | Errors                            |
 | -------- | ------------------------- | ------------------------------ | ------- | --------------------------------- |
-| `GET`    | `/cars`                   | List all cars                  | `200`   |                                   |
+| `GET`    | `/cars`                   | List cars, optionally free on a date and daypart | `200` | `400`                    |
 | `POST`   | `/cars`                   | Offer a car                    | `201`   | `400`, `401`, `403`, `409`        |
 | `PUT`    | `/cars/{id}`              | Update a car you may manage    | `200`   | `400`, `401`, `403`, `404`, `409` |
 | `DELETE` | `/cars/{id}`              | Delete a car you may delete    | `204`   | `400`, `401`, `403`, `404`        |
@@ -84,7 +84,7 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 | `PUT`    | `/accounts/{id}/password` | Change your own password       | `204`   | `400`, `401`, `403`, `404`        |
 | `DELETE` | `/accounts/{id}`          | Delete your own account        | `204`   | `400`, `401`, `403`, `404`        |
 
-A car is rented per daypart: `MORNING` (06:00-12:00), `AFTERNOON` (12:00-18:00) or `EVENING` (18:00-24:00), once per car and date. Pass the `date` (`2026-10-12`) and `daypart` to `POST /cars/{id}/reservations`; `GET /cars/{id}/availability?date=2026-10-12` lists what is still free. A car in `Maintenance` can't be reserved. There is no `Rented` status. The renter can cancel with `DELETE /reservations/{id}` until the daypart starts (its `from` time), after which, or once it has a trip, the answer is `409`; the daypart is free again for anyone.
+A car is rented per daypart: `MORNING` (06:00-12:00), `AFTERNOON` (12:00-18:00) or `EVENING` (18:00-24:00), once per car and date. Pass the `date` (`2026-10-12`) and `daypart` to `POST /cars/{id}/reservations`; `GET /cars/{id}/availability?date=2026-10-12` lists what is still free. `GET /cars?date=2026-10-12&daypart=MORNING` lists only the cars that are free then (not reserved, not in `Maintenance`) and combines with the other filters; `date` and `daypart` come together, and a missing, invalid or past value gives `400`. A car in `Maintenance` can't be reserved. There is no `Rented` status. The renter can cancel with `DELETE /reservations/{id}` until the daypart starts (its `from` time), after which, or once it has a trip, the answer is `409`; the daypart is free again for anyone.
 
 A car is private or belongs to an organization. `POST /cars` with an `organizationId` (you must be a member, else `403`) makes an organization car: it has no `ownerId`, every member can update it and see its TCO, and only an admin can delete it. Private cars are managed by their owner only. Deleting an account removes its private cars; organization cars stay.
 
