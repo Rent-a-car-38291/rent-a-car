@@ -35,12 +35,12 @@ fun Application.configureCars(
                 call.respond(HttpStatusCode.BadRequest)
                 return@get
             }
-            var all = repository.allCars()
-            if (slot != null && reservations != null) {
+            // filterCars validates the other parameters first, so an invalid request doesn't reach the reservations.
+            var cars = filterCars(repository.allCars(), query)
+            if (cars != null && slot != null && reservations != null) {
                 val reserved = reservations.reservedCarIds(slot.date, slot.daypart)
-                all = all.filter { it.status != CarStatus.Maintenance && it.id !in reserved }
+                cars = cars.filter { it.status != CarStatus.Maintenance && it.id !in reserved }
             }
-            val cars = filterCars(all, query)
             if (cars == null) call.respond(HttpStatusCode.BadRequest) else call.respond(cars)
         }
 
