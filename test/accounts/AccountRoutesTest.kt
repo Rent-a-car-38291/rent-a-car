@@ -185,13 +185,39 @@ class AccountRoutesTest {
     }
 
     @Test
+    fun ATokenStillWorksAfterTheServerRestarts() {
+        var token = ""
+        testApplication {
+            useTestDatabase()
+            application { module() }
+            token = client.signUp().second
+        }
+
+        testApplication {
+            useTestDatabase()
+            application { module() } // a new application with new repositories, the same database
+            assertEquals(HttpStatusCode.NoContent, client.logout(token).status)
+        }
+    }
+
+    @Test
+    fun AnExpiredTokenReturnsUnauthorized() = testApplication {
+        useTestDatabase()
+        application { module() }
+        val (_, token) = client.signUp()
+        TestDatabase.dataSource.connection.use { it.createStatement().executeUpdate("UPDATE tokens SET expires_at = now() - interval '1 second'") }
+
+        assertEquals(HttpStatusCode.Unauthorized, client.logout(token).status)
+    }
+
+    @Test
     fun DeletedUsersTokenIsRevoked() = testApplication {
         useTestDatabase()
         application { module() }
         val (id, token) = client.signUp()
         client.deleteAccount(id, token)
 
-        assertNull(TokenRepository.userId(token))
+        assertNull(TokenRepository(TestDatabase.dataSource).userId(token))
         assertEquals(HttpStatusCode.Unauthorized, client.deleteAccount(id, token).status)
     }
 
