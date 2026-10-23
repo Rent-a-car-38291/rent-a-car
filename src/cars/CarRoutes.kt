@@ -3,6 +3,7 @@ package com.example.cars
 import com.example.accounts.User
 import com.example.images.ImageRepository
 import com.example.organizations.OrganizationRepository
+import com.example.ratings.RatingRepository
 import com.example.reservations.ReservationRepository
 import com.example.reservations.ZONE
 import com.example.reservations.parseFreeSlot
@@ -21,12 +22,16 @@ import java.time.LocalDate
 
 private fun Double.roundTo(decimals: Int) = BigDecimal.valueOf(this).setScale(decimals, RoundingMode.HALF_UP).toDouble()
 
-// reservations is optional like images: without it the date and daypart parameters are ignored.
+// A car as JSON with extra fields next to its own.
+private fun Car.toJson(extra: Map<String, JsonElement>) = JsonObject(Json.encodeToJsonElement(Car.serializer(), this).jsonObject + extra)
+
+// reservations is optional like images: without it the date and daypart parameters are ignored. Without ratings there is no averageRating.
 fun Application.configureCars(
     repository: CarRepository,
     organizations: OrganizationRepository,
     images: ImageRepository? = null,
     reservations: ReservationRepository? = null,
+    ratings: RatingRepository? = null,
 ) {
     routing {
         get("/cars") {
@@ -41,7 +46,14 @@ fun Application.configureCars(
                 val reserved = reservations.reservedCarIds(slot.date, slot.daypart)
                 cars = cars.filter { it.status != CarStatus.Maintenance && it.id !in reserved }
             }
-            if (cars == null) call.respond(HttpStatusCode.BadRequest) else call.respond(cars)
+            when {
+                cars == null -> call.respond(HttpStatusCode.BadRequest)
+                ratings == null -> call.respond(cars)
+                else -> {
+                    val averages = ratings.averages() // one query for all cars
+                    call.respond(JsonArray(cars.map { it.toJson(mapOf("averageRating" to JsonPrimitive(averages[it.id]))) }))
+                }
+            }
         }
 
         get("/cars/{id}/cost-per-km") {
@@ -155,13 +167,12 @@ fun Application.configureCars(
                     return@get
                 }
 
-                // Return JSON response, with the photo urls when images are set up.
-                if (images == null) {
-                    call.respond(car)
-                } else {
-                    val json = Json.encodeToJsonElement(Car.serializer(), car).jsonObject
-                    call.respond(JsonObject(json + ("images" to JsonArray(images.forCar(carId).map { JsonPrimitive(it.url) }))))
+                // Return JSON response, with the photo urls and the average rating when those are set up.
+                val extra = buildMap<String, JsonElement> {
+                    images?.let { put("images", JsonArray(it.forCar(carId).map { image -> JsonPrimitive(image.url) })) }
+                    ratings?.let { put("averageRating", JsonPrimitive(it.averages(carId)[carId])) }
                 }
+                if (extra.isEmpty()) call.respond(car) else call.respond(car.toJson(extra))
             }
 
             delete("/cars/{id}") {
