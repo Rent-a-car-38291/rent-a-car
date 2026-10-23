@@ -178,6 +178,28 @@ paths:
           description: Unknown car
         "409":
           description: That daypart is taken, or the car is in Maintenance
+  /reservations/{id}:
+    delete:
+      tags: [Reservations]
+      summary: Cancel your reservation
+      description: Only the renter, and only until the daypart starts (its from time, local time). The daypart is free again afterwards.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: Cancelled
+        "400":
+          description: Non-numeric id
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's reservation
+        "404":
+          description: Unknown reservation
+        "409":
+          description: The daypart has already started, or the reservation has a trip
   /reservations/{id}/trip:
     post:
       tags: [Trips]
