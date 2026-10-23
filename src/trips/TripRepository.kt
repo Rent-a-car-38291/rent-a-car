@@ -10,16 +10,19 @@ import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.intLiteral
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.plus
+import org.jetbrains.exposed.v1.core.sum
 import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.insertIgnore
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -132,5 +135,20 @@ class TripRepository(dataSource: DataSource) {
                     Daypart.valueOf(it[Reservations.daypart]), it[Trips.distanceKm], it[Trips.score],
                     it[Trips.startedAt]?.toInstant()?.toString(), it[Trips.durationMinutes])
             }
+    }
+
+    // null for an unknown user. The trips are added up per daypart in one query, so only finished trips count
+    // (a started trip is not in the trips table until it ends).
+    // shortcut: the sums are read as Int, so they overflow after about 200,000 km of trips a user.
+    fun stats(userId: Int): DrivingStats? = transaction(db) {
+        val bonus = Users.selectAll().where { Users.id eq userId }.singleOrNull()?.get(Users.bonusPoints) ?: return@transaction null
+        val count = Trips.id.count()
+        val km = Trips.distanceKm.sum()
+        val scoreSum = Trips.score.sum()
+        val totals = (Trips innerJoin Reservations).select(Reservations.daypart, count, km, scoreSum)
+            .where { Reservations.userId eq userId }
+            .groupBy(Reservations.daypart)
+            .map { DaypartTotals(Daypart.valueOf(it[Reservations.daypart]), it[count].toInt(), it[km]!!.toLong(), it[scoreSum]!!.toLong()) }
+        calculateStats(totals, bonus)
     }
 }
