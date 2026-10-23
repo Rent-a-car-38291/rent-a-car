@@ -1,9 +1,22 @@
 package com.example.accounts
 
-import com.example.database.runScript
+import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.lowerCase
+import org.jetbrains.exposed.v1.core.stringParam
+import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.insertIgnore
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import java.security.MessageDigest
 import java.security.SecureRandom
-import java.sql.SQLException
 import java.util.Base64
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
@@ -12,34 +25,78 @@ import javax.sql.DataSource
 private const val UNIQUE_VIOLATION = "23505"
 internal const val MAX_PASSWORD_LENGTH = 128
 
+// Serial ids only go up, so the id of a deleted user is never handed out again.
+internal object Users : Table("users") {
+    val id = integer("id").autoIncrement()
+    val name = text("name")
+    val email = text("email")
+    val passwordHash = text("password_hash")
+    override val primaryKey = PrimaryKey(id)
+
+    // One account per email address, ignoring case.
+    init {
+        index("users_email_key", isUnique = true, functions = listOf(email.lowerCase()))
+    }
+}
+
+internal fun Database.createUsers() = transaction(this) {
+    SchemaUtils.create(Users)
+    // Reserved owner for the sample fleet; its random password hash has no known password.
+    // Checked first: a users table from the old SQL script has a GENERATED ALWAYS id, which refuses an explicit id even when the row exists.
+    if (Users.selectAll().where { Users.id eq -1 }.empty()) {
+        Users.insert {
+            it[id] = -1
+            it[name] = "Sample fleet"
+            it[email] = "sample-fleet@rent-a-car.invalid"
+            it[passwordHash] = "ej0M8Ts0bX5FqZlbL0eW7A==:tSdgcA12/mS+4UQvxObL5qo/ieZi7VUbZQubxBaG6hg="
+        }
+    }
+}
+
+private fun ResultRow.toUser() = User(this[Users.id], this[Users.name], this[Users.email], this[Users.passwordHash])
+
 class UserRepository(private val dataSource: DataSource) {
+    private val db = Database.connect(dataSource)
     private val dummyHash by lazy { hash("dummy") }
 
     init {
-        dataSource.runScript("users.sql")
+        db.createUsers()
     }
 
     // null when the email is taken: the unique index on lower(email) decides, so two requests at once can't both win.
     fun register(name: String, email: String, password: String): User? {
         val passwordHash = hash(password) // slow, so keep it away from the database connection
-        return queryUser("INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?) ON CONFLICT DO NOTHING RETURNING *", name, email, passwordHash)
+        return transaction(db) {
+            val inserted = Users.insertIgnore {
+                it[Users.name] = name
+                it[Users.email] = email
+                it[Users.passwordHash] = passwordHash
+            }
+            if (inserted.insertedCount > 0) inserted.resultedValues!!.single().toUser() else null
+        }
     }
 
     // An unknown email is verified against a dummy hash, so it costs as much time as a known one
     // and the response time doesn't reveal which emails have an account.
     fun authenticate(email: String, password: String): User? {
-        val user = queryUser("SELECT * FROM users WHERE lower(email) = lower(?)", email)
+        val user = transaction(db) { Users.selectAll().where { Users.email.lowerCase() eq stringParam(email).lowerCase() }.singleOrNull()?.toUser() }
         val passwordMatches = verify(password, user?.passwordHash ?: dummyHash)
         return user?.takeIf { passwordMatches }
     }
 
-    fun find(id: Int): User? = queryUser("SELECT * FROM users WHERE id = ?", id)
+    fun find(id: Int): User? = transaction(db) { Users.selectAll().where { Users.id eq id }.singleOrNull()?.toUser() }
 
     // null when the email belongs to another account (the unique index decides, so two requests at once can't both win),
     // or when the user was deleted meanwhile: shortcut, the route reports both as 409.
     fun update(id: Int, name: String, email: String): User? = try {
-        queryUser("UPDATE users SET name = ?, email = ? WHERE id = ? RETURNING *", name, email, id)
-    } catch (e: SQLException) {
+        transaction(db) {
+            Users.update({ Users.id eq id }) {
+                it[Users.name] = name
+                it[Users.email] = email
+            }
+            Users.selectAll().where { Users.id eq id }.singleOrNull()?.toUser()
+        }
+    } catch (e: ExposedSQLException) {
         if (e.sqlState == UNIQUE_VIOLATION) null else throw e
     }
 
@@ -50,32 +107,15 @@ class UserRepository(private val dataSource: DataSource) {
         val user = find(id) ?: return false
         if (!verify(currentPassword, user.passwordHash)) return false
         val newHash = hash(newPassword) // slow, so keep it away from the database connection
-        return dataSource.connection.use { connection ->
-            connection.prepareStatement("UPDATE users SET password_hash = ? WHERE id = ? AND password_hash = ?").use {
-                it.setString(1, newHash); it.setInt(2, id); it.setString(3, user.passwordHash); it.executeUpdate() > 0
-            }
+        return transaction(db) {
+            Users.update({ (Users.id eq id) and (Users.passwordHash eq user.passwordHash) }) { it[passwordHash] = newHash } > 0
         }
     }
 
-    fun delete(id: Int): Boolean = dataSource.connection.use { connection ->
-        connection.prepareStatement("DELETE FROM users WHERE id = ?").use { it.setInt(1, id); it.executeUpdate() > 0 }
-    }
+    fun delete(id: Int): Boolean = transaction(db) { Users.deleteWhere { Users.id eq id } > 0 }
 
     fun clear() {
-        dataSource.connection.use { connection ->
-            connection.createStatement().use { statement ->
-                statement.execute("DELETE FROM users WHERE id <> -1; ALTER TABLE users ALTER COLUMN id RESTART WITH 1")
-            }
-        }
-    }
-
-    private fun queryUser(sql: String, vararg parameters: Any): User? = dataSource.connection.use { connection ->
-        connection.prepareStatement(sql).use { statement ->
-            parameters.forEachIndexed { index, parameter -> statement.setObject(index + 1, parameter) }
-            statement.executeQuery().use { rows ->
-                if (rows.next()) User(rows.getInt("id"), rows.getString("name"), rows.getString("email"), rows.getString("password_hash")) else null
-            }
-        }
+        transaction(db) { exec("DELETE FROM users WHERE id <> -1; DO \$\$ BEGIN PERFORM setval(pg_get_serial_sequence('users', 'id'), 1, false); END \$\$") }
     }
 
     private fun hash(password: String, salt: ByteArray = ByteArray(16).also { SecureRandom().nextBytes(it) }): String {

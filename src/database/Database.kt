@@ -15,9 +15,3 @@ fun Application.connectDatabase(): DataSource {
     monitor.subscribe(ApplicationStopped) { dataSource.close() }
     return dataSource
 }
-
-// Runs a .sql file from resources/db; the file may hold several statements.
-fun DataSource.runScript(name: String) {
-    val sql = checkNotNull(Thread.currentThread().contextClassLoader.getResource("db/$name")) { "db/$name not found" }.readText()
-    connection.use { it.createStatement().use { statement -> statement.execute(sql) } }
-}

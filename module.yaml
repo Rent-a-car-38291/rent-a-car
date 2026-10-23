@@ -19,6 +19,9 @@ dependencies:
   - $ktor.serialization.kotlinx.json
   - org.postgresql:postgresql:42.7.14
   - com.zaxxer:HikariCP:7.1.0
+  - org.jetbrains.exposed:exposed-core:1.6.0
+  - org.jetbrains.exposed:exposed-jdbc:1.6.0
+  - org.jetbrains.exposed:exposed-java-time:1.6.0
 
 test-dependencies:
   - $ktor.server.testHost
