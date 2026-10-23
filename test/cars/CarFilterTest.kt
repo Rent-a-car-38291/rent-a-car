@@ -111,6 +111,13 @@ class CarFilterTest {
     }
 
     @Test
+    fun RangeDoesNotLoseAKilometreToRounding() {
+        val exact = car(CarType.BEV, "X", 10.0, capacity = 57.0, consumption = 100.0)
+        assertEquals(57.0, exact.rangeKm)
+        assertEquals(listOf("X"), filterCars(listOf(exact), parametersOf("minRange", "57"))?.map { it.licensePlate })
+    }
+
+    @Test
     fun BodyStyleAndTransmissionMustMatchExactly() {
         assertEquals(listOf("E", "H"), variedPlates("bodyStyle" to "SUV"))
         assertEquals(listOf("E", "H"), variedPlates("transmission" to "Automatic"))
