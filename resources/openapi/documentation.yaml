@@ -393,6 +393,24 @@ paths:
           description: Someone else's account
         "404":
           description: Unknown id
+  /leaderboard:
+    get:
+      tags: [Trips]
+      summary: The drivers with the most bonus points
+      description: Public. Shows only the name and the points, never the email. The most points come first and equal points are ordered by name, then id. Users without points are not listed.
+      parameters:
+        - { name: limit, in: query, description: How many drivers, 1 to 100 (default 10), schema: { type: integer, minimum: 1, maximum: 100, default: 10 } }
+      responses:
+        "200":
+          description: The top drivers, empty when nobody has points
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+        "400":
+          description: A limit that is not a whole number from 1 to 100
   /reservations/{id}/rating:
     post:
       tags: [Ratings]
@@ -1084,6 +1102,12 @@ components:
         score: { type: integer, minimum: 0, maximum: 100, example: 75 }
         startedAt: { type: string, format: date-time, nullable: true, example: "2026-10-12T08:02:11Z" }
         durationMinutes: { type: integer, nullable: true, example: 95 }
+    LeaderboardEntry:
+      type: object
+      required: [name, bonusPoints]
+      properties:
+        name: { type: string, example: Jan }
+        bonusPoints: { type: integer, example: 75 }
     DrivingStats:
       type: object
       required: [tripCount, totalKm, averageScore, bestDaypart, bonusPoints]
