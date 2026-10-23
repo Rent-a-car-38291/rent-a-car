@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Rent my car API
   version: 0.1.0
-  description: Cars, accounts and organizations are stored in PostgreSQL. Login tokens are kept in memory, so everyone logs in again after a restart.
+  description: Cars, accounts and organizations are stored in PostgreSQL. Login tokens are stored hashed and expire 7 days after login, so a restart does not log anyone out.
 paths:
   /cars:
     get:

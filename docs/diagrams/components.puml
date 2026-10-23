@@ -34,6 +34,7 @@ Json --> CarRoutes
 Json --> Auth
 Auth --> AccountRoutes : principal User
 Auth ..> TokenRepository : userId(token)
+TokenRepository ..> Db : tokens (hash, expiry)
 Auth ..> UserRepository : find(id)
 
 CarRoutes --> CarRepository

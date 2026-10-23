@@ -57,12 +57,13 @@ package com.example.accounts <<Folder>> {
     - hash(password : String, salt : ByteArray) : String
     - verify(password : String, passwordHash : String) : Boolean
   }
-  class TokenRepository <<object>> {
-    - userIds : ConcurrentHashMap<String, Int>
+  class TokenRepository {
+    - clock : Clock
     + issue(userId : Int) : String
     + userId(token : String) : Int?
     + revoke(token : String)
     + revokeAll(userId : Int, except : String? = null)
+    - hash(token : String) : String
   }
 }
 
