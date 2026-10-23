@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # With JAVA_HOME on a JDK 25 the Kotlin Toolchain uses it instead of downloading one from GitHub, which has been failing.
+      # With JAVA_HOME on a JDK 25 the Kotlin Toolchain uses it instead of downloading one itself.
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
