@@ -56,7 +56,7 @@ curl http://localhost:8080/cars
 
 A rule gets a unit test for each edge value; a route gets an integration test for each status code it can answer.
 
-The connection defaults match `docker-compose.yml`. Override them with the environment variables `DATABASE_URL`, `DATABASE_USER` and `DATABASE_PASSWORD`. Car photos are stored as files in the directory `uploads` (set `IMAGES_DIRECTORY` to change it), next to the database rows that hold their urls. The tables are created when the server starts, and the cars table is filled with sample cars when it is empty. Login tokens are not stored: after a restart everyone logs in again. The tests don't need Docker: they start their own Postgres.
+The connection defaults match `docker-compose.yml`. Override them with the environment variables `DATABASE_URL`, `DATABASE_USER` and `DATABASE_PASSWORD`. Car photos are stored as files in the directory `uploads` (set `IMAGES_DIRECTORY` to change it), next to the database rows that hold their urls. The tables are created when the server starts, and the cars table is filled with sample cars when it is empty. Login tokens are stored (only their SHA-256 hash) and expire 7 days after login, so a restart does not log anyone out. The tests don't need Docker: they start their own Postgres.
 
 ## Console client
 
@@ -165,7 +165,7 @@ The app can also time the trip: `POST /reservations/{id}/trip/start` (on the day
 
 After a finished trip the renter can rate the car once with `POST /reservations/{id}/rating`: `stars` (1 to 5) and an optional `comment` (up to 500 characters, trimmed). `409` without a finished trip (a started trip that has not ended does not count) or when the reservation was already rated. `GET /cars/{id}/ratings` lists the ratings of a car, newest first, with `averageRating` (one decimal, `null` without ratings) and `ratingCount`; a rating shows no data of the renter. `GET /cars` and `GET /cars/{id}` also show the car's `averageRating`. Deleting a car or an account removes the ratings that belong to it.
 
-A password needs 8 to 128 characters, and the email address must be unused. Everything under `/accounts/{id}` and `/logout` needs a login and only works on your own account. Routes that need a login take the token from `POST /login` in an `Authorization: Bearer <token>` header. Each endpoint has a [sequence diagram](docs/diagrams) with every status code.
+A password needs 8 to 128 characters, and the email address must be unused. Everything under `/accounts/{id}` and `/logout` needs a login and only works on your own account. Routes that need a login take the token from `POST /login` in an `Authorization: Bearer <token>` header; a token is valid for 7 days and then answers `401` like an unknown one. Each endpoint has a [sequence diagram](docs/diagrams) with every status code.
 
 ```bash
 curl -X POST localhost:8080/accounts -H 'Content-Type: application/json' \

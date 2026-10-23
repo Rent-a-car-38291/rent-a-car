@@ -11,16 +11,19 @@ database PostgreSQL
 
 Client -> Auth : POST /logout\nAuthorization: Bearer <token>
 Auth -> TokenRepository : userId(token)
+TokenRepository -> PostgreSQL : SELECT user_id FROM tokens\nWHERE token_hash = sha256(token)\nAND expires_at > now()
+PostgreSQL --> TokenRepository : userId?
 TokenRepository --> Auth : userId?
 Auth -> UserRepository : find(userId)
 UserRepository -> PostgreSQL : SELECT ... WHERE id = ?
 UserRepository --> Auth : User?
-break no token, unknown token or already logged out
+break no token, unknown or expired token or already logged out
   Auth --> Client : 401 Unauthorized
 end
 Auth -> Route : principal = User
 
 Route -> TokenRepository : revoke(token)
+TokenRepository -> PostgreSQL : DELETE FROM tokens\nWHERE token_hash = sha256(token)
 note right : only this token, other logins\nof the user keep working
 Route --> Client : 204 No Content
 

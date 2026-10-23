@@ -20,7 +20,8 @@ alt unknown email or wrong password
 else valid
   UserRepository --> Route : User
   Route -> TokenRepository : issue(user.id)
-  TokenRepository -> TokenRepository : random UUID → userId
+  TokenRepository -> TokenRepository : random UUID, keep only sha256(token)
+  TokenRepository -> PostgreSQL : DELETE expired rows,\nINSERT INTO tokens (token_hash, user_id,\nexpires_at = now + 7 days)
   TokenRepository --> Route : token
   Route --> Client : 200 OK\n{token}
 end

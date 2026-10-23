@@ -11,6 +11,8 @@ database PostgreSQL
 
 Client -> Auth : PUT /accounts/{id}\nAuthorization: Bearer <token>\n{ name, email }
 Auth -> TokenRepository : userId(token)
+TokenRepository -> PostgreSQL : SELECT user_id FROM tokens\nWHERE token_hash = sha256(token)\nAND expires_at > now()
+PostgreSQL --> TokenRepository : userId?
 TokenRepository --> Auth : userId?
 Auth -> UserRepository : find(userId)
 UserRepository -> PostgreSQL : SELECT ... WHERE id = ?
