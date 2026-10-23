@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Rent my car API
   version: 0.1.0
-  description: Cars, accounts and organizations are stored in PostgreSQL. Login tokens are stored hashed and expire 7 days after login, so a restart does not log anyone out.
+  description: Cars, accounts and organizations are stored in PostgreSQL. Login tokens are stored hashed and expire 7 days after login, so a restart does not log anyone out. Every error response has the body {"error": "<code>", "message": "<text>"}. Lists are paged with limit and offset, and X-Total-Count holds the size of the whole list.
 paths:
   /cars:
     get:
@@ -22,9 +22,14 @@ paths:
         - { name: lat, in: query, description: Latitude (together with lon), schema: { type: number, example: 51.59 } }
         - { name: lon, in: query, description: Longitude (together with lat), schema: { type: number, example: 4.78 } }
         - { name: maxDistanceKm, in: query, description: Needs lat and lon, schema: { type: number, example: 5 } }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
       responses:
         "200":
-          description: The matching cars
+          description: One page of the matching cars. The number of matching cars is in X-Total-Count.
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/TotalCount"
           content:
             application/json:
               schema:
@@ -32,7 +37,11 @@ paths:
                 items:
                   $ref: "#/components/schemas/Car"
         "400":
-          description: Unknown type, a non-numeric value, only one of lat and lon, or maxDistanceKm without lat and lon, only one of date and daypart, an invalid date or daypart, or a past date
+          description: Unknown type, a non-numeric value, only one of lat and lon, or maxDistanceKm without lat and lon, only one of date and daypart, an invalid date or daypart, a past date, or a limit or offset outside the paging rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     post:
       tags: [Cars]
       summary: Offer a car
@@ -54,12 +63,28 @@ paths:
                 $ref: "#/components/schemas/Car"
         "400":
           description: Malformed body, or a missing, unknown or out-of-range field (a negative mileage, rate, capacity or consumption, a last service below 0 or above the mileage, a missing capacity)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: You are not a member of the organization, or it doesn't exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: Another car already has this license plate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /cars/compare:
     get:
       tags: [Cars]
@@ -76,6 +101,10 @@ paths:
                 $ref: "#/components/schemas/Compare"
         "400":
           description: A missing, non-numeric or out-of-range distanceKm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /cars/{id}/cost-per-km:
     get:
       tags: [Cars]
@@ -92,8 +121,16 @@ paths:
                 $ref: "#/components/schemas/CostPerKm"
         "400":
           description: Non-numeric id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /cars/{id}/quote:
     get:
       tags: [Cars]
@@ -111,8 +148,16 @@ paths:
                 $ref: "#/components/schemas/Quote"
         "400":
           description: Non-numeric id, or a missing, non-numeric or out-of-range distanceKm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /cars/{id}/tco:
     get:
       tags: [Cars]
@@ -132,12 +177,28 @@ paths:
                 $ref: "#/components/schemas/Tco"
         "400":
           description: Non-numeric id, or a negative or non-numeric kmPerYear
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Not your car, or an organization car and you are not a member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /cars/{id}/images:
     post:
       tags: [Cars]
@@ -165,16 +226,40 @@ paths:
                 $ref: "#/components/schemas/Image"
         "400":
           description: Non-numeric id, a body that isn't multipart, no `file` part, or a file that isn't a JPEG or PNG
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Not your car, or an organization car and you are not a member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: The car already has 10 photos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "413":
           description: The file is larger than 5 MB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /images/{name}:
     get:
       tags: [Cars]
@@ -190,6 +275,10 @@ paths:
             image/png: { schema: { type: string, format: binary } }
         "404":
           description: Not a photo of ours
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /cars/{id}/reservations:
     post:
       tags: [Reservations]
@@ -214,12 +303,28 @@ paths:
                 $ref: "#/components/schemas/Reservation"
         "400":
           description: Malformed body, a date in the past or not a date, an unknown daypart, or a non-numeric id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown car
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: That daypart is taken, or the car is in Maintenance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /reservations:
     get:
       tags: [Reservations]
@@ -229,11 +334,14 @@ paths:
         - bearerAuth: []
       parameters:
         - { name: status, in: query, schema: { type: string, enum: [RESERVED, COMPLETED, CANCELLED] } }
-        - $ref: "#/components/parameters/tripLimit"
-        - $ref: "#/components/parameters/tripOffset"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
       responses:
         "200":
           description: The reservations, an empty list when there are none
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/TotalCount"
           content:
             application/json:
               schema:
@@ -242,8 +350,16 @@ paths:
                   $ref: "#/components/schemas/Reservation"
         "400":
           description: An unknown status, a limit outside 1-100, a negative offset or a non-numeric value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /reservations/{id}:
     delete:
       tags: [Reservations]
@@ -258,14 +374,34 @@ paths:
           description: Cancelled
         "400":
           description: Non-numeric id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Someone else's reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: The daypart has already started, the reservation has a trip or a started trip, or it is already completed or cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /reservations/{id}/trip:
     post:
       tags: [Trips]
@@ -292,14 +428,34 @@ paths:
                 $ref: "#/components/schemas/TripResponse"
         "400":
           description: Non-numeric id, a missing or non-integer field, a negative number, 0 km, or more than 10000 km
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Someone else's reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: The reservation already has a trip, is cancelled, its trip was started (end it with /trip/end), or its date has not come yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /reservations/{id}/trip/start:
     post:
       tags: [Trips]
@@ -318,14 +474,34 @@ paths:
                 $ref: "#/components/schemas/StartTripResponse"
         "400":
           description: Non-numeric id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Someone else's reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: The reservation is not today or is cancelled, or its trip was already started or finished
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /reservations/{id}/trip/end:
     post:
       tags: [Trips]
@@ -351,14 +527,34 @@ paths:
                 $ref: "#/components/schemas/TripResponse"
         "400":
           description: Non-numeric id, a missing or non-integer field, a negative number, 0 km, or more than 10000 km. The trip stays started, so the app can send it again.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Someone else's reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: The trip was never started, or already has an end
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /trips:
     get:
       tags: [Trips]
@@ -369,11 +565,14 @@ paths:
       parameters:
         - $ref: "#/components/parameters/tripFrom"
         - $ref: "#/components/parameters/tripTo"
-        - $ref: "#/components/parameters/tripLimit"
-        - $ref: "#/components/parameters/tripOffset"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
       responses:
         "200":
           description: The trips, an empty list when there are none
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/TotalCount"
           content:
             application/json:
               schema:
@@ -382,8 +581,16 @@ paths:
                   $ref: "#/components/schemas/TripHistoryItem"
         "400":
           description: A from or to that is not an ISO date, from after to, a limit outside 1-100, a negative offset or a non-numeric value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /cars/{id}/trips:
     get:
       tags: [Trips]
@@ -395,11 +602,14 @@ paths:
         - $ref: "#/components/parameters/id"
         - $ref: "#/components/parameters/tripFrom"
         - $ref: "#/components/parameters/tripTo"
-        - $ref: "#/components/parameters/tripLimit"
-        - $ref: "#/components/parameters/tripOffset"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
       responses:
         "200":
           description: The trips, an empty list when there are none
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/TotalCount"
           content:
             application/json:
               schema:
@@ -408,12 +618,28 @@ paths:
                   $ref: "#/components/schemas/TripHistoryItem"
         "400":
           description: Non-numeric id, or an invalid filter (see GET /trips)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Not a car you manage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown car
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /accounts/{id}/stats:
     get:
       tags: [Trips]
@@ -432,22 +658,42 @@ paths:
                 $ref: "#/components/schemas/DrivingStats"
         "400":
           description: Non-numeric id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Someone else's account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /leaderboard:
     get:
       tags: [Trips]
       summary: The drivers with the most bonus points
       description: Public. Shows only the name and the points, never the email. The most points come first and equal points are ordered by name, then id. Users without points are not listed.
       parameters:
-        - { name: limit, in: query, description: How many drivers, 1 to 100 (default 10), schema: { type: integer, minimum: 1, maximum: 100, default: 10 } }
+        - { name: limit, in: query, description: How many drivers per page, 1 to 100 (default 10), schema: { type: integer, minimum: 1, maximum: 100, default: 10 } }
+        - $ref: "#/components/parameters/offset"
       responses:
         "200":
           description: The top drivers, empty when nobody has points
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/TotalCount"
           content:
             application/json:
               schema:
@@ -455,7 +701,11 @@ paths:
                 items:
                   $ref: "#/components/schemas/LeaderboardEntry"
         "400":
-          description: A limit that is not a whole number from 1 to 100
+          description: A limit that is not a whole number from 1 to 100, or an offset that is not a whole number from 0 up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /reservations/{id}/rating:
     post:
       tags: [Ratings]
@@ -480,14 +730,34 @@ paths:
                 $ref: "#/components/schemas/Rating"
         "400":
           description: Non-numeric id, a missing or non-integer stars, stars outside 1 to 5, or a comment above 500 characters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Someone else's reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: The reservation has no finished trip, or was already rated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /cars/{id}/ratings:
     get:
       tags: [Ratings]
@@ -504,8 +774,16 @@ paths:
                 $ref: "#/components/schemas/CarRatings"
         "400":
           description: Non-numeric id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown car
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /cars/{id}/availability:
     get:
       tags: [Reservations]
@@ -523,8 +801,16 @@ paths:
                 $ref: "#/components/schemas/Availability"
         "400":
           description: Non-numeric id, or a missing or invalid date
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown car
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /cars/{id}/service:
     put:
       tags: [Cars]
@@ -539,12 +825,28 @@ paths:
           description: The last service is now the current mileage
         "400":
           description: Non-numeric id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Not your car, and you are no member of its organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /cars/{id}:
     get:
       tags: [Cars]
@@ -568,10 +870,22 @@ paths:
                       serviceDue: { type: boolean, example: false }
         "400":
           description: Non-numeric id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     put:
       tags: [Cars]
       summary: Update your own car, or an organization car as a member
@@ -595,14 +909,34 @@ paths:
                 $ref: "#/components/schemas/Car"
         "400":
           description: Non-numeric id, invalid field, unknown field or a different type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Not your car, or an organization car and you are not a member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: Another car already has this license plate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       tags: [Cars]
       summary: Delete your own car, or an organization car as an admin
@@ -615,12 +949,28 @@ paths:
           description: Car deleted
         "400":
           description: Non-numeric id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Not your car, or an organization car and you are not an admin of it (a plain member can update but not delete it)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /accounts:
     post:
       tags: [Accounts]
@@ -640,8 +990,16 @@ paths:
                 $ref: "#/components/schemas/UserResponse"
         "400":
           description: Missing or invalid field (empty name, invalid email, password shorter than 8 characters)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: Email already registered (case-insensitive)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /login:
     post:
       tags: [Accounts]
@@ -662,10 +1020,22 @@ paths:
                 $ref: "#/components/schemas/TokenResponse"
         "400":
           description: Missing field or a body that isn't JSON
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Wrong email or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "429":
           description: 5 failed logins for this email within 15 minutes. The email is locked until the oldest of those failures is 15 minutes old, also for the correct password. Unknown emails count too, so the answer doesn't show whether an account exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
           headers:
             Retry-After:
               description: Seconds until the email may try again
@@ -682,6 +1052,10 @@ paths:
           description: Logged out
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /accounts/{id}:
     put:
       tags: [Accounts]
@@ -705,14 +1079,34 @@ paths:
                 $ref: "#/components/schemas/UserResponse"
         "400":
           description: Non-numeric id, empty name or invalid email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Someone else's account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: Email already registered (case-insensitive)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       tags: [Accounts]
       summary: Delete your own account
@@ -726,14 +1120,34 @@ paths:
           description: Account deleted
         "400":
           description: Non-numeric id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Someone else's account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: You are the last admin of an organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /accounts/{id}/password:
     put:
       tags: [Accounts]
@@ -754,12 +1168,28 @@ paths:
           description: Password changed
         "400":
           description: Non-numeric id or a new password shorter than 8 characters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Someone else's account, or the current password is wrong
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /organizations:
     post:
       tags: [Organizations]
@@ -782,8 +1212,16 @@ paths:
                 $ref: "#/components/schemas/Organization"
         "400":
           description: Empty name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /organizations/{id}/invites:
     post:
       tags: [Organizations]
@@ -802,12 +1240,28 @@ paths:
                 $ref: "#/components/schemas/InviteResponse"
         "400":
           description: Non-numeric id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Not an admin of this organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /organizations/{id}/report:
     get:
       tags: [Organizations]
@@ -833,12 +1287,28 @@ paths:
                 example: "carId,brand,licensePlate,reservations,trips,totalKm,averageScore,tcoPerYear\r\n4,Tesla,EV-1,3,2,40,80.5,850.50\r\n"
         "400":
           description: Non-numeric id or an unknown format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Not a member of this organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /invites/{code}/accept:
     post:
       tags: [Organizations]
@@ -855,10 +1325,22 @@ paths:
           description: Joined as MEMBER
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown, used or expired code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: Already a member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /organizations/{id}/members/{userId}:
     put:
       tags: [Organizations]
@@ -887,14 +1369,34 @@ paths:
                 $ref: "#/components/schemas/Membership"
         "400":
           description: Non-numeric id, or a malformed body or unknown role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Not an admin of this organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown organization or member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: The last admin can't be demoted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       tags: [Organizations]
       summary: Remove a member or leave
@@ -912,14 +1414,34 @@ paths:
           description: Member removed
         "400":
           description: Non-numeric id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Not an admin, and not yourself
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Unknown organization or member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: The last admin can't leave
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   parameters:
     id:
@@ -937,19 +1459,32 @@ components:
       in: query
       description: Last date of the reservation, inclusive
       schema: { type: string, format: date, example: "2026-10-31" }
-    tripLimit:
+    limit:
       name: limit
       in: query
+      description: How many items per page, 1 to 100
       schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
-    tripOffset:
+    offset:
       name: offset
       in: query
+      description: How many items to skip, to get the next page
       schema: { type: integer, minimum: 0, default: 0 }
+  headers:
+    TotalCount:
+      description: The size of the whole list, so a client knows how many pages there are. The body is only the page that was asked for.
+      schema: { type: integer, example: 42 }
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
   schemas:
+    Error:
+      type: object
+      description: The body of every error response (400, 401, 403, 404, 405, 409, 413, 415, 429 and 500), also for errors that Ktor itself answers.
+      required: [error, message]
+      properties:
+        error: { type: string, description: A code that does not change, from the status, example: not_found }
+        message: { type: string, description: A text for people, example: Car with ID 5 not found }
     RegisterRequest:
       type: object
       required: [name, email, password]

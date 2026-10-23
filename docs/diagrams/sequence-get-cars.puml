@@ -9,10 +9,10 @@ participant "CarRepository" as Repo
 participant "ReservationRepository" as Reservations
 participant "RatingRepository" as Ratings
 
-Client -> Route : GET /cars?type&bodyStyle&transmission&fuelType\n&minRange&maxRate&lat&lon&maxDistanceKm&sort&date&daypart
+Client -> Route : GET /cars?type&bodyStyle&transmission&fuelType\n&minRange&maxRate&lat&lon&maxDistanceKm&sort&date&daypart&limit&offset
 Route -> Route : parse date and daypart (together)
 alt only one of date and daypart, an invalid or past value
-  Route --> Client : 400 Bad Request
+  Route --> Client : 400 Bad Request (error body)
 end
 Route -> Repo : allCars()
 Repo --> Route : List<Car>
@@ -36,6 +36,11 @@ opt date and daypart given
 end
 Route -> Ratings : averages()
 Ratings --> Route : averageRating per car (one query)
-Route --> Client : 200 OK\n[{type, id, brand, ..., averageRating}, ...]
+Route -> Route : parse limit (1-100, default 20) and offset (0 or more)
+alt invalid limit or offset
+  Route --> Client : 400 Bad Request\n{"error": "bad_request", "message": ...}
+end
+Route -> Route : total = cars matching all filters,\ncars.page(limit, offset)
+Route --> Client : 200 OK\nX-Total-Count: total\n[{type, id, brand, ..., averageRating}, ...] (one page)
 
 @enduml
