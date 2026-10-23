@@ -37,7 +37,7 @@ class OrganizationReportRoutesTest {
     private class Account(val id: Int, val token: String)
 
     // Organization 1 has an admin, a member and two cars; an outsider has an organization and car of their own.
-    private class Setup(val client: HttpClient, val organizationId: Int, val admin: Account, val member: Account, val outsider: Account, val cars: List<Int>, val otherOrganizationId: Int)
+    private class Setup(val client: HttpClient, val organizationId: Int, val admin: Account, val member: Account, val outsider: Account, val cars: List<Int>, val otherCar: Int)
 
     private suspend fun HttpClient.postJson(path: String, body: String = "", token: String? = null) =
         post(path) {
@@ -78,9 +78,9 @@ class OrganizationReportRoutesTest {
         val code = client.postJson("/organizations/$organizationId/invites", token = admin.token).json().jsonObject["code"]!!.jsonPrimitive.content
         assertEquals(HttpStatusCode.NoContent, client.postJson("/invites/$code/accept", token = member.token).status)
         val otherOrganizationId = client.organization("Other Co", outsider)
-        client.addCar("OTHER-1", otherOrganizationId, outsider.token)
+        val otherCar = client.addCar("OTHER-1", otherOrganizationId, outsider.token)
         val cars = listOf(client.addCar("ORG-1", organizationId, member.token), client.addCar("ORG-2", organizationId, admin.token))
-        return Setup(client, organizationId, admin, member, outsider, cars, otherOrganizationId)
+        return Setup(client, organizationId, admin, member, outsider, cars, otherCar)
     }
 
     // The API only takes a trip for a reservation that has started, but a test needs trips on chosen dates, so it saves them directly.
@@ -196,9 +196,20 @@ class OrganizationReportRoutesTest {
     @Test
     fun TheReportOfAnotherOrganizationNeverShowsUpInTheOwnReport() = testApplication {
         val s = setup()
+        usage(s)
+        trip(s.otherCar, s.outsider, "2026-01-05", Daypart.MORNING, 500, 10)
 
-        val plates = s.report(s.member.token).json().jsonArray.map { it.jsonObject["licensePlate"]!!.jsonPrimitive.content }
+        val rows = s.report(s.member.token).json().jsonArray.map { it.jsonObject }
 
-        assertEquals(listOf("ORG-1", "ORG-2"), plates)
+        assertEquals(listOf("ORG-1", "ORG-2"), rows.map { it["licensePlate"]!!.jsonPrimitive.content })
+        assertEquals(listOf(3, 2, 40), listOf("reservations", "trips", "totalKm").map { rows[0][it]!!.jsonPrimitive.int })
+    }
+
+    @Test
+    fun ANonNumericIdOrAnEmptyFormatGivesBadRequest() = testApplication {
+        val s = setup()
+
+        assertEquals(HttpStatusCode.BadRequest, s.report(s.member.token, "/organizations/abc/report").status)
+        assertEquals(HttpStatusCode.BadRequest, s.report(s.member.token, "/organizations/${s.organizationId}/report?format=").status)
     }
 }
