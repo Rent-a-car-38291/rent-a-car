@@ -18,13 +18,16 @@ val reservationsMenu = Menu("Reservations", items = listOf(
             ctx.io.say("Reserved: reservation #${it.str("id")} for car $id on $date, $daypart.")
         }
     },
-    MenuItem("My reservations of this session") { ctx ->
-        // shortcut: the API cannot list your reservations, so only the ones made in this run are shown.
-        ctx.io.table(JsonArray(ctx.session.reservations), listOf("id", "carId", "date", "daypart"))
+    MenuItem("My reservations") { ctx ->
+        val io = ctx.io
+        io.say("Leave the status empty to see all of them.")
+        val status = io.optionalText("Status (RESERVED, COMPLETED or CANCELLED)")?.uppercase()
+        ctx.call("GET", "/reservations", mapOf("status" to status), hints = mapOf(400 to "The status must be RESERVED, COMPLETED or CANCELLED."))
+            ?.let { io.table(it.jsonArray, listOf("id", "carId", "date", "daypart", "status")) }
     },
     MenuItem("Cancel a reservation") { ctx ->
         val id = ctx.pickReservation()
-        ctx.call("DELETE", "/reservations/$id", hints = mapOf(409 to "It is too late to cancel: the daypart has started or there is a trip."))?.let {
+        ctx.call("DELETE", "/reservations/$id", hints = mapOf(409 to "It cannot be cancelled: the daypart has started, there is a trip, or it is already completed or cancelled."))?.let {
             ctx.session.reservations.removeAll { r -> r.str("id") == id.toString() }
             ctx.io.say("Reservation #$id cancelled.")
         }
