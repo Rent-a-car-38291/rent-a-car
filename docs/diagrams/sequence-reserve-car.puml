@@ -1,0 +1,42 @@
+@startuml
+title POST /cars/{id}/reservations
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "ReservationRoutes.kt" as Route
+participant "CarRepository" as Cars
+participant "ReservationRepository" as Repo
+database "reservations\nUNIQUE (car_id, date, daypart)" as Db
+
+Client -> Auth : POST /cars/{id}/reservations\n{date, daypart}
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt id is not a number, date is not an ISO date or is in the past,\nor daypart is not MORNING, AFTERNOON or EVENING
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Cars : findCar(id)
+    Cars --> Route : Car?
+    alt unknown id
+      Route --> Client : 404 Not Found
+    else car.status == Maintenance
+      Route --> Client : 409 Conflict
+    else
+      Route -> Repo : reserve(id, user.id, date, daypart)
+      Repo -> Db : INSERT
+      alt daypart already reserved
+        Db --> Repo : unique violation
+        Repo --> Route : null
+        Route --> Client : 409 Conflict
+      else
+        Db --> Repo : row
+        Repo --> Route : Reservation
+        Route --> Client : 201 Created\n{id, carId, userId, date, daypart}
+      end
+    end
+  end
+end
+
+@enduml

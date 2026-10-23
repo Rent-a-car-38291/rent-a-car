@@ -1,0 +1,27 @@
+@startuml
+title GET /cars/{id}/availability?date=2026-10-12
+autonumber
+
+actor Client
+participant "ReservationRoutes.kt" as Route
+participant "CarRepository" as Cars
+participant "ReservationRepository" as Repo
+
+Client -> Route : GET /cars/{id}/availability?date=...
+alt id is not a number, or date is missing or not an ISO date
+  Route --> Client : 400 Bad Request
+else
+  Route -> Cars : findCar(id)
+  Cars --> Route : Car?
+  alt unknown id
+    Route --> Client : 404 Not Found
+  else car.status == Maintenance
+    Route --> Client : 200 OK\n{carId, date, freeDayparts: []}
+  else
+    Route -> Repo : reservedDayparts(id, date)
+    Repo --> Route : Set<Daypart>
+    Route --> Client : 200 OK\n{carId, date, freeDayparts: MORNING, AFTERNOON, EVENING\nminus the reserved ones}
+  end
+end
+
+@enduml

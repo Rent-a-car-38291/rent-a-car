@@ -25,7 +25,7 @@ import org.jetbrains.exposed.v1.jdbc.update
 import java.math.BigDecimal
 import javax.sql.DataSource
 
-private object Cars : Table("cars") {
+internal object Cars : Table("cars") {
     val id = integer("id").autoIncrement()
     val ownerId = integer("owner_id").references(Users.id, onDelete = ReferenceOption.CASCADE, fkName = "cars_owner_id_fkey")
     val type = text("type").check { it inList listOf("BEV", "ICE", "FCEV") }
@@ -66,34 +66,41 @@ private val SEED_CARS = listOf(
     BEVCar(0, -1, "Tesla Model 3", "K-123-BV", 48210, CarStatus.Available, 55.0, Location(52.3676, 4.9041), 4, BodyStyle.Sedan, 2021, 208, Transmission.Automatic, "White", 60.0, 14.5),
     FCEVCar(0, -1, "Toyota Mirai", "XT-482-H", 32500, CarStatus.Available, 70.0, Location(51.9244, 4.4777), 4, BodyStyle.Sedan, 2022, 134, Transmission.Automatic, "Blue", 5.6, 0.76),
     ICECar(0, -1, "Volkswagen Golf", "H-482-LK", 84200, CarStatus.Available, 35.0, Location(52.0907, 5.1214), 5, BodyStyle.Hatchback, 2019, 85, Transmission.Manual, "Grey", FuelType.Petrol, 50.0, 5.4),
-    ICECar(0, -1, "Volvo V60", "KL-283-D", 126500, CarStatus.Rented, 48.0, Location(51.4416, 5.4697), 5, BodyStyle.Stationwagon, 2018, 140, Transmission.Automatic, "Silver", FuelType.Diesel, 60.0, 4.9),
+    ICECar(0, -1, "Volvo V60", "KL-283-D", 126500, CarStatus.Available, 48.0, Location(51.4416, 5.4697), 5, BodyStyle.Stationwagon, 2018, 140, Transmission.Automatic, "Silver", FuelType.Diesel, 60.0, 4.9),
     ICECar(0, -1, "Renault Clio", "7-TNP-62", 61000, CarStatus.Available, 28.0, Location(51.5719, 4.7683), 5, BodyStyle.Hatchback, 2020, 67, Transmission.Manual, "Red", FuelType.Petrol, 42.0, 5.2),
     ICECar(0, -1, "Ford Focus", "ZV-117-P", 143000, CarStatus.Maintenance, 30.0, Location(53.2194, 6.5665), 5, BodyStyle.Hatchback, 2016, 92, Transmission.Manual, "Blue", FuelType.LPG, 52.0, 7.4),
     ICECar(0, -1, "Mazda MX-5", "R-905-ZB", 38900, CarStatus.Available, 60.0, Location(52.1601, 4.4970), 2, BodyStyle.Cabrio, 2021, 135, Transmission.Manual, "Red", FuelType.Petrol, 45.0, 6.8),
     BEVCar(0, -1, "Nissan Leaf", "N-641-GH", 72300, CarStatus.Available, 38.0, Location(52.0116, 4.3571), 5, BodyStyle.Hatchback, 2020, 110, Transmission.Automatic, "White", 40.0, 16.0),
-    BEVCar(0, -1, "Renault Zoe", "G-208-RT", 55100, CarStatus.Rented, 32.0, Location(52.2215, 6.8937), 5, BodyStyle.Hatchback, 2021, 100, Transmission.Automatic, "Blue", 52.0, 17.2),
+    BEVCar(0, -1, "Renault Zoe", "G-208-RT", 55100, CarStatus.Available, 32.0, Location(52.2215, 6.8937), 5, BodyStyle.Hatchback, 2021, 100, Transmission.Automatic, "Blue", 52.0, 17.2),
     BEVCar(0, -1, "Hyundai Kona", "XB-370-F", 29800, CarStatus.Available, 52.0, Location(51.8126, 5.8372), 5, BodyStyle.SUV, 2023, 150, Transmission.Automatic, "Grey", 64.0, 14.7),
     FCEVCar(0, -1, "Hyundai Nexo", "TS-556-K", 21400, CarStatus.Available, 75.0, Location(52.0705, 4.3007), 5, BodyStyle.SUV, 2022, 120, Transmission.Automatic, "Silver", 6.3, 0.95),
     FCEVCar(0, -1, "Toyota Mirai", "VP-912-N", 18700, CarStatus.Available, 72.0, Location(52.3874, 4.6462), 4, BodyStyle.Sedan, 2023, 134, Transmission.Automatic, "Black", 5.6, 0.76),
 )
 
+// Also used by the reservations, which reference cars.
+internal fun Database.createCars() {
+    createUsers()
+    transaction(this) {
+        SchemaUtils.create(Cars)
+        // SchemaUtils.create leaves an older table alone, so replace the foreign key of a table the old SQL script made:
+        // a deleted user takes the cars along. Same name as the declaration above, so a new table ends up with one.
+        exec("ALTER TABLE cars DROP CONSTRAINT IF EXISTS cars_owner_id_fkey, ADD CONSTRAINT cars_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE")
+        // Same for the columns added later.
+        exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS purchase_price NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (purchase_price >= 0)")
+        exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS insurance_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (insurance_per_year >= 0)")
+        exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS road_tax_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (road_tax_per_year >= 0)")
+        exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS maintenance_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (maintenance_per_year >= 0)")
+        // Rented is gone (a car is rented per daypart, see Reservation): free the cars an older version left rented.
+        exec("UPDATE cars SET status = 'Available' WHERE status = 'Rented'")
+    }
+}
+
 class PostgresCarRepository(dataSource: DataSource) : CarRepository {
     private val db = Database.connect(dataSource)
 
     init {
-        db.createUsers()
-        transaction(db) {
-            SchemaUtils.create(Cars)
-            // SchemaUtils.create leaves an older table alone, so replace the foreign key of a table the old SQL script made:
-            // a deleted user takes the cars along. Same name as the declaration above, so a new table ends up with one.
-            exec("ALTER TABLE cars DROP CONSTRAINT IF EXISTS cars_owner_id_fkey, ADD CONSTRAINT cars_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE")
-            // Same for the columns added later.
-            exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS purchase_price NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (purchase_price >= 0)")
-            exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS insurance_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (insurance_per_year >= 0)")
-            exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS road_tax_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (road_tax_per_year >= 0)")
-            exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS maintenance_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (maintenance_per_year >= 0)")
-            if (Cars.selectAll().empty()) SEED_CARS.forEach(::insertCar)
-        }
+        db.createCars()
+        transaction(db) { if (Cars.selectAll().empty()) SEED_CARS.forEach(::insertCar) }
     }
 
     override fun allCars(): List<Car> = transaction(db) { Cars.selectAll().orderBy(Cars.id).map { it.toCar() } }
