@@ -21,8 +21,10 @@ Start the database, then the server:
 
 ```bash
 docker compose up -d
-./kotlin run
+./kotlin run -m rent-a-car
 ```
+
+The project has two modules (the server and the [console client](#console-client)), so `run` needs `-m` with the module to start. The server module is named after the folder you cloned into (`rent-a-car`); `./kotlin show modules` lists the names.
 
 If the server starts successfully, you'll see:
 
@@ -39,9 +41,10 @@ curl http://localhost:8080/cars
 
 | Command          | Description       |
 |------------------|-------------------|
-| `./kotlin run`   | Run the server    |
-| `./kotlin test`  | Run the tests     |
-| `./kotlin build` | Build the project |
+| `./kotlin run -m rent-a-car` | Run the server |
+| `./kotlin run -m cli` | Run the console client |
+| `./kotlin test`  | Run the tests of both modules |
+| `./kotlin build` | Build both modules |
 
 ### Tests
 
@@ -49,10 +52,60 @@ curl http://localhost:8080/cars
 
 - **Unit tests** check one piece of logic and need no server or database: `CarFilterTest`, `AddCarRequestTest`, `CostPerKmTest`, `QuoteTest`, `CompareTest`, `TcoTest`, `TripScoreTest`, `TripDurationTest`, `DaypartTest`, `FreeSlotTest`. They run in milliseconds.
 - **Integration tests** (the route and repository tests) start the application with `testApplication` and a real Postgres that the tests start themselves, and check status codes and what ends up in the database. `CarAccessTest` is a unit test of the access rules that uses that Postgres for the memberships.
+- **Console client tests** (`cli/test`): the menus with scripted input and a fake API, the error messages, and `EndToEndTest`, which starts the real server on a random port with its own Postgres and drives register, list cars, reserve, trip and leaderboard through the real HTTP client.
 
 A rule gets a unit test for each edge value; a route gets an integration test for each status code it can answer.
 
 The connection defaults match `docker-compose.yml`. Override them with the environment variables `DATABASE_URL`, `DATABASE_USER` and `DATABASE_PASSWORD`. Car photos are stored as files in the directory `uploads` (set `IMAGES_DIRECTORY` to change it), next to the database rows that hold their urls. The tables are created when the server starts, and the cars table is filled with sample cars when it is empty. Login tokens are not stored: after a restart everyone logs in again. The tests don't need Docker: they start their own Postgres.
+
+## Console client
+
+`cli/` is a small client that talks to the running server over HTTP, so the whole application can be demoed without a frontend. It is a separate Amper module next to the server (`project.yaml` lists both): that keeps the client's code out of the server, needs no new dependency (it uses the JDK's HTTP client and kotlinx.serialization, which the project already has), and lets `./kotlin test` and `./kotlin build` cover both. The cost is that `./kotlin run` now needs `-m <module>`.
+
+```bash
+./kotlin run -m cli                                  # talks to http://localhost:8080
+RENT_A_CAR_URL=http://localhost:9000 ./kotlin run -m cli   # another server (or pass the url as the first argument)
+```
+
+Start screen: register, log in, browse as a visitor (cars, costs and the leaderboard need no login) or quit. After login the main menu has the areas **Cars** (search, details with photos and ratings, availability, offer, update and delete your car), **Costs** (cost per km, quote, TCO), **Reservations** (reserve, cancel), **Trips** (start, end, record in one go, history, rate), **Insights** (leaderboard, your stats), **Account** (update, password, delete) and **Organizations** (create, invite, join, roles, leave, organization cars). Type `back` at any prompt to cancel the action; `0` goes one menu up. Cars are picked from a numbered list, dates are `YYYY-MM-DD` and dayparts are picked from a list.
+
+The token is only kept in memory and the passwords are echoed while typing (`shortcut:` plain stdin). The API has no "who am I", no list of your reservations or organizations and no list of members, so the client shows the account id when you register (it asks for it once if you only log in) and keeps the reservations and organizations you made during the run for its pickers; others can be typed by id. Photo upload, comparing cars and listing members are not in the client.
+
+### Adding a menu entry
+
+Each area is one file in `cli/src/areas/` that defines a `Menu` of `MenuItem`s; `cli/src/Areas.kt` lists the areas.
+
+1. New endpoint in an existing area: add a `MenuItem("Label") { ctx -> ... }` to that file's list. Inside, prompt with `ctx.io` (`text`, `int`, `double`, `date`, `choose`, `optionalText` ...), call the API with `ctx.call("GET", "/path", query, body, hints)` and print the answer with `ctx.io.table(...)` or `ctx.io.show(...)`. `ctx.call` already shows a friendly message for `400`, `401`, `403`, `404` and `409` (`hints` replace the text of a code for this action) and returns `null` then. Pickers: `ctx.pickCar()`, `ctx.pickReservation()`, `ctx.pickOrganization()`.
+2. New area: copy a file from `areas/`, name the `Menu`, and add it to the list in `Areas.kt`.
+3. `MenuItem(needsLogin = false)` keeps an item visible to visitors; the default hides it until login.
+
+```kotlin
+MenuItem("Cost per km of a car", needsLogin = false) { ctx ->
+    val id = ctx.pickCar() ?: return@MenuItem
+    ctx.call("GET", "/cars/$id/cost-per-km")?.let { ctx.io.show(it.jsonObject) }
+}
+```
+
+Menus only use the `Api` interface and the injected `Console`, so tests drive them with scripted input and a fake API (`cli/test/FakeApi.kt`); `EndToEndTest` runs the client against the real server and a real Postgres.
+
+### Demo walkthrough
+
+About two minutes, with two terminals:
+
+```bash
+docker compose up -d
+./kotlin run -m rent-a-car      # terminal 1: the server
+./kotlin run -m cli             # terminal 2: the client
+```
+
+1. **Register** (name, email, a password of 8+ characters). You are logged in and the main menu opens.
+2. **Cars > List and search cars**: press Enter on every filter to see the fleet; try type `BEV`. **Car details** shows photos and ratings.
+3. **Costs > Quote a trip**: pick a car and a distance. **Cost per km** shows the energy price.
+4. **Reservations > Reserve a car**: pick a car, press Enter for today and pick a daypart.
+5. **Trips > Start my trip**, then **End my trip** (distance, hard accelerations, hard brakes): you earn bonus points. **Rate the car** afterwards.
+6. **Insights > Leaderboard** and **My driving stats** show your points.
+7. **Organizations > Create an organization**, then **Invite someone** for a code; a second client (register another account) can **Join with an invite code**.
+8. `0` to **Log out**, `0` to **Quit**.
 
 ## Trying the API (Swagger UI)
 
@@ -133,6 +186,7 @@ src/
 └── database/             the PostgreSQL connection
 resources/                server configuration and the SQL that creates the tables
 test/                     mirrors src/
+cli/                      the console client, its own module (src/areas/ has one file per menu)
 docs/diagrams/            PlantUML sources and exported PNGs
 ```
 
