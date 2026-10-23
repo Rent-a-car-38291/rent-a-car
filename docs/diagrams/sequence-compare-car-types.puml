@@ -1,0 +1,24 @@
+@startuml
+title GET /cars/compare?distanceKm=
+autonumber
+
+actor Client
+participant "CarRoutes.kt" as Route
+participant "CarRepository" as Repo
+participant "Car\n(ICECar | BEVCar | FCEVCar)" as Car
+
+Client -> Route : GET /cars/compare?distanceKm=100
+alt distanceKm is missing, not a number\nor outside 1..10000
+  Route --> Client : 400 Bad Request
+else
+  Route -> Repo : allCars()
+  Repo --> Route : List<Car>
+  loop each car, grouped by type
+    Route -> Car : costPerKm(EnergyPrices.STANDARD)
+    Route -> Car : co2KgPerKm()
+  end
+  Route -> Route : per type: average over its cars * distanceKm\n(2 decimals), a type without cars is left out
+  Route --> Client : 200 OK\n{distanceKm, types: [{type, cars, averageCost, co2Kg}], currency: "EUR"}
+end
+
+@enduml
