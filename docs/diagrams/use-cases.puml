@@ -34,6 +34,7 @@ rectangle "Rent-a-car" {
 
   usecase "Reserve a car\nfor a daypart" as UC_Reserve
   usecase "View availability" as UC_Availability
+  usecase "View my reservations\nwith status" as UC_MyReservations
   usecase "Cancel reservation" as UC_Cancel
   usecase "Record trip and\nearn bonus points" as UC_Trip
   usecase "Rate a car" as UC_Rate
@@ -74,6 +75,7 @@ User --> UC_Accept
 UC_DeleteAccount .> UC_RemoveOwnCars : <<include>>
 
 Renter --> UC_Reserve
+Renter --> UC_MyReservations
 Renter --> UC_Cancel
 Renter --> UC_Trip
 Renter --> UC_Rate
