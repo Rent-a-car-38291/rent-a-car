@@ -5,11 +5,13 @@ import com.example.reservations.Reservations
 import com.example.reservations.createReservations
 import com.example.reservations.Daypart
 import org.jetbrains.exposed.v1.core.Case
+import org.jetbrains.exposed.v1.core.LongColumnType
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.castTo
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greaterEq
@@ -139,12 +141,11 @@ class TripRepository(dataSource: DataSource) {
 
     // null for an unknown user. The trips are added up per daypart in one query, so only finished trips count
     // (a started trip is not in the trips table until it ends).
-    // shortcut: the sums are read as Int, so they overflow after about 200,000 km of trips a user.
     fun stats(userId: Int): DrivingStats? = transaction(db) {
         val bonus = Users.selectAll().where { Users.id eq userId }.singleOrNull()?.get(Users.bonusPoints) ?: return@transaction null
         val count = Trips.id.count()
-        val km = Trips.distanceKm.sum()
-        val scoreSum = Trips.score.sum()
+        val km = Trips.distanceKm.castTo(LongColumnType()).sum()
+        val scoreSum = Trips.score.castTo(LongColumnType()).sum()
         val totals = (Trips innerJoin Reservations).select(Reservations.daypart, count, km, scoreSum)
             .where { Reservations.userId eq userId }
             .groupBy(Reservations.daypart)
