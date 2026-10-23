@@ -6,9 +6,17 @@ actor Client
 participant "AccountRoutes.kt" as Route
 participant UserRepository
 database PostgreSQL
+participant LoginLimiter
 participant TokenRepository
 
 Client -> Route : POST /login\n{email, password}
+Route -> LoginLimiter : lockedFor(email)\nin memory, per email (trimmed, ignoring case)
+
+alt 5 failures within 15 minutes
+  LoginLimiter --> Route : seconds left
+  Route --> Client : 429 Too Many Requests\nRetry-After: seconds\n(also for the correct password)
+else not locked
+LoginLimiter --> Route : null
 Route -> UserRepository : authenticate(email.trim(), password)
 UserRepository -> PostgreSQL : SELECT * FROM users\nWHERE lower(email) = lower(?)
 PostgreSQL --> UserRepository : row?
@@ -16,14 +24,17 @@ UserRepository -> UserRepository : verify(password, passwordHash or dummyHash)\n
 
 alt unknown email or wrong password
   UserRepository --> Route : null
+  Route -> LoginLimiter : recordFailure(email)\nunknown emails count too
   Route --> Client : 401 Unauthorized
 else valid
   UserRepository --> Route : User
+  Route -> LoginLimiter : reset(email)
   Route -> TokenRepository : issue(user.id)
   TokenRepository -> TokenRepository : random UUID, keep only sha256(token)
   TokenRepository -> PostgreSQL : DELETE expired rows,\nINSERT INTO tokens (token_hash, user_id,\nexpires_at = now + 7 days)
   TokenRepository --> Route : token
   Route --> Client : 200 OK\n{token}
+end
 end
 
 @enduml
