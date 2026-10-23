@@ -8,6 +8,8 @@ import com.example.cars.configureCars
 import com.example.configureRouting
 import com.example.configureSerialization
 import com.example.database.connectDatabase
+import com.example.images.ImageRepository
+import com.example.images.configureImages
 import com.example.organizations.OrganizationRepository
 import com.example.organizations.configureOrganizations
 import com.example.reservations.ReservationRepository
@@ -15,6 +17,7 @@ import com.example.reservations.configureReservations
 import com.example.trips.TripRepository
 import com.example.trips.configureTrips
 import io.ktor.server.application.*
+import java.nio.file.Path
 
 fun main(args: Array<String>) {
     io.ktor.server.netty.EngineMain.main(args)
@@ -28,7 +31,9 @@ fun Application.module() {
     configureSecurity(users)
     val organizations = OrganizationRepository(dataSource)
     val cars = PostgresCarRepository(dataSource)
-    configureCars(cars, organizations)
+    val images = ImageRepository(dataSource, Path.of(environment.config.property("images.directory").getString()))
+    configureCars(cars, organizations, images)
+    configureImages(cars, organizations, images)
     val reservations = ReservationRepository(dataSource)
     configureReservations(cars, reservations)
     configureTrips(reservations, TripRepository(dataSource))

@@ -96,6 +96,58 @@ paths:
           description: Not your car, or an organization car and you are not a member
         "404":
           description: Unknown id
+  /cars/{id}/images:
+    post:
+      tags: [Cars]
+      summary: Add a photo to a car
+      description: Multipart form with the photo in the part `file` (the first one counts), JPEG or PNG up to 5 MB, at most 10 photos per car. The owner, or a member of the organization for an organization car. The type is read from the file itself, not from its name or declared type. The file is stored under a name the server makes up.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "201":
+          description: Photo added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Image"
+        "400":
+          description: Non-numeric id, a body that isn't multipart, no `file` part, or a file that isn't a JPEG or PNG
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Not your car, or an organization car and you are not a member
+        "404":
+          description: Unknown id
+        "409":
+          description: The car already has 10 photos
+        "413":
+          description: The file is larger than 5 MB
+  /images/{name}:
+    get:
+      tags: [Cars]
+      summary: Download a photo
+      description: The url from `images` of a car. No login needed.
+      parameters:
+        - { name: name, in: path, required: true, schema: { type: string, example: 5c42d744-8a0e-4d6f-9a52-0c3f1e2b7d10.jpg } }
+      responses:
+        "200":
+          description: The photo
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        "404":
+          description: Not a photo of ours
   /cars/{id}/reservations:
     post:
       tags: [Reservations]
@@ -180,6 +232,31 @@ paths:
         "404":
           description: Unknown car
   /cars/{id}:
+    get:
+      tags: [Cars]
+      summary: Get a car
+      description: The car, with the urls of its photos in `images` (oldest first).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: The car, plus an `images` array of urls
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Car"
+                  - type: object
+                    properties:
+                      images: { type: array, items: { type: string, example: /images/5c42d744-8a0e-4d6f-9a52-0c3f1e2b7d10.jpg } }
+        "400":
+          description: Non-numeric id
+        "401":
+          description: Missing or invalid token
+        "404":
+          description: Unknown id
     put:
       tags: [Cars]
       summary: Update your own car, or an organization car as a member
@@ -638,6 +715,13 @@ components:
         carId: { type: integer, example: 1 }
         costPerKm: { type: number, example: 0.0525 }
         currency: { type: string, example: EUR }
+    Image:
+      type: object
+      required: [id, carId, url]
+      properties:
+        id: { type: integer, example: 1 }
+        carId: { type: integer, example: 7 }
+        url: { type: string, example: /images/5c42d744-8a0e-4d6f-9a52-0c3f1e2b7d10.jpg }
     Tco:
       type: object
       required: [carId, kmPerYear, tcoPerYear, currency]

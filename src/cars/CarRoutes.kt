@@ -1,6 +1,7 @@
 package com.example.cars
 
 import com.example.accounts.User
+import com.example.images.ImageRepository
 import com.example.organizations.OrganizationRepository
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
@@ -10,12 +11,13 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.util.getOrFail
+import kotlinx.serialization.json.*
 import java.math.BigDecimal
 import java.math.RoundingMode
 
 private fun Double.roundTo(decimals: Int) = BigDecimal.valueOf(this).setScale(decimals, RoundingMode.HALF_UP).toDouble()
 
-fun Application.configureCars(repository: CarRepository, organizations: OrganizationRepository) {
+fun Application.configureCars(repository: CarRepository, organizations: OrganizationRepository, images: ImageRepository? = null) {
     routing {
         get("/cars") {
             val cars = filterCars(repository.allCars(), call.request.queryParameters)
@@ -122,8 +124,13 @@ fun Application.configureCars(repository: CarRepository, organizations: Organiza
                     return@get
                 }
 
-                // Return JSON response
-                call.respond(car)
+                // Return JSON response, with the photo urls when images are set up.
+                if (images == null) {
+                    call.respond(car)
+                } else {
+                    val json = Json.encodeToJsonElement(Car.serializer(), car).jsonObject
+                    call.respond(JsonObject(json + ("images" to JsonArray(images.forCar(carId).map { JsonPrimitive(it.url) }))))
+                }
             }
 
             delete("/cars/{id}") {
@@ -142,11 +149,15 @@ fun Application.configureCars(repository: CarRepository, organizations: Organiza
                 }
 
                 val car = repository.findCar(carId)
+                val photos = images?.forCar(carId).orEmpty()
                 when {
                     car == null -> call.respond(HttpStatusCode.NotFound, "Car with ID $id not found")
                     !canDelete(user, car, organizations) -> call.respond(HttpStatusCode.Forbidden)
                     // false when the car was deleted meanwhile
-                    repository.deleteCarById(carId) -> call.respond(HttpStatusCode.NoContent)
+                    repository.deleteCarById(carId) -> {
+                        images?.deleteFiles(photos)
+                        call.respond(HttpStatusCode.NoContent)
+                    }
                     else -> call.respond(HttpStatusCode.NotFound, "Car with ID $id not found")
                 }
             }
