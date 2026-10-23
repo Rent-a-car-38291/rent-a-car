@@ -34,6 +34,8 @@ rectangle "Rent-a-car" {
   usecase "View availability" as UC_Availability
   usecase "Cancel reservation" as UC_Cancel
   usecase "Record trip and\nearn bonus points" as UC_Trip
+  usecase "View trip history" as UC_TripHistory
+  usecase "View trips of\na car" as UC_CarTrips
 
   usecase "Add car" as UC_AddCar
   usecase "Update car" as UC_UpdateCar
@@ -67,6 +69,7 @@ UC_DeleteAccount .> UC_RemoveOwnCars : <<include>>
 Renter --> UC_Reserve
 Renter --> UC_Cancel
 Renter --> UC_Trip
+Renter --> UC_TripHistory
 UC_Reserve .> UC_Availability : <<include>>
 
 Owner --> UC_AddCar
@@ -75,9 +78,11 @@ Owner --> UC_RemoveCar
 Owner --> UC_Photo
 Owner --> UC_CostPerKm
 Owner --> UC_Tco
+Owner --> UC_CarTrips
 UC_Tco .> UC_CostPerKm : <<include>>
 
 Member --> UC_OrgCars
+Member --> UC_CarTrips
 Member --> UC_Leave
 Admin --> UC_Invite
 Admin --> UC_Members
