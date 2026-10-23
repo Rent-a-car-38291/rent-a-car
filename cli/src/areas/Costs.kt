@@ -14,6 +14,11 @@ val costsMenu = Menu("Costs", needsLogin = false, items = listOf(
         ctx.call("GET", "/cars/$id/quote", mapOf("distanceKm" to km.toString()), hints = mapOf(400 to "The distance must be between 1 and 10000 km."))
             ?.let { ctx.io.show(it.jsonObject, listOf("distanceKm", "energyCost", "rentalRate", "total", "currency")) }
     },
+    MenuItem("Compare car types: cost and CO2 for a distance", needsLogin = false) { ctx ->
+        val km = ctx.io.double("Distance in km", 100.0, min = 1.0)
+        ctx.call("GET", "/cars/compare", mapOf("distanceKm" to km.toString()), hints = mapOf(400 to "The distance must be between 1 and 10000 km."))
+            ?.jsonObject?.get("types")?.let { ctx.io.table(it.jsonArray, listOf("type", "cars", "averageCost", "co2Kg")) }
+    },
     MenuItem("Total cost of ownership per year (my car)") { ctx ->
         val id = ctx.pickCar() ?: return@MenuItem
         val km = ctx.io.int("Km per year", 15000, min = 0)
