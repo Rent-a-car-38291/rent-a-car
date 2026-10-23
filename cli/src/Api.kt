@@ -8,6 +8,7 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
+import java.util.UUID
 
 /**
  * What the server answered: the status, the parsed JSON body (null when it had none) and, for a page of a list, the size
@@ -27,6 +28,9 @@ interface Api {
 
     /** Throws [ServerUnreachable] when there is no answer at all; every HTTP status is returned as a response. */
     fun call(method: String, path: String, query: Map<String, String?> = emptyMap(), body: JsonElement? = null): ApiResponse
+
+    /** Posts one file as the multipart part `file`. Same rules as [call]. */
+    fun upload(path: String, fileName: String, contentType: String, bytes: ByteArray): ApiResponse
 }
 
 class ServerUnreachable(message: String) : Exception(message)
@@ -49,6 +53,26 @@ class HttpApi(private val baseUrl: String) : Api {
         } catch (e: IllegalArgumentException) {
             throw ServerUnreachable("Invalid server address or input: ${e.message}")
         }
+        return send(request)
+    }
+
+    override fun upload(path: String, fileName: String, contentType: String, bytes: ByteArray): ApiResponse {
+        val boundary = "----rentacar" + UUID.randomUUID().toString().replace("-", "")
+        val head = "--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"$fileName\"\r\nContent-Type: $contentType\r\n\r\n"
+        val body = head.toByteArray() + bytes + "\r\n--$boundary--\r\n".toByteArray()
+        val request = try {
+            HttpRequest.newBuilder(URI.create(baseUrl.trimEnd('/') + path)).timeout(Duration.ofSeconds(60))
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+                .header("Content-Type", "multipart/form-data; boundary=$boundary")
+                .apply { token?.let { header("Authorization", "Bearer $it") } }
+                .build()
+        } catch (e: IllegalArgumentException) {
+            throw ServerUnreachable("Invalid server address or input: ${e.message}")
+        }
+        return send(request)
+    }
+
+    private fun send(request: HttpRequest): ApiResponse {
         try {
             val response = client.send(request, HttpResponse.BodyHandlers.ofString())
             val text = response.body()
