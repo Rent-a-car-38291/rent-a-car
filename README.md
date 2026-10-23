@@ -47,7 +47,7 @@ curl http://localhost:8080/cars
 
 `./kotlin test` runs everything; a single class runs with `./kotlin test --include-classes=com.example.cars.CarFilterTest`.
 
-- **Unit tests** check one piece of logic and need no server or database: `CarFilterTest`, `AddCarRequestTest`, `CostPerKmTest`, `TcoTest`, `TripScoreTest`, `DaypartTest`, `FreeSlotTest`. They run in milliseconds.
+- **Unit tests** check one piece of logic and need no server or database: `CarFilterTest`, `AddCarRequestTest`, `CostPerKmTest`, `TcoTest`, `TripScoreTest`, `TripDurationTest`, `DaypartTest`, `FreeSlotTest`. They run in milliseconds.
 - **Integration tests** (the route and repository tests) start the application with `testApplication` and a real Postgres that the tests start themselves, and check status codes and what ends up in the database. `CarAccessTest` is a unit test of the access rules that uses that Postgres for the memberships.
 
 A rule gets a unit test for each edge value; a route gets an integration test for each status code it can answer.
@@ -77,6 +77,8 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 | `GET`    | `/cars/{id}/availability` | Free dayparts on a date        | `200`   | `400`, `404`                      |
 | `DELETE` | `/reservations/{id}`      | Cancel your reservation        | `204`   | `400`, `401`, `403`, `404`, `409` |
 | `POST`   | `/reservations/{id}/trip` | Record a trip, earn points     | `201`   | `400`, `401`, `403`, `404`, `409` |
+| `POST`   | `/reservations/{id}/trip/start` | Start your trip          | `200`   | `400`, `401`, `403`, `404`, `409` |
+| `POST`   | `/reservations/{id}/trip/end`   | End it, earn points      | `201`   | `400`, `401`, `403`, `404`, `409` |
 | `GET`    | `/trips`                  | Your trip history              | `200`   | `400`, `401`                      |
 | `GET`    | `/cars/{id}/trips`        | The trips of a car you manage  | `200`   | `400`, `401`, `403`, `404`        |
 | `POST`   | `/accounts`               | Register an account            | `201`   | `400`, `409`                      |
@@ -93,6 +95,8 @@ A car is private or belongs to an organization. `POST /cars` with an `organizati
 Photos: `POST /cars/{id}/images` takes a multipart form with the photo in the part `file` (JPEG or PNG, up to 5 MB and 10 per car, `409` beyond that; whoever may manage the car). The server checks the file's first bytes instead of trusting its name or declared type, stores it under a random name and answers `{id, carId, url}`. `GET /cars/{id}` lists the urls in `images`, and every url serves the photo without a login. Deleting a car removes its photos too.
 
 After driving, the renter sends the trip of their reservation to `POST /reservations/{id}/trip` with `distanceKm`, `hardAccelerations` and `hardBrakes` as the app measured them, once per reservation and not before its date. The server calculates the `score` (100, minus 5 for every hard acceleration or brake per 100 km, never below 0) and awards `distanceKm * score / 100` points (rounded down) to the renter's `bonusPoints`, which accounts show.
+
+The app can also time the trip: `POST /reservations/{id}/trip/start` (on the day of the reservation, once) stores the start, and `POST /reservations/{id}/trip/end` with the same body as above ends it. The trip then has `startedAt` and `durationMinutes` (whole minutes, rounded up, at least 1), and the points are awarded as before. Ending a trip that was not started, or twice, gives `409`; a trip sent in one call has both fields `null`.
 
 `GET /trips` lists your own trips, newest first, with the car, date, daypart, `distanceKm` and `score`. `from` and `to` (ISO dates, inclusive) filter on the date of the reservation and `limit` (1-100, default 20) and `offset` page through the list; an invalid value gives `400`. `GET /cars/{id}/trips` does the same for everyone's trips with a car, for the owner of a private car or a member of the organization of an organization car (`403` for others).
 
