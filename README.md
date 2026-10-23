@@ -67,7 +67,7 @@ The connection defaults match `docker-compose.yml`. Override them with the envir
 RENT_A_CAR_URL=http://localhost:9000 ./kotlin run -m cli   # another server (or pass the url as the first argument)
 ```
 
-Start screen: register, log in, browse as a visitor (the car list, availability, costs and the leaderboard need no login) or quit. After login the main menu has the areas **Cars** (search, details with photos and ratings, availability, offer, update and delete your car), **Costs** (cost per km, quote, compare car types, TCO), **Reservations** (reserve, list yours with their status, cancel), **Trips** (start, end, record in one go, history, rate), **Insights** (leaderboard, your stats), **Account** (update, password, delete) and **Organizations** (create, invite, join, roles, leave, organization cars). Type `back` at any prompt to cancel the action; `0` goes one menu up. Cars are picked from a numbered list, dates are `YYYY-MM-DD` and dayparts are picked from a list.
+Start screen: register, log in, browse as a visitor (the car list, availability, costs and the leaderboard need no login) or quit. After login the main menu has the areas **Cars** (search, details with photos and ratings, availability, offer, update and delete your car), **Costs** (cost per km, quote, compare car types, TCO), **Reservations** (reserve, list yours with their status, cancel), **Trips** (start, end, record in one go, history, rate), **Insights** (leaderboard, your stats), **Account** (update, password, delete) and **Organizations** (create, invite, join, roles, leave, organization cars, fleet report). Type `back` at any prompt to cancel the action; `0` goes one menu up. Cars are picked from a numbered list, dates are `YYYY-MM-DD` and dayparts are picked from a list.
 
 The token is only kept in memory and the passwords are echoed while typing (`shortcut:` plain stdin). The API has no "who am I", no list of your organizations and no list of members, so the client shows the account id when you register (it asks for it once if you only log in) and keeps the reservations and organizations you made during the run for its pickers; others can be typed by id (**Reservations > My reservations** shows the ids). Photo upload and listing members are not in the client.
 
@@ -142,6 +142,7 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 | `GET`    | `/leaderboard`            | The drivers with most points   | `200`   | `400`                             |
 | `POST`   | `/reservations/{id}/rating` | Rate the car after your trip | `201`   | `400`, `401`, `403`, `404`, `409` |
 | `GET`    | `/cars/{id}/ratings`      | The ratings and average of a car | `200` | `400`, `404`                      |
+| `GET`    | `/organizations/{id}/report` | Usage and TCO per car of an organization | `200` | `400`, `401`, `403`, `404` |
 | `POST`   | `/accounts`               | Register an account            | `201`   | `400`, `409`                      |
 | `POST`   | `/login`                  | Get a token                    | `200`   | `401`, `429`                      |
 | `POST`   | `/logout`                 | Revoke the token you used      | `204`   | `401`                             |
@@ -166,6 +167,8 @@ The app can also time the trip: `POST /reservations/{id}/trip/start` (on the day
 `GET /trips` lists your own trips, newest first, with the car, date, daypart, `distanceKm` and `score`. `from` and `to` (ISO dates, inclusive) filter on the date of the reservation and `limit` (1-100, default 20) and `offset` page through the list; an invalid value gives `400`. `GET /cars/{id}/trips` does the same for everyone's trips with a car, for the owner of a private car or a member of the organization of an organization car (`403` for others).
 
 `GET /accounts/{id}/stats` shows your driving totals: `tripCount`, `totalKm`, `averageScore` (one decimal), `bestDaypart` (the daypart with the highest average score, the earliest on a tie) and `bonusPoints`. `averageScore` and `bestDaypart` are `null` without trips. Only finished trips count, and it only works on your own account (`403` for someone else's, `404` for an unknown one).
+
+`GET /organizations/{id}/report` is for every member of the organization (they may all manage its cars) and has one row per organization car, in car order: `carId`, `brand`, `licensePlate`, `reservations` (not cancelled), `trips` and `totalKm` (finished trips), `averageScore` (one decimal, `null` without trips) and `tcoPerYear` (TCO at 15,000 km a year, in EUR). `?format=csv` returns the same rows as CSV with a header line (cells that start like a spreadsheet formula get a leading `'`); any other `format` gives `400`, a non-member `403` and an unknown organization `404`.
 
 `GET /leaderboard` is public and lists the drivers with the most bonus points, each with only a `name` and `bonusPoints` (never the email). `limit` (1-100, default 10) cuts the list and anything else gives `400`. Equal points are ordered by name and then by account, and users without points are not listed.
 
