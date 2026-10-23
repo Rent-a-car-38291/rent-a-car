@@ -36,6 +36,7 @@ rectangle "Rent-a-car" {
   usecase "Record trip and\nearn bonus points" as UC_Trip
   usecase "Start and end a trip" as UC_StartEnd
   usecase "View trip history" as UC_TripHistory
+  usecase "View driving stats" as UC_Stats
   usecase "View trips of\na car" as UC_CarTrips
 
   usecase "Add car" as UC_AddCar
@@ -73,6 +74,7 @@ Renter --> UC_Trip
 Renter --> UC_StartEnd
 UC_StartEnd .> UC_Trip : <<extend>>
 Renter --> UC_TripHistory
+Renter --> UC_Stats
 UC_Reserve .> UC_Availability : <<include>>
 
 Owner --> UC_AddCar

@@ -369,6 +369,30 @@ paths:
           description: Not a car you manage
         "404":
           description: Unknown car
+  /accounts/{id}/stats:
+    get:
+      tags: [Trips]
+      summary: Your driving totals
+      description: Calculated from your finished trips in one query; a started trip that has not ended does not count. averageScore (one decimal) and bestDaypart (the daypart with the highest average score, the earliest on a tie) are null without trips.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: The totals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DrivingStats"
+        "400":
+          description: Non-numeric id
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's account
+        "404":
+          description: Unknown id
   /cars/{id}/availability:
     get:
       tags: [Reservations]
@@ -1007,6 +1031,15 @@ components:
         score: { type: integer, minimum: 0, maximum: 100, example: 75 }
         startedAt: { type: string, format: date-time, nullable: true, example: "2026-10-12T08:02:11Z" }
         durationMinutes: { type: integer, nullable: true, example: 95 }
+    DrivingStats:
+      type: object
+      required: [tripCount, totalKm, averageScore, bestDaypart, bonusPoints]
+      properties:
+        tripCount: { type: integer, example: 3 }
+        totalKm: { type: integer, example: 100 }
+        averageScore: { type: number, nullable: true, example: 83.3 }
+        bestDaypart: { type: string, enum: [MORNING, AFTERNOON, EVENING], nullable: true }
+        bonusPoints: { type: integer, example: 75 }
     Availability:
       type: object
       required: [carId, date, freeDayparts]
