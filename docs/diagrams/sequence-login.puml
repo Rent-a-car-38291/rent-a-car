@@ -10,9 +10,9 @@ participant LoginLimiter
 participant TokenRepository
 
 Client -> Route : POST /login\n{email, password}
-Route -> LoginLimiter : lockedFor(email)\nin memory, per email (trimmed, ignoring case)
+Route -> LoginLimiter : tryAcquire(email)\nchecks the lock and counts this attempt in one step,\nin memory, per email (trimmed, ignoring case)
 
-alt 5 failures within 15 minutes
+alt 5 attempts without a success within 15 minutes
   LoginLimiter --> Route : seconds left
   Route --> Client : 429 Too Many Requests\nRetry-After: seconds\n(also for the correct password)
 else not locked
@@ -24,11 +24,11 @@ UserRepository -> UserRepository : verify(password, passwordHash or dummyHash)\n
 
 alt unknown email or wrong password
   UserRepository --> Route : null
-  Route -> LoginLimiter : recordFailure(email)\nunknown emails count too
+  note right of Route : the attempt stays counted,\nunknown emails count too
   Route --> Client : 401 Unauthorized
 else valid
   UserRepository --> Route : User
-  Route -> LoginLimiter : reset(email)
+  Route -> LoginLimiter : reset(email)\nclears the count
   Route -> TokenRepository : issue(user.id)
   TokenRepository -> TokenRepository : random UUID, keep only sha256(token)
   TokenRepository -> PostgreSQL : DELETE expired rows,\nINSERT INTO tokens (token_hash, user_id,\nexpires_at = now + 7 days)
