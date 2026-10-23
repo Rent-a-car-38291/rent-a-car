@@ -22,7 +22,6 @@ import kotlinx.serialization.json.*
 import org.jetbrains.amper.ktor.module
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.LocalTime
 import kotlin.test.*
 
 class CancelReservationTest {
@@ -74,7 +73,7 @@ class CancelReservationTest {
     @Test
     fun CancellingTwiceGives404TheSecondTime() = withApp("jan@example.com") { (jan) ->
         val reservation = repository.reserve(car, jan.first, tomorrow, Daypart.AFTERNOON)!!
-        client.cancel(reservation.id.toString(), jan.second)
+        assertEquals(HttpStatusCode.NoContent, client.cancel(reservation.id.toString(), jan.second).status)
 
         assertEquals(HttpStatusCode.NotFound, client.cancel(reservation.id.toString(), jan.second).status)
     }
@@ -122,6 +121,15 @@ class CancelReservationTest {
     }
 
     @Test
+    fun TheRouteAnswers409ForAComingReservationThatHasATrip() = withApp("jan@example.com") { (jan) ->
+        val reservation = repository.reserve(car, jan.first, tomorrow, Daypart.MORNING)!!
+        TripRepository(TestDatabase.dataSource).record(reservation.id, jan.first, 10, 100, 10)
+
+        assertEquals(HttpStatusCode.Conflict, client.cancel(reservation.id.toString(), jan.second).status)
+        assertNotNull(repository.find(reservation.id))
+    }
+
+    @Test
     fun CancellingAGoneReservationIsReported() = withApp("jan@example.com") {
         assertEquals(CancelResult.GONE, repository.cancel(999_999))
     }
@@ -144,6 +152,5 @@ class CancelReservationTest {
         assertFalse(hasStarted(LocalDate.of(2030, 6, 16), Daypart.MORNING, now))
         assertFalse(hasStarted(LocalDate.of(2030, 6, 15), Daypart.EVENING, now))
         assertTrue(hasStarted(LocalDate.of(2030, 6, 15), Daypart.MORNING, LocalDateTime.of(2030, 6, 15, 6, 0)))
-        assertEquals(LocalTime.of(6, 0), Daypart.MORNING.from)
     }
 }

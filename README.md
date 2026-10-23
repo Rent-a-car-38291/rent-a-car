@@ -84,7 +84,7 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 | `PUT`    | `/accounts/{id}/password` | Change your own password       | `204`   | `400`, `401`, `403`, `404`        |
 | `DELETE` | `/accounts/{id}`          | Delete your own account        | `204`   | `400`, `401`, `403`, `404`        |
 
-A car is rented per daypart: `MORNING` (06:00-12:00), `AFTERNOON` (12:00-18:00) or `EVENING` (18:00-24:00), once per car and date. Pass the `date` (`2026-10-12`) and `daypart` to `POST /cars/{id}/reservations`; `GET /cars/{id}/availability?date=2026-10-12` lists what is still free. A car in `Maintenance` can't be reserved. There is no `Rented` status. The renter can cancel with `DELETE /reservations/{id}` until the daypart starts (its `from` time), after which the answer is `409`; the daypart is free again for anyone.
+A car is rented per daypart: `MORNING` (06:00-12:00), `AFTERNOON` (12:00-18:00) or `EVENING` (18:00-24:00), once per car and date. Pass the `date` (`2026-10-12`) and `daypart` to `POST /cars/{id}/reservations`; `GET /cars/{id}/availability?date=2026-10-12` lists what is still free. A car in `Maintenance` can't be reserved. There is no `Rented` status. The renter can cancel with `DELETE /reservations/{id}` until the daypart starts (its `from` time), after which, or once it has a trip, the answer is `409`; the daypart is free again for anyone.
 
 A car is private or belongs to an organization. `POST /cars` with an `organizationId` (you must be a member, else `403`) makes an organization car: it has no `ownerId`, every member can update it and see its TCO, and only an admin can delete it. Private cars are managed by their owner only. Deleting an account removes its private cars; organization cars stay.
 
