@@ -25,7 +25,7 @@ val carsMenu = Menu("Cars", needsLogin = false, items = listOf(
         ), hints = mapOf(400 to "The server did not accept the filters. The type is BEV, ICE or FCEV and the date cannot be in the past."))
             ?.let { io.table(it.jsonArray, carColumns) }
     },
-    MenuItem("Car details, photos and ratings", needsLogin = false) { ctx ->
+    MenuItem("Car details, photos and ratings") { ctx ->
         val id = ctx.pickCar() ?: return@MenuItem
         ctx.call("GET", "/cars/$id")?.jsonObject?.let { car ->
             ctx.io.show(JsonObject(car - "images"))
@@ -38,7 +38,7 @@ val carsMenu = Menu("Cars", needsLogin = false, items = listOf(
     },
     MenuItem("Is a car free? (availability on a date)", needsLogin = false) { ctx ->
         val id = ctx.pickCar() ?: return@MenuItem
-        val date = ctx.io.date("Date", java.time.LocalDate.now())
+        val date = ctx.io.date("Date", today())
         ctx.call("GET", "/cars/$id/availability", mapOf("date" to date.toString()))?.jsonObject?.let {
             ctx.io.say("  Free dayparts on $date: " + it.str("freeDayparts"))
         }

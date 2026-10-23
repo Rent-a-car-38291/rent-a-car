@@ -23,4 +23,9 @@ class ErrorMessageTest {
         assertEquals("That car is taken.", errorMessage(409, hints))
         assertEquals(errorMessage(404), errorMessage(404, hints))
     }
+
+    @Test
+    fun `an address without a scheme is reported instead of crashing`() {
+        assertFailsWith<ServerUnreachable> { HttpApi("localhost:8080").call("GET", "/cars") }
+    }
 }
