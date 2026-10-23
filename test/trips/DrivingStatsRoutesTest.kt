@@ -4,6 +4,7 @@ import com.example.accounts.UserRepository
 import com.example.database.TestDatabase
 import com.example.database.useTestDatabase
 import com.example.organizations.OrganizationRepository
+import com.example.reservations.ZONE
 import com.example.reservations.Daypart
 import com.example.reservations.ReservationRepository
 import io.ktor.client.HttpClient
@@ -122,7 +123,7 @@ class DrivingStatsRoutesTest {
     fun ABonusPointsTotalFollowsTheTripsRecordedThroughTheApi() = withApp {
         val jan = client.signUp("jan@example.com")
         val car = client.addCar(jan, "STAT-3")
-        val reservation = reservations.reserve(car, jan.id, LocalDate.now(), Daypart.MORNING)!!
+        val reservation = reservations.reserve(car, jan.id, LocalDate.now(ZONE), Daypart.MORNING)!!
         assertEquals(HttpStatusCode.Created, client.postJson("/reservations/${reservation.id}/trip", """{"distanceKm":40,"hardAccelerations":0,"hardBrakes":0}""", jan.token).status)
 
         val stats = client.stats("/accounts/${jan.id}/stats", jan.token).json().jsonObject
@@ -135,7 +136,7 @@ class DrivingStatsRoutesTest {
     fun AStartedTripThatHasNotEndedDoesNotCount() = withApp {
         val jan = client.signUp("jan@example.com")
         val car = client.addCar(jan, "STAT-4")
-        val reservation = reservations.reserve(car, jan.id, LocalDate.now(), Daypart.MORNING)!!
+        val reservation = reservations.reserve(car, jan.id, LocalDate.now(ZONE), Daypart.MORNING)!!
         assertEquals(HttpStatusCode.OK, client.postJson("/reservations/${reservation.id}/trip/start", "{}", jan.token).status)
 
         val stats = client.stats("/accounts/${jan.id}/stats", jan.token).json().jsonObject
