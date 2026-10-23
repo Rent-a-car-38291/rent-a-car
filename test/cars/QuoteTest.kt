@@ -27,6 +27,14 @@ class QuoteTest {
     }
 
     @Test
+    fun ExactTiesRoundUpDespiteBinaryNoiseInCostPerKm() {
+        val standard = EnergyPrices.STANDARD
+        assertEquals(0.04, bev(1.0, 0.5).quote(20.0, standard).energyCost) // 0.5 kWh * 0.35 / 100 * 20 = 0.035
+        assertEquals(0.11, bev(1.0, 0.5).quote(60.0, standard).energyCost) // 0.105
+        assertEquals(0.18, bev(1.0, 0.5).quote(100.0, standard).energyCost) // 0.175
+    }
+
+    @Test
     fun TotalIsTheSumOfTheRoundedParts() {
         val quote = bev(rate = 10.005, consumption = 15.0).quote(1.5, prices) // 0.09 + 10.01
 
@@ -42,6 +50,6 @@ class QuoteTest {
         assertEquals(1.0, parseQuoteDistance("1"))
         assertEquals(10_000.0, parseQuoteDistance("10000"))
         assertEquals(120.5, parseQuoteDistance("120.5"))
-        listOf(null, "", "abc", "0", "0.99", "10000.01", "-5", "NaN", "Infinity").forEach { assertNull(parseQuoteDistance(it), "$it") }
+        listOf(null, "", "abc", "0", "0.99", "10000.01", "-5", "NaN", "Infinity", "5d", "0x1p3", " 5", "5 ", "1e3", "+5", ".5", "5.").forEach { assertNull(parseQuoteDistance(it), "$it") }
     }
 }

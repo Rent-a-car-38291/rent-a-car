@@ -69,7 +69,7 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 | `PUT`    | `/cars/{id}`              | Update a car you may manage    | `200`   | `400`, `401`, `403`, `404`, `409` |
 | `DELETE` | `/cars/{id}`              | Delete a car you may delete    | `204`   | `400`, `401`, `403`, `404`        |
 | `GET`    | `/cars/{id}/cost-per-km`  | Energy cost of one km          | `200`   | `400`, `404`                      |
-| `GET`    | `/cars/{id}/quote`        | Quote a trip: energy cost + rate | `200` | `400`, `404`                      |
+| `GET`    | `/cars/{id}/quote`        | Quote a trip before reserving  | `200`   | `400`, `404`                      |
 | `GET`    | `/cars/{id}`              | Get a car with its photo urls  | `200`   | `400`, `401`, `404`               |
 | `POST`   | `/cars/{id}/images`       | Add a JPEG or PNG photo        | `201`   | `400`, `401`, `403`, `404`, `409`, `413` |
 | `GET`    | `/images/{name}`          | Download a photo               | `200`   | `404`                             |
