@@ -47,4 +47,10 @@ class CompareTest {
     fun RoundsHalfUpToTwoDecimals() {
         assertEquals(0.01, compareTypes(listOf(bev(1.0)), 1.25, prices).types.single().averageCost) // 0.004 * 1.25 = 0.005
     }
+
+    @Test
+    fun Co2RoundsHalfUpToTwoDecimals() {
+        assertEquals(0.12, compareTypes(listOf(ice(FuelType.Petrol, 0.5)), 10.5, prices).types.single().co2Kg) // 0.005 l * 2.3 * 10.5 = 0.12075
+        assertEquals(0.01, compareTypes(listOf(ice(FuelType.LPG, 0.5)), 1.0, prices).types.single().co2Kg) // 0.0075
+    }
 }

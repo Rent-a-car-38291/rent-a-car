@@ -4,8 +4,9 @@ import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-// kg CO2 per litre of fuel, tank to wheel (burning it in the engine). Typical rounded values for the EU:
-// petrol 2.3, diesel 2.7 and LPG 1.5. shortcut: not an official table, swap in one (e.g. the Dutch CO2emissiefactoren list) when exact figures matter.
+// kg CO2 per litre of fuel, tank to wheel (burning it in the engine). These are our own rounded approximations
+// (petrol 2.3, diesel 2.7, LPG 1.5), not taken from one official table. shortcut: swap in a published table with its year
+// (e.g. the Dutch CO2emissiefactoren list) and its exact values when the figures have to be citable.
 const val CO2_KG_PER_LITRE_PETROL = 2.3
 const val CO2_KG_PER_LITRE_DIESEL = 2.7
 const val CO2_KG_PER_LITRE_LPG = 1.5
@@ -30,7 +31,7 @@ data class TypeComparison(val type: CarType, val cars: Int, val averageCost: Dou
 data class CompareResponse(val distanceKm: Double, val types: List<TypeComparison>, val currency: String)
 
 // Per type the average over its cars of the energy cost and the CO2 for the distance; a type without cars is left out.
-// The rental rate is not part of it: this compares what driving the distance costs.
+// The rental rate is not part of it: this compares what driving the distance costs. An ICE type averages its petrol, diesel and LPG cars together.
 fun compareTypes(cars: List<Car>, distanceKm: Double, prices: EnergyPrices): CompareResponse {
     val types = cars.groupBy { it.type }.map { (type, group) ->
         TypeComparison(
