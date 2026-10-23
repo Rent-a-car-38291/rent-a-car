@@ -23,7 +23,7 @@ private const val UNIQUE_VIOLATION = "23505"
 private const val FOREIGN_KEY_VIOLATION = "23503"
 
 // Deleting the car or the renter takes their reservations along. The unique constraint is what keeps a daypart from being booked twice.
-private object Reservations : Table("reservations") {
+internal object Reservations : Table("reservations") {
     val id = integer("id").autoIncrement()
     val carId = integer("car_id").references(Cars.id, onDelete = ReferenceOption.CASCADE)
     val userId = integer("user_id").references(Users.id, onDelete = ReferenceOption.CASCADE)
@@ -39,13 +39,16 @@ private object Reservations : Table("reservations") {
 private fun ResultRow.toReservation() =
     Reservation(this[Reservations.id], this[Reservations.carId], this[Reservations.userId], this[Reservations.date].toString(), Daypart.valueOf(this[Reservations.daypart]))
 
-class ReservationRepository(dataSource: DataSource) {
-    private val db = Database.connect(dataSource)
+// Also used by the trips, which reference reservations.
+internal fun Database.createReservations() {
+    createCars() // reservations reference cars and users
+    transaction(this) { SchemaUtils.create(Reservations) }
+}
 
-    init {
-        db.createCars() // reservations reference cars and users
-        transaction(db) { SchemaUtils.create(Reservations) }
-    }
+class ReservationRepository(dataSource: DataSource) {
+    private val db = Database.connect(dataSource).also { it.createReservations() }
+
+    fun find(id: Int): Reservation? = transaction(db) { Reservations.selectAll().where { Reservations.id eq id }.singleOrNull()?.toReservation() }
 
     // null when the daypart is taken: the unique index decides, so two requests at once can't both win.
     // shortcut: a car or user deleted just before the insert also gives null, so the route answers 409 instead of 404 or 401.

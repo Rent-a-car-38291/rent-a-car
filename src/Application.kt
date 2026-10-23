@@ -12,6 +12,8 @@ import com.example.organizations.OrganizationRepository
 import com.example.organizations.configureOrganizations
 import com.example.reservations.ReservationRepository
 import com.example.reservations.configureReservations
+import com.example.trips.TripRepository
+import com.example.trips.configureTrips
 import io.ktor.server.application.*
 
 fun main(args: Array<String>) {
@@ -26,7 +28,9 @@ fun Application.module() {
     configureSecurity(users)
     val cars = PostgresCarRepository(dataSource)
     configureCars(cars)
-    configureReservations(cars, ReservationRepository(dataSource))
+    val reservations = ReservationRepository(dataSource)
+    configureReservations(cars, reservations)
+    configureTrips(reservations, TripRepository(dataSource))
     val organizations = OrganizationRepository(dataSource)
     configureAccounts(users, organizations)
     configureOrganizations(organizations)

@@ -124,6 +124,40 @@ paths:
           description: Unknown car
         "409":
           description: That daypart is taken, or the car is in Maintenance
+  /reservations/{id}/trip:
+    post:
+      tags: [Trips]
+      summary: Record the trip of a reservation and award bonus points
+      description: |
+        Only the renter of the reservation, once per reservation, and not before the date of the reservation. The app sends what it measured; the server calculates the score and the points.
+        The score is 100 minus 5 for every hard acceleration or hard brake per 100 km, never below 0. The points are distanceKm * score / 100, rounded down, and are added to the renter's bonusPoints.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TripRequest"
+      responses:
+        "201":
+          description: Trip recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripResponse"
+        "400":
+          description: Non-numeric id, a missing or non-integer field, a negative number, 0 km, or more than 10000 km
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's reservation
+        "404":
+          description: Unknown reservation
+        "409":
+          description: The reservation already has a trip, or its date has not come yet
   /cars/{id}/availability:
     get:
       tags: [Reservations]
@@ -476,11 +510,12 @@ components:
         newPassword: { type: string, minLength: 8, example: evenmoresecret }
     UserResponse:
       type: object
-      required: [id, name, email]
+      required: [id, name, email, bonusPoints]
       properties:
         id: { type: integer, example: 1 }
         name: { type: string, example: Jan }
         email: { type: string, example: jan@example.com }
+        bonusPoints: { type: integer, example: 0, description: Earned by driving calmly, see POST /reservations/{id}/trip }
     TokenResponse:
       type: object
       required: [token]
@@ -637,6 +672,28 @@ components:
         userId: { type: integer, example: 2 }
         date: { type: string, format: date, example: "2026-10-12" }
         daypart: { type: string, enum: [MORNING, AFTERNOON, EVENING] }
+    TripRequest:
+      type: object
+      required: [distanceKm, hardAccelerations, hardBrakes]
+      properties:
+        distanceKm: { type: integer, minimum: 1, maximum: 10000, example: 100 }
+        hardAccelerations: { type: integer, minimum: 0, example: 2 }
+        hardBrakes: { type: integer, minimum: 0, example: 3 }
+    Trip:
+      type: object
+      required: [id, reservationId, distanceKm, score]
+      properties:
+        id: { type: integer, example: 1 }
+        reservationId: { type: integer, example: 1 }
+        distanceKm: { type: integer, example: 100 }
+        score: { type: integer, minimum: 0, maximum: 100, example: 75 }
+    TripResponse:
+      type: object
+      required: [trip, pointsAwarded, bonusPoints]
+      properties:
+        trip: { $ref: "#/components/schemas/Trip" }
+        pointsAwarded: { type: integer, example: 75, description: Points this trip earned }
+        bonusPoints: { type: integer, example: 75, description: The renter's total after this trip }
     Availability:
       type: object
       required: [carId, date, freeDayparts]
