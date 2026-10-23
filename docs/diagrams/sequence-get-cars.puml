@@ -4,14 +4,38 @@ autonumber
 
 actor Client
 participant "CarRoutes.kt" as Route
-participant "CarRepository\n(InMemoryCarRepository)" as Repo
-participant "Ktor\n(ContentNegotiation)" as Ktor
+participant "CarFilter.kt\nfilterCars" as Filter
+participant "CarRepository" as Repo
+participant "ReservationRepository" as Reservations
+participant "RatingRepository" as Ratings
 
-Client -> Route : GET /cars
+Client -> Route : GET /cars?type&bodyStyle&transmission&fuelType\n&minRange&maxRate&lat&lon&maxDistanceKm&sort&date&daypart
+Route -> Route : parse date and daypart (together)
+alt only one of date and daypart, an invalid or past value
+  Route --> Client : 400 Bad Request
+end
 Route -> Repo : allCars()
 Repo --> Route : List<Car>
-Route -> Ktor : respond(cars)
-Ktor -> Ktor : serialize sealed Car,\nadds "type": "ICE" | "BEV" | "FCEV"
-Ktor --> Client : 200 OK\n[{type, id, brand, ...}, ...]
+Route -> Filter : filterCars(cars, query)
+alt unknown or invalid filter or sort value
+  Filter --> Route : null
+  Route --> Client : 400 Bad Request
+else valid
+  Filter -> Filter : keep the cars that match every filter\n(range = capacity / consumption * 100)
+  alt lat and lon given
+    Filter -> Filter : nearest first (sort is only validated)
+  else sort given
+    Filter -> Filter : sort by rate, range or costPerKm\n(- = descending, stable for ties)
+  end
+  Filter --> Route : List<Car>
+end
+opt date and daypart given
+  Route -> Reservations : reservedCarIds(date, daypart)
+  Reservations --> Route : ids
+  Route -> Route : drop reserved cars and cars in Maintenance
+end
+Route -> Ratings : averages()
+Ratings --> Route : averageRating per car (one query)
+Route --> Client : 200 OK\n[{type, id, brand, ..., averageRating}, ...]
 
 @enduml

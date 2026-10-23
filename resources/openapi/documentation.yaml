@@ -8,12 +8,17 @@ paths:
     get:
       tags: [Cars]
       summary: List cars
-      description: The filters can be combined. With a distance filter the cars are sorted nearest first. With date and daypart only the cars that are free then are listed (not reserved, not in Maintenance). Every car has an averageRating (null without ratings), calculated for all cars in one query.
+      description: The filters can be combined, and any invalid value gives 400. sort orders by rate, range (km on a full tank or battery) or costPerKm (energy cost per km at the standard prices), with a leading - for descending; equal values keep the fleet order. With a location (lat and lon) the cars are sorted nearest first and sort is only validated. With date and daypart only the cars that are free then are listed (not reserved, not in Maintenance). Every car has an averageRating (null without ratings), calculated for all cars in one query.
       parameters:
         - { name: date, in: query, description: "ISO date, today or later. Together with daypart", schema: { type: string, format: date, example: "2026-10-12" } }
         - { name: daypart, in: query, description: Together with date, schema: { type: string, enum: [MORNING, AFTERNOON, EVENING] } }
         - { name: type, in: query, schema: { type: string, enum: [BEV, ICE, FCEV] } }
         - { name: maxRate, in: query, description: Highest rate, schema: { type: number, example: 40 } }
+        - { name: bodyStyle, in: query, schema: { type: string, enum: [Hatchback, SUV, Sedan, Stationwagon, Cabrio, Coupe, MPV, Other] } }
+        - { name: transmission, in: query, schema: { type: string, enum: [Manual, Automatic] } }
+        - { name: fuelType, in: query, description: Only combustion (ICE) cars have a fuel, so other cars are left out, schema: { type: string, enum: [Petrol, Diesel, LPG] } }
+        - { name: minRange, in: query, description: Shortest range in km (capacity / consumption * 100), schema: { type: number, minimum: 0, example: 400 } }
+        - { name: sort, in: query, description: A leading - sorts descending, schema: { type: string, enum: [rate, -rate, range, -range, costPerKm, -costPerKm], example: costPerKm } }
         - { name: lat, in: query, description: Latitude (together with lon), schema: { type: number, example: 51.59 } }
         - { name: lon, in: query, description: Longitude (together with lat), schema: { type: number, example: 4.78 } }
         - { name: maxDistanceKm, in: query, description: Needs lat and lon, schema: { type: number, example: 5 } }
