@@ -1,6 +1,10 @@
 package com.example.cars
 
 import com.example.accounts.User
+import com.example.page
+import com.example.parsePaging
+import com.example.respondError
+import com.example.setTotalCount
 import com.example.images.ImageRepository
 import com.example.organizations.OrganizationRepository
 import com.example.ratings.RatingRepository
@@ -49,13 +53,18 @@ fun Application.configureCars(
                 val reserved = reservations.reservedCarIds(slot.date, slot.daypart)
                 cars = cars.filter { it.status != CarStatus.Maintenance && it.id !in reserved }
             }
-            when {
-                cars == null -> call.respond(HttpStatusCode.BadRequest)
-                ratings == null -> call.respond(cars)
-                else -> {
-                    val averages = ratings.averages() // one query for all cars
-                    call.respond(JsonArray(cars.map { it.toJson(mapOf("averageRating" to JsonPrimitive(averages[it.id]))) }))
-                }
+            val paging = parsePaging(query)
+            if (cars == null || paging == null) {
+                call.respond(HttpStatusCode.BadRequest)
+                return@get
+            }
+            call.setTotalCount(cars.size)
+            val pageOfCars = cars.page(paging)
+            if (ratings == null) {
+                call.respond(pageOfCars)
+            } else {
+                val averages = ratings.averages() // one query for all cars
+                call.respond(JsonArray(pageOfCars.map { it.toJson(mapOf("averageRating" to JsonPrimitive(averages[it.id]))) }))
             }
         }
 
@@ -173,21 +182,21 @@ fun Application.configureCars(
                 val id = call.parameters["id"]
 
                 if (id == null) {
-                    call.respond(HttpStatusCode.BadRequest, "ID is missing")
+                    call.respondError(HttpStatusCode.BadRequest, "ID is missing")
                     return@get
                 }
 
                 // Check if ID is numeric value
                 val carId = id.toIntOrNull()
                 if (carId == null) {
-                    call.respond(HttpStatusCode.BadRequest, "ID must be of numeric value")
+                    call.respondError(HttpStatusCode.BadRequest, "ID must be of numeric value")
                     return@get
                 }
 
                 // Get car from database
                 val car = repository.findCar(carId)
                 if (car == null) {
-                    call.respond(HttpStatusCode.NotFound, "Car with ID $id not found")
+                    call.respondError(HttpStatusCode.NotFound, "Car with ID $id not found")
                     return@get
                 }
 
@@ -205,27 +214,27 @@ fun Application.configureCars(
                 val id = call.parameters["id"]
 
                 if (id == null) {
-                    call.respond(HttpStatusCode.BadRequest, "ID is missing")
+                    call.respondError(HttpStatusCode.BadRequest, "ID is missing")
                     return@delete
                 }
 
                 val carId = id.toIntOrNull()
                 if (carId == null) {
-                    call.respond(HttpStatusCode.BadRequest, "ID must be of numeric value")
+                    call.respondError(HttpStatusCode.BadRequest, "ID must be of numeric value")
                     return@delete
                 }
 
                 val car = repository.findCar(carId)
                 val photos = images?.forCar(carId).orEmpty()
                 when {
-                    car == null -> call.respond(HttpStatusCode.NotFound, "Car with ID $id not found")
+                    car == null -> call.respondError(HttpStatusCode.NotFound, "Car with ID $id not found")
                     !canDelete(user, car, organizations) -> call.respond(HttpStatusCode.Forbidden)
                     // false when the car was deleted meanwhile
                     repository.deleteCarById(carId) -> {
                         images?.deleteFiles(photos)
                         call.respond(HttpStatusCode.NoContent)
                     }
-                    else -> call.respond(HttpStatusCode.NotFound, "Car with ID $id not found")
+                    else -> call.respondError(HttpStatusCode.NotFound, "Car with ID $id not found")
                 }
             }
         }

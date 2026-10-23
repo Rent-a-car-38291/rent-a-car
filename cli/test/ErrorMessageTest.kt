@@ -1,5 +1,6 @@
 package com.example.cli
 
+import kotlinx.serialization.json.Json
 import kotlin.test.*
 
 class ErrorMessageTest {
@@ -22,6 +23,23 @@ class ErrorMessageTest {
 
         assertEquals("That car is taken.", errorMessage(409, hints))
         assertEquals(errorMessage(404), errorMessage(404, hints))
+    }
+
+    @Test
+    fun `the message of the server is shown unless the action has a hint`() {
+        assertEquals("Car with ID 5 not found", errorMessage(404, serverMessage = "Car with ID 5 not found"))
+        assertEquals("That car is taken.", errorMessage(409, mapOf(409 to "That car is taken."), "The request conflicts with the current state."))
+        assertEquals(errorMessage(404), errorMessage(404, serverMessage = null))
+    }
+
+    @Test
+    fun `the message is read from the error body of the server`() {
+        val body = Json.parseToJsonElement("""{"error":"not_found","message":"Car with ID 5 not found"}""")
+
+        assertEquals("Car with ID 5 not found", ApiResponse(404, body).errorText)
+        assertNull(ApiResponse(404, null).errorText)
+        assertNull(ApiResponse(404, Json.parseToJsonElement("""{"error":"not_found","message":" "}""")).errorText)
+        assertNull(ApiResponse(502, Json.parseToJsonElement("[]")).errorText)
     }
 
     @Test

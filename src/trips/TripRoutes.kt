@@ -1,6 +1,8 @@
 package com.example.trips
 
 import com.example.accounts.User
+import com.example.parsePaging
+import com.example.setTotalCount
 import com.example.cars.CarRepository
 import com.example.cars.canManage
 import com.example.organizations.OrganizationRepository
@@ -22,8 +24,13 @@ import java.time.temporal.ChronoUnit
 fun Application.configureTrips(reservations: ReservationRepository, trips: TripRepository, cars: CarRepository, organizations: OrganizationRepository, clock: Clock = Clock.system(ZONE)) {
     routing {
         get("/leaderboard") {
-            val limit = parseLeaderboardLimit(call.request.queryParameters)
-            if (limit == null) call.respond(HttpStatusCode.BadRequest) else call.respond(trips.leaderboard(limit))
+            val paging = parsePaging(call.request.queryParameters, DEFAULT_LEADERBOARD_LIMIT)
+            if (paging == null) {
+                call.respond(HttpStatusCode.BadRequest)
+            } else {
+                call.setTotalCount(trips.leaderboardSize())
+                call.respond(trips.leaderboard(paging))
+            }
         }
 
         authenticate {
@@ -33,7 +40,9 @@ fun Application.configureTrips(reservations: ReservationRepository, trips: TripR
                     return@get
                 }
                 // Always the logged-in user's own trips, never taken from the request.
-                call.respond(trips.history(call.principal<User>()!!.id, null, filter))
+                val userId = call.principal<User>()!!.id
+                call.setTotalCount(trips.historyCount(userId, null, filter))
+                call.respond(trips.history(userId, null, filter))
             }
 
             get("/accounts/{id}/stats") {
@@ -59,6 +68,7 @@ fun Application.configureTrips(reservations: ReservationRepository, trips: TripR
                             call.respond(HttpStatusCode.BadRequest)
                             return@get
                         }
+                        call.setTotalCount(trips.historyCount(null, id, filter))
                         call.respond(trips.history(null, id, filter))
                     }
                 }

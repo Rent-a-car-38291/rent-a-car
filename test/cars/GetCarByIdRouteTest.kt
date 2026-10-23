@@ -4,6 +4,7 @@ import com.example.accounts.UserRepository
 import com.example.accounts.configureAccounts
 import com.example.accounts.configureSecurity
 import com.example.accounts.TokenRepository
+import com.example.configureErrors
 import com.example.configureSerialization
 import com.example.database.TestDatabase
 import com.example.database.useTestDatabase
@@ -45,6 +46,7 @@ class GetCarByIdRouteTest {
         UserRepository(TestDatabase.dataSource).clear()
         application {
             configureSerialization()
+            configureErrors()
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users, TokenRepository(TestDatabase.dataSource))
             configureAccounts(users, OrganizationRepository(TestDatabase.dataSource), TokenRepository(TestDatabase.dataSource))
@@ -101,7 +103,7 @@ class GetCarByIdRouteTest {
         }
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
-        assertEquals("ID must be of numeric value", response.bodyAsText())
+        assertEquals("ID must be of numeric value", Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]!!.jsonPrimitive.content)
     }
 
     @Test
@@ -117,7 +119,7 @@ class GetCarByIdRouteTest {
         }
 
         assertEquals(HttpStatusCode.NotFound, response.status)
-        assertEquals("Car with ID 999 not found", response.bodyAsText())
+        assertEquals("Car with ID 999 not found", Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]!!.jsonPrimitive.content)
     }
 
     @Test
