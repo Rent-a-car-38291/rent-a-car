@@ -1,0 +1,69 @@
+@startuml
+title POST /reservations/{id}/trip/start and /trip/end
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "TripRoutes.kt" as Route
+participant "ReservationRepository" as Reservations
+participant "TripRepository" as Repo
+database "trip_starts (PK reservation_id)\ntrips (UNIQUE reservation_id)" as Db
+
+== Start ==
+Client -> Auth : POST /reservations/{id}/trip/start
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  Route -> Reservations : find(id)
+  alt id is not a number
+    Route --> Client : 400 Bad Request
+  else unknown id
+    Route --> Client : 404 Not Found
+  else reservation.userId != user.id
+    Route --> Client : 403 Forbidden
+  else reservation.date is not today
+    Route --> Client : 409 Conflict
+  else
+    Route -> Repo : start(id, now)
+    Repo -> Db : trip already finished? INSERT start time
+    alt already started or finished
+      Repo --> Route : null
+      Route --> Client : 409 Conflict
+    else
+      Repo --> Route : startedAt
+      Route --> Client : 200 OK\n{reservationId, startedAt}
+    end
+  end
+end
+
+== End ==
+Client -> Auth : POST /reservations/{id}/trip/end\n{distanceKm, hardAccelerations, hardBrakes}
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  Route -> Reservations : find(id)
+  alt id is not a number
+    Route --> Client : 400 Bad Request
+  else unknown id
+    Route --> Client : 404 Not Found
+  else reservation.userId != user.id
+    Route --> Client : 403 Forbidden
+  else a missing or non-integer field, a negative number,\ndistanceKm 0 or above 10000
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Route : score = calculateScore(...)\npoints = bonusPoints(distanceKm, score)
+    Route -> Repo : record(id, user.id, distanceKm, score, points, endedAt = now)
+    Repo -> Db : read the start, INSERT trip with startedAt and\ndurationMinutes (one transaction with the\nUPDATE users SET bonus_points += points)
+    alt never started, or the reservation already has a trip
+      Repo --> Route : null
+      Route --> Client : 409 Conflict
+    else
+      Repo --> Route : Trip, bonusPoints
+      Route --> Client : 201 Created\n{trip{..., startedAt, durationMinutes}, pointsAwarded, bonusPoints}
+    end
+  end
+end
+
+@enduml

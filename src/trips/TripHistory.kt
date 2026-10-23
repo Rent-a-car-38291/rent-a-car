@@ -10,7 +10,7 @@ internal const val MAX_TRIP_LIMIT = 100
 
 // The date is an ISO date (2026-10-12) like on a reservation.
 @Serializable
-data class TripHistoryItem(val id: Int, val reservationId: Int, val carId: Int, val date: String, val daypart: Daypart, val distanceKm: Int, val score: Int)
+data class TripHistoryItem(val id: Int, val reservationId: Int, val carId: Int, val date: String, val daypart: Daypart, val distanceKm: Int, val score: Int, val startedAt: String?, val durationMinutes: Int?)
 
 // from and to are inclusive dates of the reservation.
 data class TripFilter(val from: LocalDate?, val to: LocalDate?, val limit: Int, val offset: Int)

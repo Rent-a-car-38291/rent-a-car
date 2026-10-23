@@ -201,7 +201,7 @@ paths:
         "404":
           description: Unknown reservation
         "409":
-          description: The daypart has already started, or the reservation has a trip
+          description: The daypart has already started, or the reservation has a trip or a started trip
   /reservations/{id}/trip:
     post:
       tags: [Trips]
@@ -235,7 +235,66 @@ paths:
         "404":
           description: Unknown reservation
         "409":
-          description: The reservation already has a trip, or its date has not come yet
+          description: The reservation already has a trip, its trip was started (end it with /trip/end), or its date has not come yet
+  /reservations/{id}/trip/start:
+    post:
+      tags: [Trips]
+      summary: Start the trip of a reservation
+      description: Only the renter of the reservation, on the day of the reservation, once per reservation. The start time is taken by the server. End the trip with POST /reservations/{id}/trip/end.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Trip started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartTripResponse"
+        "400":
+          description: Non-numeric id
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's reservation
+        "404":
+          description: Unknown reservation
+        "409":
+          description: The reservation is not today, or its trip was already started or finished
+  /reservations/{id}/trip/end:
+    post:
+      tags: [Trips]
+      summary: End a started trip and award bonus points
+      description: |
+        Same body, score and points as POST /reservations/{id}/trip. The trip must have been started with POST /reservations/{id}/trip/start and can be ended once. The trip gets its startedAt and its durationMinutes (whole minutes from the start to now, rounded up, at least 1).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TripRequest"
+      responses:
+        "201":
+          description: Trip ended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripResponse"
+        "400":
+          description: Non-numeric id, a missing or non-integer field, a negative number, 0 km, or more than 10000 km. The trip stays started, so the app can send it again.
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's reservation
+        "404":
+          description: Unknown reservation
+        "409":
+          description: The trip was never started, or already has an end
   /trips:
     get:
       tags: [Trips]
@@ -885,12 +944,20 @@ components:
         hardBrakes: { type: integer, minimum: 0, example: 3 }
     Trip:
       type: object
-      required: [id, reservationId, distanceKm, score]
+      required: [id, reservationId, distanceKm, score, startedAt, durationMinutes]
       properties:
         id: { type: integer, example: 1 }
         reservationId: { type: integer, example: 1 }
         distanceKm: { type: integer, example: 100 }
         score: { type: integer, minimum: 0, maximum: 100, example: 75 }
+        startedAt: { type: string, format: date-time, nullable: true, example: "2026-10-12T08:02:11Z", description: When the trip was started, null for a trip sent in one call }
+        durationMinutes: { type: integer, nullable: true, example: 95, description: Whole minutes from start to end (rounded up), null for a trip sent in one call }
+    StartTripResponse:
+      type: object
+      required: [reservationId, startedAt]
+      properties:
+        reservationId: { type: integer, example: 1 }
+        startedAt: { type: string, format: date-time, example: "2026-10-12T08:02:11Z" }
     TripResponse:
       type: object
       required: [trip, pointsAwarded, bonusPoints]
@@ -900,7 +967,7 @@ components:
         bonusPoints: { type: integer, example: 75, description: The renter's total after this trip }
     TripHistoryItem:
       type: object
-      required: [id, reservationId, carId, date, daypart, distanceKm, score]
+      required: [id, reservationId, carId, date, daypart, distanceKm, score, startedAt, durationMinutes]
       properties:
         id: { type: integer, example: 1 }
         reservationId: { type: integer, example: 4 }
@@ -909,6 +976,8 @@ components:
         daypart: { type: string, enum: [MORNING, AFTERNOON, EVENING] }
         distanceKm: { type: integer, example: 100 }
         score: { type: integer, minimum: 0, maximum: 100, example: 75 }
+        startedAt: { type: string, format: date-time, nullable: true, example: "2026-10-12T08:02:11Z" }
+        durationMinutes: { type: integer, nullable: true, example: 95 }
     Availability:
       type: object
       required: [carId, date, freeDayparts]
