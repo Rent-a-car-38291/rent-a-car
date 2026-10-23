@@ -1,5 +1,6 @@
 package com.example.trips
 
+import com.example.MAX_LIMIT
 import com.example.accounts.UserRepository
 import com.example.database.TestDatabase
 import com.example.database.useTestDatabase
@@ -135,13 +136,16 @@ class TripHistoryRoutesTest {
         assertEquals(ids.drop(2).take(2), client.history("/trips?limit=2&offset=2", jan.token).reservationIds())
         assertEquals(ids.drop(4), client.history("/trips?limit=2&offset=4", jan.token).reservationIds())
         assertEquals(emptyList(), client.history("/trips?offset=10", jan.token).reservationIds())
+        assertEquals("5", client.history("/trips?limit=2", jan.token).headers["X-Total-Count"])
+        assertEquals("5", client.history("/cars/$car/trips?limit=2", jan.token).headers["X-Total-Count"])
+        assertEquals("2", client.history("/trips?from=2026-01-04", jan.token).headers["X-Total-Count"]) // the total follows the filters
     }
 
     @Test
     fun InvalidValuesGive400AndNoTokenGives401() = withApp {
         val jan = client.signUp("jan@example.com")
 
-        listOf("from=yesterday", "to=2026-13-01", "limit=0", "limit=${MAX_TRIP_LIMIT + 1}", "limit=x", "offset=-1", "from=2026-02-02&to=2026-02-01").forEach {
+        listOf("from=yesterday", "to=2026-13-01", "limit=0", "limit=${MAX_LIMIT + 1}", "limit=x", "offset=-1", "from=2026-02-02&to=2026-02-01").forEach {
             assertEquals(HttpStatusCode.BadRequest, client.history("/trips?$it", jan.token).status, it)
         }
         assertEquals(HttpStatusCode.Unauthorized, client.history("/trips", null).status)

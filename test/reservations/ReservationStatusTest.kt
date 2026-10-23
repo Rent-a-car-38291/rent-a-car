@@ -1,5 +1,7 @@
 package com.example.reservations
 
+import com.example.DEFAULT_LIMIT
+import com.example.MAX_LIMIT
 import io.ktor.http.parametersOf
 import kotlin.test.*
 
@@ -17,7 +19,7 @@ class ReservationStatusTest {
     @Test
     fun TheFilterHasDefaultsAndReadsTheStatus() {
         val none = parseReservationFilter(parametersOf()).getOrThrow()
-        assertEquals(ReservationFilter(null, DEFAULT_RESERVATION_LIMIT, 0), none)
+        assertEquals(ReservationFilter(null, DEFAULT_LIMIT, 0), none)
 
         val cancelled = parseReservationFilter(parametersOf("status" to listOf("CANCELLED"), "limit" to listOf("5"), "offset" to listOf("10"))).getOrThrow()
         assertEquals(ReservationFilter(ReservationStatus.CANCELLED, 5, 10), cancelled)
@@ -25,7 +27,7 @@ class ReservationStatusTest {
 
     @Test
     fun InvalidFilterValuesFail() {
-        listOf("status" to "DONE", "status" to "cancelled", "limit" to "0", "limit" to "${MAX_RESERVATION_LIMIT + 1}", "limit" to "x", "offset" to "-1", "offset" to "1.5").forEach { (name, value) ->
+        listOf("status" to "DONE", "status" to "cancelled", "limit" to "0", "limit" to "${MAX_LIMIT + 1}", "limit" to "x", "offset" to "-1", "offset" to "1.5").forEach { (name, value) ->
             assertTrue(parseReservationFilter(parametersOf(name, value)).isFailure, "$name=$value")
         }
     }
