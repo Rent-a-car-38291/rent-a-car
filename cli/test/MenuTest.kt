@@ -72,12 +72,36 @@ class MenuTest {
             "POST /cars/1/reservations" to ApiResponse(201, kotlinx.serialization.json.Json.parseToJsonElement("""{"id":9,"carId":1,"userId":2,"date":"2030-01-02","daypart":"EVENING"}""")),
         )
 
-        // car 1, date, daypart 3 = EVENING, then "My reservations of this session" (2)
-        val output = runScript(api, "2", "a@b.c", "secret123", "3", "1", "1", "2030-01-02", "3", "2", "0", "0", "0")
+        // car 1, date, daypart 3 = EVENING; then trips (4) > start (1) offers the reservation of this run
+        val output = runScript(api, "2", "a@b.c", "secret123", "3", "1", "1", "2030-01-02", "3", "0", "4", "1", "0", "0", "0")
 
         assertTrue("Reserved: reservation #9" in output)
-        assertEquals("""{"date":"2030-01-02","daypart":"EVENING"}""", api.bodies.last { it != null }.toString())
-        assertTrue(Regex("9\\s+1\\s+2030-01-02\\s+EVENING").containsMatchIn(output), output)
+        assertEquals("""{"date":"2030-01-02","daypart":"EVENING"}""", api.bodies.first { it != null && it.toString().contains("daypart") }.toString())
+        assertTrue("#9 car 1 on 2030-01-02 EVENING" in output, output)
+    }
+
+    @Test
+    fun `my reservations lists them from the server with an optional status filter`() {
+        val api = FakeApi(
+            login, "POST /logout" to status(204),
+            "GET /reservations" to json("""[{"id":9,"carId":1,"userId":2,"date":"2030-01-02","daypart":"EVENING","status":"CANCELLED"}]"""),
+        )
+
+        // Reservations (3) > My reservations (2), status CANCELLED
+        val output = runScript(api, "2", "a@b.c", "secret123", "3", "2", "cancelled", "0", "0", "0")
+
+        assertEquals(mapOf("status" to "CANCELLED"), api.queries[api.calls.indexOf("GET /reservations")])
+        assertTrue(Regex("9\\s+1\\s+2030-01-02\\s+EVENING\\s+CANCELLED").containsMatchIn(output), output)
+    }
+
+    @Test
+    fun `my reservations without a status asks the server for all of them and explains a 400`() {
+        val api = FakeApi(login, "POST /logout" to status(204), "GET /reservations" to status(400))
+
+        val output = runScript(api, "2", "a@b.c", "secret123", "3", "2", "", "0", "0", "0")
+
+        assertEquals(mapOf("status" to null), api.queries[api.calls.indexOf("GET /reservations")])
+        assertTrue("The status must be RESERVED, COMPLETED or CANCELLED." in output)
     }
 
     @Test

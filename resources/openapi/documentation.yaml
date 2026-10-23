@@ -215,11 +215,35 @@ paths:
           description: Unknown car
         "409":
           description: That daypart is taken, or the car is in Maintenance
+  /reservations:
+    get:
+      tags: [Reservations]
+      summary: Your reservations
+      description: The reservations of the logged-in user, newest first (by date, then daypart), each with its status. RESERVED is upcoming, COMPLETED means a trip was recorded and CANCELLED was cancelled by the renter.
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [RESERVED, COMPLETED, CANCELLED] } }
+        - $ref: "#/components/parameters/tripLimit"
+        - $ref: "#/components/parameters/tripOffset"
+      responses:
+        "200":
+          description: The reservations, an empty list when there are none
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reservation"
+        "400":
+          description: An unknown status, a limit outside 1-100, a negative offset or a non-numeric value
+        "401":
+          description: Missing or invalid token
   /reservations/{id}:
     delete:
       tags: [Reservations]
       summary: Cancel your reservation
-      description: Only the renter, and only until the daypart starts (its from time, local time). The daypart is free again afterwards.
+      description: Only the renter, and only until the daypart starts (its from time, local time). The reservation is kept with status CANCELLED and its daypart is free again afterwards.
       security:
         - bearerAuth: []
       parameters:
@@ -236,7 +260,7 @@ paths:
         "404":
           description: Unknown reservation
         "409":
-          description: The daypart has already started, or the reservation has a trip or a started trip
+          description: The daypart has already started, the reservation has a trip or a started trip, or it is already completed or cancelled
   /reservations/{id}/trip:
     post:
       tags: [Trips]
@@ -270,7 +294,7 @@ paths:
         "404":
           description: Unknown reservation
         "409":
-          description: The reservation already has a trip, its trip was started (end it with /trip/end), or its date has not come yet
+          description: The reservation already has a trip, is cancelled, its trip was started (end it with /trip/end), or its date has not come yet
   /reservations/{id}/trip/start:
     post:
       tags: [Trips]
@@ -296,7 +320,7 @@ paths:
         "404":
           description: Unknown reservation
         "409":
-          description: The reservation is not today, or its trip was already started or finished
+          description: The reservation is not today or is cancelled, or its trip was already started or finished
   /reservations/{id}/trip/end:
     post:
       tags: [Trips]
@@ -1090,13 +1114,14 @@ components:
         daypart: { type: string, enum: [MORNING, AFTERNOON, EVENING] }
     Reservation:
       type: object
-      required: [id, carId, userId, date, daypart]
+      required: [id, carId, userId, date, daypart, status]
       properties:
         id: { type: integer, example: 1 }
         carId: { type: integer, example: 3 }
         userId: { type: integer, example: 2 }
         date: { type: string, format: date, example: "2026-10-12" }
         daypart: { type: string, enum: [MORNING, AFTERNOON, EVENING] }
+        status: { type: string, enum: [RESERVED, COMPLETED, CANCELLED], description: A new reservation is RESERVED; recording the trip makes it COMPLETED; cancelling makes it CANCELLED }
     TripRequest:
       type: object
       required: [distanceKm, hardAccelerations, hardBrakes]
