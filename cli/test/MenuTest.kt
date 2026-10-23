@@ -122,4 +122,16 @@ class MenuTest {
         assertFalse(session.loggedIn)
         assertNull(api.token)
     }
+
+    @Test
+    fun `comparing car types shows the cost and CO2 per type`() {
+        val api = FakeApi("GET /cars/compare" to json("""{"distanceKm":100,"currency":"EUR","types":[{"type":"BEV","cars":2,"averageCost":5.25,"co2Kg":0.0},{"type":"ICE","cars":3,"averageCost":13.0,"co2Kg":13.8}]}"""))
+
+        // visitor > Costs (2) > Compare (3, after cost per km and quote) with the default distance
+        val output = runScript(api, "3", "2", "3", "", "0", "0", "0")
+
+        assertEquals(listOf("GET /cars/compare"), api.calls)
+        assertEquals("100.0", api.queries.single()["distanceKm"])
+        assertTrue(Regex("ICE\\s+3\\s+13.0\\s+13.8").containsMatchIn(output), output)
+    }
 }
