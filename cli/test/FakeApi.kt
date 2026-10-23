@@ -16,6 +16,15 @@ class FakeApi(vararg answers: Pair<String, ApiResponse>) : Api {
     /** Answers that depend on the query (pages); returning null falls back to [answers]. */
     var handler: ((String, Map<String, String?>) -> ApiResponse?)? = null
 
+    /** The files that were uploaded: the path and the file name, content type and size. */
+    val uploads = mutableListOf<Pair<String, Triple<String, String, Int>>>()
+
+    override fun upload(path: String, fileName: String, contentType: String, bytes: ByteArray): ApiResponse {
+        calls += "POST $path"
+        uploads += path to Triple(fileName, contentType, bytes.size)
+        return answers["POST $path"] ?: ApiResponse(404, null)
+    }
+
     override fun call(method: String, path: String, query: Map<String, String?>, body: JsonElement?): ApiResponse {
         calls += "$method $path"
         queries += query
