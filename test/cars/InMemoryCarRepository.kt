@@ -17,5 +17,11 @@ class InMemoryCarRepository : CarRepository {
         return findCar(car.id)?.let { cars[cars.indexOf(it)] = car; car }
     }
 
+    override fun markServiced(carId: Int): Boolean {
+        val car = findCar(carId) ?: return false
+        car.lastServiceKm = car.mileage
+        return true
+    }
+
     override fun deleteCarById(carId: Int): Boolean = cars.removeIf { it.id == carId }
 }
