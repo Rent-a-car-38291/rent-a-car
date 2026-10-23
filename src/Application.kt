@@ -12,6 +12,7 @@ import com.example.database.connectDatabase
 import com.example.images.ImageRepository
 import com.example.images.configureImages
 import com.example.organizations.OrganizationRepository
+import com.example.organizations.configureOrganizationReport
 import com.example.organizations.configureOrganizations
 import com.example.ratings.RatingRepository
 import com.example.ratings.configureRatings
@@ -41,8 +42,10 @@ fun Application.module() {
     configureCars(cars, organizations, images, reservations, ratings)
     configureImages(cars, organizations, images)
     configureReservations(cars, reservations)
-    configureTrips(reservations, TripRepository(dataSource), cars, organizations)
+    val trips = TripRepository(dataSource)
+    configureTrips(reservations, trips, cars, organizations)
     configureRatings(reservations, ratings, cars)
     configureAccounts(users, organizations, tokens)
     configureOrganizations(organizations)
+    configureOrganizationReport(organizations, cars, trips)
 }

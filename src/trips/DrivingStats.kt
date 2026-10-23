@@ -15,7 +15,8 @@ fun calculateStats(totals: List<DaypartTotals>, bonusPoints: Int): DrivingStats 
     val trips = totals.sumOf { it.trips }
     if (trips == 0) return DrivingStats(0, 0, null, null, bonusPoints)
     val best = totals.filter { it.trips > 0 }.sortedBy { it.daypart }.maxBy { it.scoreSum.toDouble() / it.trips }
-    // Whole tenths, rounded half up in integers: a double can land just under an exact .x5.
-    val average = (totals.sumOf { it.scoreSum } * 20 + trips) / (2 * trips) / 10.0
-    return DrivingStats(trips, totals.sumOf { it.km }, average, best.daypart, bonusPoints)
+    return DrivingStats(trips, totals.sumOf { it.km }, averageScore(totals.sumOf { it.scoreSum }, trips), best.daypart, bonusPoints)
 }
+
+// Whole tenths, rounded half up in integers: a double can land just under an exact .x5. Needs at least one trip.
+internal fun averageScore(scoreSum: Long, trips: Int): Double = (scoreSum * 20 + trips) / (2 * trips) / 10.0
