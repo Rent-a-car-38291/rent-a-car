@@ -26,8 +26,8 @@ else
     Route --> Client : 409 Conflict
   else
     Route -> Repo : start(id, now)
-    Repo -> Db : trip already finished? INSERT start time
-    alt already started or finished
+    Repo -> Db : lock the reservation (must be RESERVED),\ntrip already finished? INSERT start time
+    alt already started or finished,\nor the reservation is cancelled
       Repo --> Route : null
       Route --> Client : 409 Conflict
     else
@@ -55,8 +55,8 @@ else
   else
     Route -> Route : score = calculateScore(...)\npoints = bonusPoints(distanceKm, score)
     Route -> Repo : record(id, user.id, distanceKm, score, points, endedAt = now)
-    Repo -> Db : read the start, INSERT trip with startedAt and\ndurationMinutes (one transaction with the\nUPDATE users SET bonus_points += points)
-    alt never started, or the reservation already has a trip
+    Repo -> Db : lock the reservation, read the start, INSERT trip with startedAt and\ndurationMinutes (one transaction with the\nUPDATE reservations SET status = COMPLETED and\nUPDATE users SET bonus_points += points)
+    alt never started, the reservation already has a trip,\nor it is cancelled
       Repo --> Route : null
       Route --> Client : 409 Conflict
     else
