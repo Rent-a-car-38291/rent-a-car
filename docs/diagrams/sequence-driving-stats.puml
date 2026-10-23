@@ -1,0 +1,38 @@
+@startuml
+title GET /accounts/{id}/stats
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "TripRoutes.kt" as Route
+participant "TripRepository" as Repo
+database "users, trips JOIN reservations" as Db
+
+Client -> Auth : GET /accounts/{id}/stats
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt id is not a number
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Repo : stats(id)
+    Repo -> Db : SELECT bonus_points FROM users WHERE id
+    alt unknown user
+      Repo --> Route : null
+      Route --> Client : 404 Not Found
+    else
+      Repo -> Db : SELECT daypart, COUNT, SUM(distance_km), SUM(score)\nGROUP BY daypart (finished trips of the user)
+      Db --> Repo : totals per daypart
+      Repo -> Repo : calculateStats(totals, bonusPoints)
+      Repo --> Route : DrivingStats
+      alt id is not the logged-in user
+        Route --> Client : 403 Forbidden
+      else
+        Route --> Client : 200 OK\n{tripCount, totalKm, averageScore, bestDaypart, bonusPoints}
+      end
+    end
+  end
+end
+
+@enduml
