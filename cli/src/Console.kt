@@ -103,6 +103,9 @@ class Console(private val input: BufferedReader, val out: PrintStream) {
     }
 }
 
+/** The server decides what "today" is in this zone, so the client must too. */
+fun today(): LocalDate = LocalDate.now(java.time.ZoneId.of("Europe/Amsterdam"))
+
 fun parseInt(raw: String, min: Int, max: Int): Pair<Int?, String?> {
     val n = raw.toIntOrNull() ?: return null to "Please enter a whole number."
     return if (n in min..max) n to null else null to "Please enter a number between ${if (min == Int.MIN_VALUE) "-∞" else min} and ${if (max == Int.MAX_VALUE) "∞" else max}."

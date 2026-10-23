@@ -18,7 +18,7 @@ val organizationsMenu = Menu("Organizations", items = listOf(
     },
     MenuItem("Join with an invite code") { ctx ->
         val code = ctx.io.text("Invite code")
-        ctx.call("POST", "/invites/$code/accept", hints = mapOf(404 to "Unknown, used or expired code.", 409 to "You are already a member."))
+        ctx.call("POST", "/invites/${java.net.URLEncoder.encode(code, Charsets.UTF_8)}/accept", hints = mapOf(404 to "Unknown, used or expired code.", 409 to "You are already a member."))
             ?.let { ctx.io.say("You joined the organization as a member.") }
     },
     MenuItem("Change a member's role (admin)") { ctx ->

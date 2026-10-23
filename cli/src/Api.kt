@@ -32,14 +32,17 @@ class HttpApi(private val baseUrl: String) : Api {
     override fun call(method: String, path: String, query: Map<String, String?>, body: JsonElement?): ApiResponse {
         val queryString = query.filterValues { it != null }.entries
             .joinToString("&") { (k, v) -> "$k=${URLEncoder.encode(v, Charsets.UTF_8)}" }
-        val uri = URI.create(baseUrl.trimEnd('/') + path + if (queryString.isEmpty()) "" else "?$queryString")
-        val request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(30))
+        val request = try {
+            HttpRequest.newBuilder(URI.create(baseUrl.trimEnd('/') + path + if (queryString.isEmpty()) "" else "?$queryString")).timeout(Duration.ofSeconds(30))
             .method(method, if (body == null) HttpRequest.BodyPublishers.noBody() else HttpRequest.BodyPublishers.ofString(body.toString()))
             .apply {
                 if (body != null) header("Content-Type", "application/json")
                 token?.let { header("Authorization", "Bearer $it") }
             }
             .build()
+        } catch (e: IllegalArgumentException) {
+            throw ServerUnreachable("Invalid server address or input: ${e.message}")
+        }
         try {
             val response = client.send(request, HttpResponse.BodyHandlers.ofString())
             val text = response.body()

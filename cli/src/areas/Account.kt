@@ -22,7 +22,7 @@ val accountMenu = Menu("Account", items = listOf(
         }
         ctx.call("PUT", "/accounts/${ctx.accountId()}/password", body = body, hints = mapOf(
             400 to "The new password needs 8 to 128 characters, and the current one must be right.",
-            403 to "That is not your account id.",
+            403 to "Wrong current password, or that is not your account id.",
         ))?.let { ctx.io.say("Password changed. Your other logins were ended.") }
     },
     MenuItem("Delete my account") { ctx ->
