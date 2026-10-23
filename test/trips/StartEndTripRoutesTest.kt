@@ -29,6 +29,7 @@ import kotlinx.serialization.json.*
 import org.jetbrains.amper.ktor.module
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.temporal.ChronoUnit
 import kotlin.test.*
 
 class StartEndTripRoutesTest {
@@ -268,7 +269,7 @@ class StartEndTripRoutesTest {
         val trips = TripRepository(TestDatabase.dataSource)
         val renter = withUser("duration@example.com")
         val reservation = ReservationRepository(TestDatabase.dataSource).reserve(car, renter, today.minusDays(3), Daypart.MORNING)!!.id
-        val startedAt = OffsetDateTime.now().minusMinutes(90)
+        val startedAt = OffsetDateTime.now().minusMinutes(90).truncatedTo(ChronoUnit.MICROS) // Postgres keeps microseconds
         assertNotNull(trips.start(reservation, startedAt))
 
         val (trip) = trips.record(reservation, renter, 10, 100, 10, endedAt = startedAt.plusMinutes(37))!!
