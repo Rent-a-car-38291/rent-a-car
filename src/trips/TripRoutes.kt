@@ -21,6 +21,11 @@ import java.time.temporal.ChronoUnit
 
 fun Application.configureTrips(reservations: ReservationRepository, trips: TripRepository, cars: CarRepository, organizations: OrganizationRepository, clock: Clock = Clock.system(ZONE)) {
     routing {
+        get("/leaderboard") {
+            val limit = parseLeaderboardLimit(call.request.queryParameters)
+            if (limit == null) call.respond(HttpStatusCode.BadRequest) else call.respond(trips.leaderboard(limit))
+        }
+
         authenticate {
             get("/trips") {
                 val filter = parseTripFilter(call.request.queryParameters).getOrElse {
