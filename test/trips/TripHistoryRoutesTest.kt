@@ -188,6 +188,7 @@ class TripHistoryRoutesTest {
         assertEquals(HttpStatusCode.NotFound, client.history("/cars/999999/trips", owner.token).status)
         assertEquals(HttpStatusCode.BadRequest, client.history("/cars/abc/trips", owner.token).status)
         assertEquals(HttpStatusCode.BadRequest, client.history("/cars/$car/trips?limit=0", owner.token).status)
+        assertEquals(HttpStatusCode.BadRequest, client.history("/cars/$car/trips?from=2026-02-02&to=2026-02-01", owner.token).status)
         assertEquals(HttpStatusCode.OK, client.history("/cars/$car/trips", owner.token).status)
     }
 }
