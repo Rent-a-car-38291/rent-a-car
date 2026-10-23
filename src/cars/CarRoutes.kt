@@ -1,6 +1,7 @@
 package com.example.cars
 
 import com.example.accounts.User
+import com.example.organizations.OrganizationRepository
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.auth.authenticate
@@ -14,7 +15,7 @@ import java.math.RoundingMode
 
 private fun Double.roundTo(decimals: Int) = BigDecimal.valueOf(this).setScale(decimals, RoundingMode.HALF_UP).toDouble()
 
-fun Application.configureCars(repository: CarRepository) {
+fun Application.configureCars(repository: CarRepository, organizations: OrganizationRepository) {
     routing {
         get("/cars") {
             val cars = filterCars(repository.allCars(), call.request.queryParameters)
@@ -36,8 +37,15 @@ fun Application.configureCars(repository: CarRepository) {
             post("/cars") {
                 val user = call.principal<User>()!!
                 val request = call.receive<AddCarRequest>()
+                // An organization car needs a member; an unknown organization has none.
+                if (request.organizationId != null && organizations.findMembership(request.organizationId, user.id) == null) {
+                    call.respond(HttpStatusCode.Forbidden)
+                    return@post
+                }
                 // toCar rejects invalid or missing fields with an IllegalArgumentException.
-                val car = runCatching { request.toCar(ownerId = user.id) }.getOrNull()
+                val car = runCatching {
+                    request.toCar(ownerId = user.id.takeIf { request.organizationId == null }, organizationId = request.organizationId)
+                }.getOrNull()
                 if (car == null) {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
@@ -49,14 +57,14 @@ fun Application.configureCars(repository: CarRepository) {
                 }
             }
 
-            // Owner only.
+            // Owner, or a member for an organization car.
             get("/cars/{id}/tco") {
                 val id = call.parameters["id"]?.toIntOrNull()
                 val car = id?.let(repository::findCar)
                 when {
                     id == null -> call.respond(HttpStatusCode.BadRequest)
                     car == null -> call.respond(HttpStatusCode.NotFound)
-                    car.ownerId != call.principal<User>()!!.id -> call.respond(HttpStatusCode.Forbidden)
+                    !canManage(call.principal<User>()!!, car, organizations) -> call.respond(HttpStatusCode.Forbidden)
                     else -> {
                         val raw = call.request.queryParameters["kmPerYear"]
                         val kmPerYear = if (raw == null) STANDARD_KM_PER_YEAR else raw.toIntOrNull()?.takeIf { it >= 0 }
@@ -71,12 +79,13 @@ fun Application.configureCars(repository: CarRepository) {
                 val existing = repository.findCar(id)
                 when {
                     existing == null -> call.respond(HttpStatusCode.NotFound)
-                    existing.ownerId != call.principal<User>()!!.id -> call.respond(HttpStatusCode.Forbidden)
+                    !canManage(call.principal<User>()!!, existing, organizations) -> call.respond(HttpStatusCode.Forbidden)
                     else -> {
                         val request = call.receive<AddCarRequest>()
                         // toCar rejects invalid fields with an IllegalArgumentException.
-                        val car = runCatching { request.toCar(existing.ownerId, id, existing) }.getOrNull()
-                        if (car == null || request.type != existing.type) {
+                        val car = runCatching { request.toCar(existing.ownerId, id, existing, existing.organizationId) }.getOrNull()
+                        // A car can't change type or move to another owner or organization.
+                        if (car == null || request.type != existing.type || (request.organizationId ?: existing.organizationId) != existing.organizationId) {
                             call.respond(HttpStatusCode.BadRequest)
                             return@put
                         }
@@ -132,18 +141,13 @@ fun Application.configureCars(repository: CarRepository) {
                     return@delete
                 }
 
-                if (repository.findCar(carId) != null) {
-                    val delete = repository.deleteCarById(carId, user.id)
-
-                    if (delete) {
-                        call.respond(HttpStatusCode.NoContent)
-                    }
-                    else {
-                        call.respond(HttpStatusCode.Forbidden)
-                    }
-                }
-                else {
-                    call.respond(HttpStatusCode.NotFound, "Car with ID $id not found")
+                val car = repository.findCar(carId)
+                when {
+                    car == null -> call.respond(HttpStatusCode.NotFound, "Car with ID $id not found")
+                    !canDelete(user, car, organizations) -> call.respond(HttpStatusCode.Forbidden)
+                    // false when the car was deleted meanwhile
+                    repository.deleteCarById(carId) -> call.respond(HttpStatusCode.NoContent)
+                    else -> call.respond(HttpStatusCode.NotFound, "Car with ID $id not found")
                 }
             }
         }

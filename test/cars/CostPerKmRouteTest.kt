@@ -5,6 +5,7 @@ import com.example.accounts.configureSecurity
 import com.example.configureSerialization
 import com.example.database.TestDatabase
 import com.example.database.useTestDatabase
+import com.example.organizations.OrganizationRepository
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
@@ -23,7 +24,7 @@ class CostPerKmRouteTest {
         application {
             configureSerialization()
             configureSecurity(UserRepository(TestDatabase.dataSource))
-            configureCars(repository)
+            configureCars(repository, OrganizationRepository(TestDatabase.dataSource))
         }
         block()
     }

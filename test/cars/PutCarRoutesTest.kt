@@ -63,7 +63,7 @@ class PutCarRoutesTest {
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users)
             configureAccounts(users, OrganizationRepository(TestDatabase.dataSource))
-            configureCars(repository)
+            configureCars(repository, OrganizationRepository(TestDatabase.dataSource))
         }
         val (ownerId, token) = client.signUp("jan@example.com")
         repository.cars.clear()

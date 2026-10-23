@@ -17,6 +17,5 @@ class InMemoryCarRepository : CarRepository {
         return findCar(car.id)?.let { cars[cars.indexOf(it)] = car; car }
     }
 
-    override fun deleteCarById(carId: Int, ownerId: Int): Boolean =
-        cars.removeIf { it.id == carId && it.ownerId == ownerId }
+    override fun deleteCarById(carId: Int): Boolean = cars.removeIf { it.id == carId }
 }

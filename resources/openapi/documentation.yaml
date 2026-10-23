@@ -29,7 +29,7 @@ paths:
     post:
       tags: [Cars]
       summary: Offer a car
-      description: The logged-in user becomes the owner. A new car is always Available. fuelType is only for ICE, and capacity and consumption are always required.
+      description: The logged-in user becomes the owner. With an organizationId the car belongs to that organization instead (it has no owner), which takes membership. A new car is always Available. fuelType is only for ICE, and capacity and consumption are always required.
       security:
         - bearerAuth: []
       requestBody:
@@ -49,6 +49,8 @@ paths:
           description: Malformed body, or a missing, unknown or out-of-range field (a negative mileage or rate, a missing capacity)
         "401":
           description: Missing or invalid token
+        "403":
+          description: You are not a member of the organization, or it doesn't exist
         "409":
           description: Another car already has this license plate
   /cars/{id}/cost-per-km:
@@ -73,7 +75,7 @@ paths:
     get:
       tags: [Cars]
       summary: Total cost of ownership per year
-      description: Owner only. Depreciation (the purchase price spread over 10 years) plus insurance, road tax, maintenance and the energy cost for kmPerYear at the standard prices, rounded to 2 decimals. kmPerYear is a whole number of km and defaults to 15000.
+      description: The owner, or a member of the organization for an organization car. Depreciation (the purchase price spread over 10 years) plus insurance, road tax, maintenance and the energy cost for kmPerYear at the standard prices, rounded to 2 decimals. kmPerYear is a whole number of km and defaults to 15000.
       security:
         - bearerAuth: []
       parameters:
@@ -91,7 +93,7 @@ paths:
         "401":
           description: Missing or invalid token
         "403":
-          description: Someone else's car
+          description: Not your car, or an organization car and you are not a member
         "404":
           description: Unknown id
   /cars/{id}/reservations:
@@ -180,8 +182,8 @@ paths:
   /cars/{id}:
     put:
       tags: [Cars]
-      summary: Update your own car
-      description: Same body as POST /cars. The owner and the status stay as they are, and the type can't change. A cost field that is left out keeps its current value.
+      summary: Update your own car, or an organization car as a member
+      description: Same body as POST /cars. The owner, the organization and the status stay as they are, and the type can't change. A cost field that is left out keeps its current value.
       security:
         - bearerAuth: []
       parameters:
@@ -204,11 +206,29 @@ paths:
         "401":
           description: Missing or invalid token
         "403":
-          description: Someone else's car
+          description: Not your car, or an organization car and you are not a member
         "404":
           description: Unknown id
         "409":
           description: Another car already has this license plate
+    delete:
+      tags: [Cars]
+      summary: Delete your own car, or an organization car as an admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: Car deleted
+        "400":
+          description: Non-numeric id
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Not your car, or an organization car and you are not an admin of it (a plain member can update but not delete it)
+        "404":
+          description: Unknown id
   /accounts:
     post:
       tags: [Accounts]
@@ -538,7 +558,8 @@ components:
       properties:
         type: { type: string, enum: [ICE] }
         id: { type: integer, example: 1 }
-        ownerId: { type: integer, example: -1, description: "The user who offers the car, -1 for the sample fleet" }
+        ownerId: { type: integer, nullable: true, example: -1, description: "The user who offers the car, -1 for the sample fleet, null for an organization car" }
+        organizationId: { type: integer, nullable: true, example: null, description: The organization that owns the car, null for a private car }
         brand: { type: string, example: Peugeot }
         licensePlate: { type: string, example: 85-GHB-2 }
         mileage: { type: integer, example: 217349 }
@@ -564,7 +585,8 @@ components:
       properties:
         type: { type: string, enum: [BEV] }
         id: { type: integer, example: 2 }
-        ownerId: { type: integer, example: -1, description: "The user who offers the car, -1 for the sample fleet" }
+        ownerId: { type: integer, nullable: true, example: -1, description: "The user who offers the car, -1 for the sample fleet, null for an organization car" }
+        organizationId: { type: integer, nullable: true, example: null, description: The organization that owns the car, null for a private car }
         brand: { type: string, example: "Tesla Model 3" }
         licensePlate: { type: string, example: K-123-BV }
         mileage: { type: integer, example: 48210 }
@@ -589,7 +611,8 @@ components:
       properties:
         type: { type: string, enum: [FCEV] }
         id: { type: integer, example: 3 }
-        ownerId: { type: integer, example: -1, description: "The user who offers the car, -1 for the sample fleet" }
+        ownerId: { type: integer, nullable: true, example: -1, description: "The user who offers the car, -1 for the sample fleet, null for an organization car" }
+        organizationId: { type: integer, nullable: true, example: null, description: The organization that owns the car, null for a private car }
         brand: { type: string, example: "Toyota Mirai" }
         licensePlate: { type: string, example: XT-482-H }
         mileage: { type: integer, example: 32500 }
@@ -720,6 +743,7 @@ components:
         fuelType: { type: string, enum: [Petrol, Diesel, LPG], description: Required for ICE }
         capacity: { type: number, example: 75.0, description: "Battery in kWh (BEV), tank in litres (ICE) or kg (FCEV)" }
         consumption: { type: number, example: 16.2, description: Per 100 km, in the unit of the capacity }
+        organizationId: { type: integer, description: "POST only: the car belongs to this organization (you must be a member). On PUT it can be left out or must match the car's current organization" }
         purchasePrice: { type: number, example: 25000.0, description: "EUR. Left out: 0 on POST, the current value on PUT" }
         insurancePerYear: { type: number, example: 600.0, description: "EUR. Left out: 0 on POST, the current value on PUT" }
         roadTaxPerYear: { type: number, example: 120.0, description: "EUR. Left out: 0 on POST, the current value on PUT" }

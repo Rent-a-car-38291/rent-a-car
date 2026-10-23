@@ -5,6 +5,7 @@ import com.example.accounts.configureSecurity
 import com.example.configureSerialization
 import com.example.database.TestDatabase
 import com.example.database.useTestDatabase
+import com.example.organizations.OrganizationRepository
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
@@ -33,7 +34,7 @@ class FilterCarsRoutesTest {
         application {
             configureSerialization()
             configureSecurity(UserRepository(TestDatabase.dataSource))
-            configureCars(repository)
+            configureCars(repository, OrganizationRepository(TestDatabase.dataSource))
         }
         val response = client.get("/cars$query")
         val plates = if (response.status == HttpStatusCode.OK) {

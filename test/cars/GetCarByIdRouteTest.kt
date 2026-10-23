@@ -47,7 +47,7 @@ class GetCarByIdRouteTest {
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users)
             configureAccounts(users, OrganizationRepository(TestDatabase.dataSource))
-            configureCars(repository)
+            configureCars(repository, OrganizationRepository(TestDatabase.dataSource))
         }
     }
 

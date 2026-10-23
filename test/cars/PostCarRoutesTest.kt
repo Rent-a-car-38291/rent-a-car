@@ -68,7 +68,7 @@ class PostCarRoutesTest {
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users)
             configureAccounts(users, OrganizationRepository(TestDatabase.dataSource))
-            configureCars(repository)
+            configureCars(repository, OrganizationRepository(TestDatabase.dataSource))
         }
         val (userId, token) = client.signUp()
         val requests = listOf(
@@ -114,7 +114,7 @@ class PostCarRoutesTest {
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users)
             configureAccounts(users, OrganizationRepository(TestDatabase.dataSource))
-            configureCars(repository)
+            configureCars(repository, OrganizationRepository(TestDatabase.dataSource))
         }
 
         val response = client.post("/cars") {
@@ -134,7 +134,7 @@ class PostCarRoutesTest {
             val users = UserRepository(TestDatabase.dataSource)
             configureSecurity(users)
             configureAccounts(users, OrganizationRepository(TestDatabase.dataSource))
-            configureCars(repository)
+            configureCars(repository, OrganizationRepository(TestDatabase.dataSource))
         }
     }
 

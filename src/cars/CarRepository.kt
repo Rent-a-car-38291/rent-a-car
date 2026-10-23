@@ -8,5 +8,5 @@ interface CarRepository {
     fun findCar(id: Int): Car?
     fun addCar(car: Car): Car
     fun updateCar(car: Car): Car?
-    fun deleteCarById(carId: Int, ownerId: Int): Boolean
+    fun deleteCarById(carId: Int): Boolean
 }

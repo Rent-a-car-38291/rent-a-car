@@ -13,6 +13,8 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNotNull
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.neq
+import com.example.organizations.Organizations
+import com.example.organizations.createOrganizations
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
@@ -27,7 +29,9 @@ import javax.sql.DataSource
 
 internal object Cars : Table("cars") {
     val id = integer("id").autoIncrement()
-    val ownerId = integer("owner_id").references(Users.id, onDelete = ReferenceOption.CASCADE, fkName = "cars_owner_id_fkey")
+    // Exactly one of the two is set: a private car has an owner and goes with its account, an organization car has an organization and stays when a member's account is deleted.
+    val ownerId = integer("owner_id").references(Users.id, onDelete = ReferenceOption.CASCADE, fkName = "cars_owner_id_fkey").nullable()
+    val organizationId = integer("organization_id").references(Organizations.id, onDelete = ReferenceOption.CASCADE, fkName = "cars_organization_id_fkey").nullable()
     val type = text("type").check { it inList listOf("BEV", "ICE", "FCEV") }
     val brand = text("brand")
     val licensePlate = text("license_plate").uniqueIndex("cars_license_plate_key")
@@ -56,6 +60,7 @@ internal object Cars : Table("cars") {
     private fun money(name: String) = decimal(name, 10, 2).default(BigDecimal.ZERO).check { it greaterEq BigDecimal.ZERO }
 
     init {
+        check("cars_owner_or_organization") { ownerId.isNull() neq organizationId.isNull() }
         check { ((type eq "ICE") and fuelType.isNotNull()) or ((type neq "ICE") and fuelType.isNull()) }
     }
 }
@@ -79,7 +84,7 @@ private val SEED_CARS = listOf(
 
 // Also used by the reservations, which reference cars.
 internal fun Database.createCars() {
-    createUsers()
+    createOrganizations() // also creates the users, and cars reference both
     transaction(this) {
         SchemaUtils.create(Cars)
         // SchemaUtils.create leaves an older table alone, so replace the foreign key of a table the old SQL script made:
@@ -90,6 +95,10 @@ internal fun Database.createCars() {
         exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS insurance_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (insurance_per_year >= 0)")
         exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS road_tax_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (road_tax_per_year >= 0)")
         exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS maintenance_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (maintenance_per_year >= 0)")
+        // Organization cars: a car without an owner belongs to an organization.
+        exec("ALTER TABLE cars ALTER COLUMN owner_id DROP NOT NULL")
+        exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS organization_id INTEGER CONSTRAINT cars_organization_id_fkey REFERENCES organizations (id) ON DELETE CASCADE")
+        exec("ALTER TABLE cars DROP CONSTRAINT IF EXISTS cars_owner_or_organization, ADD CONSTRAINT cars_owner_or_organization CHECK ((owner_id IS NULL) <> (organization_id IS NULL))")
         // Rented is gone (a car is rented per daypart, see Reservation): free the cars an older version left rented.
         exec("UPDATE cars SET status = 'Available' WHERE status = 'Rented'")
     }
@@ -152,6 +161,7 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
         return Cars.insert {
             it[type] = columns.type
             it[ownerId] = car.ownerId
+            it[organizationId] = car.organizationId
             it[brand] = car.brand
             it[licensePlate] = car.licensePlate
             it[mileage] = car.mileage
@@ -185,6 +195,7 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
     private fun ResultRow.toCar(): Car {
         val id = this[Cars.id]
         val ownerId = this[Cars.ownerId]
+        val organizationId = this[Cars.organizationId]
         val brand = this[Cars.brand]
         val licensePlate = this[Cars.licensePlate]
         val mileage = this[Cars.mileage]
@@ -204,17 +215,16 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
         val roadTaxPerYear = this[Cars.roadTaxPerYear].toDouble()
         val maintenancePerYear = this[Cars.maintenancePerYear].toDouble()
         return when (val type = this[Cars.type]) {
-            "BEV" -> BEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear)
-            "ICE" -> ICECar(id,ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, FuelType.valueOf(this[Cars.fuelType]!!), capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear)
-            "FCEV" -> FCEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear)
+            "BEV" -> BEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear, organizationId)
+            "ICE" -> ICECar(id,ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, FuelType.valueOf(this[Cars.fuelType]!!), capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear, organizationId)
+            "FCEV" -> FCEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear, organizationId)
             else -> error("Unknown car type $type")
         }
     }
 
     override fun findCar(id: Int): Car? = transaction(db) { Cars.selectAll().where { Cars.id eq id }.singleOrNull()?.toCar() }
 
-    override fun deleteCarById(carId: Int, ownerId: Int): Boolean =
-        transaction(db) { Cars.deleteWhere { (Cars.id eq carId) and (Cars.ownerId eq ownerId) } > 0 }
+    override fun deleteCarById(carId: Int): Boolean = transaction(db) { Cars.deleteWhere { Cars.id eq carId } > 0 }
 }
 
 private data class TypeColumns(

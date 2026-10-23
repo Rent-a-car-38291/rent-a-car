@@ -8,7 +8,10 @@ const val MAX_AMOUNT = 99_999_999.99 // the money columns are numeric(10, 2)
 @Serializable
 sealed class Car {
     abstract val id: Int
-    abstract val ownerId: Int
+    // The owner of a private car; null for an organization car, which no single user owns.
+    abstract val ownerId: Int?
+    // The organization that owns the car, null for a private car.
+    abstract val organizationId: Int?
     abstract val brand: String
     abstract val licensePlate: String
     abstract var mileage: Int
@@ -73,8 +76,10 @@ data class AddCarRequest(
     val insurancePerYear: Double? = null,
     val roadTaxPerYear: Double? = null,
     val maintenancePerYear: Double? = null,
+    // POST /cars only: the car then belongs to that organization instead of to you
+    val organizationId: Int? = null,
 ) {
-    fun toCar(ownerId: Int, id: Int = 0, existing: Car? = null): Car {
+    fun toCar(ownerId: Int?, id: Int = 0, existing: Car? = null, organizationId: Int? = null): Car {
         val purchasePrice = purchasePrice ?: existing?.purchasePrice ?: 0.0
         val insurancePerYear = insurancePerYear ?: existing?.insurancePerYear ?: 0.0
         val roadTaxPerYear = roadTaxPerYear ?: existing?.roadTaxPerYear ?: 0.0
@@ -88,6 +93,7 @@ data class AddCarRequest(
             CarType.BEV -> BEVCar(
                 id = id,
                 ownerId = ownerId,
+                organizationId = organizationId,
                 brand = brand,
                 licensePlate = licensePlate,
                 mileage = mileage,
@@ -112,6 +118,7 @@ data class AddCarRequest(
                 ICECar(
                     id = id,
                     ownerId = ownerId,
+                    organizationId = organizationId,
                     brand = brand,
                     licensePlate = licensePlate,
                     mileage = mileage,
@@ -136,6 +143,7 @@ data class AddCarRequest(
             CarType.FCEV -> FCEVCar(
                 id = id,
                 ownerId = ownerId,
+                organizationId = organizationId,
                 brand = brand,
                 licensePlate = licensePlate,
                 mileage = mileage,
