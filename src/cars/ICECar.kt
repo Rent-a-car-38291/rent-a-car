@@ -27,6 +27,8 @@ class ICECar (
     override val roadTaxPerYear: Double = 0.0,
     override val maintenancePerYear: Double = 0.0,
     override val organizationId: Int? = null,
+    // A car counts as serviced when it is added, until PUT /cars/{id}/service says otherwise.
+    override var lastServiceKm: Int = mileage,
 ) : Car() {
     override fun costPerKm(prices: EnergyPrices) = consumptionLitresPer100Km / 100 * prices.perLitre(fuelType)
 }

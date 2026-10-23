@@ -1,6 +1,7 @@
 package com.example.trips
 
 import com.example.accounts.Users
+import com.example.cars.Cars
 import com.example.reservations.ReservationStatus
 import com.example.reservations.Reservations
 import com.example.reservations.createReservations
@@ -120,6 +121,9 @@ class TripRepository(dataSource: DataSource) {
                 null
             } else {
                 Reservations.update({ Reservations.id eq reservationId }) { it[status] = ReservationStatus.COMPLETED.name }
+                // An increment in the statement itself, so a trip never overwrites a mileage that changed meanwhile.
+                val carId = Reservations.select(Reservations.carId).where { Reservations.id eq reservationId }.single()[Reservations.carId]
+                Cars.update({ Cars.id eq carId }) { it[mileage] = mileage + distanceKm }
                 Users.update({ Users.id eq userId }) { it[bonusPoints] = bonusPoints + points }
                 val total = Users.selectAll().where { Users.id eq userId }.single()[Users.bonusPoints]
                 Trip(inserted[Trips.id], reservationId, distanceKm, score, startedAt?.toInstant()?.toString(), minutes) to total

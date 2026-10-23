@@ -55,6 +55,7 @@ internal object Cars : Table("cars") {
     val insurancePerYear = money("insurance_per_year")
     val roadTaxPerYear = money("road_tax_per_year")
     val maintenancePerYear = money("maintenance_per_year")
+    val lastServiceKm = integer("last_service_km").check { it greaterEq 0 }
     override val primaryKey = PrimaryKey(id)
 
     private fun money(name: String) = decimal(name, 10, 2).default(BigDecimal.ZERO).check { it greaterEq BigDecimal.ZERO }
@@ -95,6 +96,10 @@ internal fun Database.createCars() {
         exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS insurance_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (insurance_per_year >= 0)")
         exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS road_tax_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (road_tax_per_year >= 0)")
         exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS maintenance_per_year NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (maintenance_per_year >= 0)")
+        // A car from before service tracking counts as serviced at its current mileage.
+        exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS last_service_km INTEGER CHECK (last_service_km >= 0)")
+        exec("UPDATE cars SET last_service_km = mileage WHERE last_service_km IS NULL")
+        exec("ALTER TABLE cars ALTER COLUMN last_service_km SET NOT NULL")
         // Organization cars: a car without an owner belongs to an organization.
         exec("ALTER TABLE cars ALTER COLUMN owner_id DROP NOT NULL")
         exec("ALTER TABLE cars ADD COLUMN IF NOT EXISTS organization_id INTEGER CONSTRAINT cars_organization_id_fkey REFERENCES organizations (id) ON DELETE CASCADE")
@@ -147,6 +152,7 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
                     it[insurancePerYear] = BigDecimal.valueOf(car.insurancePerYear)
                     it[roadTaxPerYear] = BigDecimal.valueOf(car.roadTaxPerYear)
                     it[maintenancePerYear] = BigDecimal.valueOf(car.maintenancePerYear)
+                    it[lastServiceKm] = car.lastServiceKm
                 }
                 if (updated > 0) findCar(car.id) else null
             }
@@ -182,6 +188,7 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
             it[insurancePerYear] = BigDecimal.valueOf(car.insurancePerYear)
             it[roadTaxPerYear] = BigDecimal.valueOf(car.roadTaxPerYear)
             it[maintenancePerYear] = BigDecimal.valueOf(car.maintenancePerYear)
+            it[lastServiceKm] = car.lastServiceKm
         }.resultedValues!!.single().toCar()
     }
 
@@ -214,15 +221,20 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
         val insurancePerYear = this[Cars.insurancePerYear].toDouble()
         val roadTaxPerYear = this[Cars.roadTaxPerYear].toDouble()
         val maintenancePerYear = this[Cars.maintenancePerYear].toDouble()
+        val lastServiceKm = this[Cars.lastServiceKm]
         return when (val type = this[Cars.type]) {
-            "BEV" -> BEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear, organizationId)
-            "ICE" -> ICECar(id,ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, FuelType.valueOf(this[Cars.fuelType]!!), capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear, organizationId)
-            "FCEV" -> FCEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear, organizationId)
+            "BEV" -> BEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear, organizationId, lastServiceKm)
+            "ICE" -> ICECar(id,ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, FuelType.valueOf(this[Cars.fuelType]!!), capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear, organizationId, lastServiceKm)
+            "FCEV" -> FCEVCar(id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, capacity, consumption, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear, organizationId, lastServiceKm)
             else -> error("Unknown car type $type")
         }
     }
 
     override fun findCar(id: Int): Car? = transaction(db) { Cars.selectAll().where { Cars.id eq id }.singleOrNull()?.toCar() }
+
+    // The new last service is the mileage in the same statement, so a trip ending at the same time can't be missed. False when the car doesn't exist (anymore).
+    override fun markServiced(carId: Int): Boolean =
+        transaction(db) { Cars.update({ Cars.id eq carId }) { it[lastServiceKm] = mileage } > 0 }
 
     override fun deleteCarById(carId: Int): Boolean = transaction(db) { Cars.deleteWhere { Cars.id eq carId } > 0 }
 }

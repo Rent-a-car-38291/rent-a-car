@@ -140,6 +140,31 @@ class PostgresCarRepositoryTest {
     }
 
     @Test
+    fun ACarsTableWithoutTheLastServiceColumnIsUpgradedToTheCurrentMileage() {
+        val db = org.jetbrains.exposed.v1.jdbc.Database.connect(TestDatabase.dataSource)
+        org.jetbrains.exposed.v1.jdbc.transactions.transaction(db) { exec("ALTER TABLE cars DROP COLUMN last_service_km") }
+
+        val upgraded = PostgresCarRepository(TestDatabase.dataSource)
+
+        assertTrue(upgraded.allCars().isNotEmpty())
+        assertTrue(upgraded.allCars().all { it.lastServiceKm == it.mileage && !it.serviceDue })
+    }
+
+    @Test
+    fun MarkServicedSetsTheLastServiceToTheMileageAndUnknownCarsAreNotFound() {
+        val car = repository.allCars().first()
+        org.jetbrains.exposed.v1.jdbc.transactions.transaction(org.jetbrains.exposed.v1.jdbc.Database.connect(TestDatabase.dataSource)) {
+            exec("UPDATE cars SET last_service_km = 0 WHERE id = ${car.id}")
+        }
+        assertEquals(0, repository.findCar(car.id)!!.lastServiceKm)
+
+        assertTrue(repository.markServiced(car.id))
+
+        assertEquals(car.mileage, repository.findCar(car.id)!!.lastServiceKm)
+        assertFalse(repository.markServiced(-12345))
+    }
+
+    @Test
     fun CarsLeftRentedByAnOlderVersionBecomeAvailable() {
         val id = repository.allCars().first { it.status == CarStatus.Available }.id
         TestDatabase.dataSource.connection.use { it.createStatement().execute("UPDATE cars SET status = 'Rented' WHERE id = $id") }

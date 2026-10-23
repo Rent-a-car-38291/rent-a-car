@@ -3,6 +3,8 @@ import kotlinx.serialization.Serializable
 
 const val DEPRECIATION_YEARS = 10 // shortcut: one fixed period for every car, derive it from modelYear when that matters
 const val STANDARD_KM_PER_YEAR = 15_000
+const val SERVICE_INTERVAL_KM = 15_000
+const val MAX_MILEAGE = 10_000_000 // a limit far below the Int range, so adding the km of trips can't overflow the column
 const val MAX_AMOUNT = 99_999_999.99 // the money columns are numeric(10, 2)
 
 @Serializable
@@ -15,6 +17,8 @@ sealed class Car {
     abstract val brand: String
     abstract val licensePlate: String
     abstract var mileage: Int
+    // The mileage at the last service.
+    abstract var lastServiceKm: Int
     abstract var status: CarStatus
     abstract var rate: Double
     abstract var location: Location
@@ -38,6 +42,11 @@ sealed class Car {
     // Energy cost of one km in EUR; consumption is per 100 km.
     abstract fun costPerKm(prices: EnergyPrices): Double
 }
+
+// A car needs service when it has driven more than SERVICE_INTERVAL_KM since the last one.
+fun isServiceDue(mileage: Int, lastServiceKm: Int) = mileage - lastServiceKm > SERVICE_INTERVAL_KM
+
+val Car.serviceDue get() = isServiceDue(mileage, lastServiceKm)
 
 @Serializable
 data class CostPerKmResponse(val carId: Int, val costPerKm: Double, val currency: String)
@@ -78,13 +87,17 @@ data class AddCarRequest(
     val maintenancePerYear: Double? = null,
     // POST /cars only: the car then belongs to that organization instead of to you
     val organizationId: Int? = null,
+    // optional: the mileage at the last service; a new car counts as serviced now, an update that leaves it out keeps the current value
+    val lastServiceKm: Int? = null,
 ) {
     fun toCar(ownerId: Int?, id: Int = 0, existing: Car? = null, organizationId: Int? = null): Car {
         val purchasePrice = purchasePrice ?: existing?.purchasePrice ?: 0.0
         val insurancePerYear = insurancePerYear ?: existing?.insurancePerYear ?: 0.0
         val roadTaxPerYear = roadTaxPerYear ?: existing?.roadTaxPerYear ?: 0.0
         val maintenancePerYear = maintenancePerYear ?: existing?.maintenancePerYear ?: 0.0
-        require(mileage >= 0) { "mileage must be >= 0" }
+        require(mileage in 0..MAX_MILEAGE) { "mileage must be between 0 and $MAX_MILEAGE" }
+        val lastServiceKm = lastServiceKm ?: existing?.lastServiceKm ?: mileage
+        require(lastServiceKm in 0..mileage) { "lastServiceKm must be between 0 and the mileage" }
         require(listOf(purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear).all { it in 0.0..MAX_AMOUNT }) { "amounts must be between 0 and $MAX_AMOUNT" }
         require(rate in 0.0..999_999.99) { "rate must be between 0 and 999999.99" } // the column is numeric(8, 2)
         val capacity = requireNotNull(capacity) { "capacity is required" }
@@ -113,6 +126,7 @@ data class AddCarRequest(
                 insurancePerYear = insurancePerYear,
                 roadTaxPerYear = roadTaxPerYear,
                 maintenancePerYear = maintenancePerYear,
+                lastServiceKm = lastServiceKm,
             )
             CarType.ICE -> {
                 val fuel = requireNotNull(fuelType) { "fuelType is required for ICE" }
@@ -139,6 +153,7 @@ data class AddCarRequest(
                     insurancePerYear = insurancePerYear,
                     roadTaxPerYear = roadTaxPerYear,
                     maintenancePerYear = maintenancePerYear,
+                    lastServiceKm = lastServiceKm,
                 )
             }
             CarType.FCEV -> FCEVCar(
@@ -163,6 +178,7 @@ data class AddCarRequest(
                 insurancePerYear = insurancePerYear,
                 roadTaxPerYear = roadTaxPerYear,
                 maintenancePerYear = maintenancePerYear,
+                lastServiceKm = lastServiceKm,
             )
         }
     }

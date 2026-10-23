@@ -23,7 +23,10 @@ import java.time.LocalDate
 private fun Double.roundTo(decimals: Int) = BigDecimal.valueOf(this).setScale(decimals, RoundingMode.HALF_UP).toDouble()
 
 // A car as JSON with extra fields next to its own.
-private fun Car.toJson(extra: Map<String, JsonElement>) = JsonObject(Json.encodeToJsonElement(Car.serializer(), this).jsonObject + extra)
+// Like Ktor's JSON, which sends fields that have their default value (0 prices, a last service equal to the mileage) too.
+private val carJson = Json { encodeDefaults = true }
+
+private fun Car.toJson(extra: Map<String, JsonElement>) = JsonObject(carJson.encodeToJsonElement(Car.serializer(), this).jsonObject + extra)
 
 // reservations is optional like images: without it the date and daypart parameters are ignored. Without ratings there is no averageRating.
 fun Application.configureCars(
@@ -126,6 +129,20 @@ fun Application.configureCars(
                 }
             }
 
+            // Sets the last service to the current mileage.
+            put("/cars/{id}/service") {
+                val id = call.parameters["id"]?.toIntOrNull()
+                val car = id?.let(repository::findCar)
+                when {
+                    id == null -> call.respond(HttpStatusCode.BadRequest)
+                    car == null -> call.respond(HttpStatusCode.NotFound)
+                    !canManage(call.principal<User>()!!, car, organizations) -> call.respond(HttpStatusCode.Forbidden)
+                    // false when the car was deleted meanwhile
+                    repository.markServiced(id) -> call.respond(HttpStatusCode.NoContent)
+                    else -> call.respond(HttpStatusCode.NotFound)
+                }
+            }
+
             put("/cars/{id}") {
                 val id = call.parameters.getOrFail<Int>("id")
                 val existing = repository.findCar(id)
@@ -174,12 +191,13 @@ fun Application.configureCars(
                     return@get
                 }
 
-                // Return JSON response, with the photo urls and the average rating when those are set up.
+                // Return JSON response, with serviceDue and, when those are set up, the photo urls and the average rating.
                 val extra = buildMap<String, JsonElement> {
+                    put("serviceDue", JsonPrimitive(car.serviceDue))
                     images?.let { put("images", JsonArray(it.forCar(carId).map { image -> JsonPrimitive(image.url) })) }
                     ratings?.let { put("averageRating", JsonPrimitive(it.averages(carId)[carId])) }
                 }
-                if (extra.isEmpty()) call.respond(car) else call.respond(car.toJson(extra))
+                call.respond(car.toJson(extra))
             }
 
             delete("/cars/{id}") {

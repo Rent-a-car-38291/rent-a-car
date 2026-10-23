@@ -26,6 +26,8 @@ class FCEVCar (
     override val roadTaxPerYear: Double = 0.0,
     override val maintenancePerYear: Double = 0.0,
     override val organizationId: Int? = null,
+    // A car counts as serviced when it is added, until PUT /cars/{id}/service says otherwise.
+    override var lastServiceKm: Int = mileage,
 ) : Car() {
     override fun costPerKm(prices: EnergyPrices) = consumptionKgPer100Km / 100 * prices.hydrogenPerKg
 }
