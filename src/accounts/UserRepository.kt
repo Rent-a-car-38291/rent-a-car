@@ -39,7 +39,6 @@ internal object Users : Table("users") {
     }
 }
 
-// ponytail: no migration tool (SchemaUtils.create only creates missing tables), add one (Flyway) when the schema has to change on a database that already has data.
 internal fun Database.createUsers() = transaction(this) {
     SchemaUtils.create(Users)
     // Reserved owner for the sample fleet; its random password hash has no known password.
