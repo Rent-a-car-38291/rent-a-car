@@ -59,7 +59,7 @@ paths:
     get:
       tags: [Cars]
       summary: Compare car types for a distance
-      description: Per type (BEV, ICE, FCEV) the average over its cars of the energy cost at the standard prices and the CO2 for the distance, both rounded to 2 decimals. A type without cars is left out, and the types come in the order BEV, ICE, FCEV. The rental rate is not part of it. CO2 is tank to wheel with typical rounded factors per litre (petrol 2.3 kg, diesel 2.7 kg, LPG 1.5 kg), so electric and hydrogen cars count as 0. No login needed.
+      description: Per type (BEV, ICE, FCEV) the average over its cars of the energy cost at the standard prices and the CO2 for the distance, both rounded to 2 decimals. A type without cars is left out, and the types come in the order BEV, ICE, FCEV. The rental rate is not part of it. CO2 is tank to wheel with our own rounded approximations per litre (petrol 2.3 kg, diesel 2.7 kg, LPG 1.5 kg), so electric and hydrogen cars count as 0. ICE averages its petrol, diesel and LPG cars together. No login needed.
       parameters:
         - { name: distanceKm, in: query, required: true, description: Distance, 1 to 10000, schema: { type: number, minimum: 1, maximum: 10000, example: 100 } }
       responses:
