@@ -55,14 +55,13 @@ class DrivingStatsRoutesTest {
         return User(id, postJson("/login", """{"email":"$email","password":"supersecret"}""").json().jsonObject["token"]!!.jsonPrimitive.content)
     }
 
-    private fun carRequest(licensePlate: String, organizationId: Int? = null) = """{
+    private fun carRequest(licensePlate: String) = """{
         "type":"BEV","brand":"Test Motors","licensePlate":"$licensePlate","mileage":1,"rate":45.5,
         "location":{"latitude":52.3,"longitude":4.9},"doors":4,"bodyStyle":"Sedan","modelYear":2024,
-        "power":150,"transmission":"Automatic","color":"Blue","capacity":75.0,"consumption":16.2
-        ${organizationId?.let { ""","organizationId":$it""" } ?: ""}}"""
+        "power":150,"transmission":"Automatic","color":"Blue","capacity":75.0,"consumption":16.2}"""
 
-    private suspend fun HttpClient.addCar(owner: User, licensePlate: String, organizationId: Int? = null): Int {
-        val response = postJson("/cars", carRequest(licensePlate, organizationId), owner.token)
+    private suspend fun HttpClient.addCar(owner: User, licensePlate: String): Int {
+        val response = postJson("/cars", carRequest(licensePlate), owner.token)
         assertEquals(HttpStatusCode.Created, response.status)
         return response.json().jsonObject["id"]!!.jsonPrimitive.int
     }
@@ -73,10 +72,6 @@ class DrivingStatsRoutesTest {
         trips.record(reservation.id, user.id, km, score, 0)
         return reservation.id
     }
-
-    private suspend fun HttpClient.history(path: String, token: String?) = get(path) { token?.let { bearerAuth(it) } }
-
-    private suspend fun HttpResponse.reservationIds() = json().jsonArray.map { it.jsonObject["reservationId"]!!.jsonPrimitive.int }
 
     private suspend fun HttpClient.stats(path: String, token: String?) = get(path) { token?.let { bearerAuth(it) } }
 
@@ -143,7 +138,10 @@ class DrivingStatsRoutesTest {
         val reservation = reservations.reserve(car, jan.id, LocalDate.now(), Daypart.MORNING)!!
         assertEquals(HttpStatusCode.OK, client.postJson("/reservations/${reservation.id}/trip/start", "{}", jan.token).status)
 
-        assertEquals(0, client.stats("/accounts/${jan.id}/stats", jan.token).json().jsonObject["tripCount"]!!.jsonPrimitive.int)
+        val stats = client.stats("/accounts/${jan.id}/stats", jan.token).json().jsonObject
+        assertEquals(0, stats["tripCount"]!!.jsonPrimitive.int)
+        assertEquals(0, stats["totalKm"]!!.jsonPrimitive.int)
+        assertEquals(JsonNull, stats["averageScore"])
     }
 
     @Test

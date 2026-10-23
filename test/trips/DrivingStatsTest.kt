@@ -38,6 +38,9 @@ class DrivingStatsTest {
     @Test
     fun TheAverageIsRoundedToOneDecimal() {
         assertEquals(66.7, calculateStats(listOf(DaypartTotals(Daypart.MORNING, 3, 3, 200)), 0).averageScore)
+        assertEquals(82.5, calculateStats(listOf(DaypartTotals(Daypart.MORNING, 2, 2, 165)), 0).averageScore)
+        assertEquals(12.5, calculateStats(listOf(DaypartTotals(Daypart.MORNING, 8, 8, 100)), 0).averageScore)
+        assertEquals(0.1, calculateStats(listOf(DaypartTotals(Daypart.MORNING, 20, 20, 1)), 0).averageScore) // 0.05 exactly, rounds half up
         assertEquals(0.0, calculateStats(listOf(DaypartTotals(Daypart.MORNING, 1, 1, 0)), 0).averageScore)
     }
 }
