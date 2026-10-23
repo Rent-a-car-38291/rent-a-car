@@ -17,6 +17,7 @@ import io.ktor.server.routing.*
 import java.time.Clock
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.temporal.ChronoUnit
 
 fun Application.configureTrips(reservations: ReservationRepository, trips: TripRepository, cars: CarRepository, organizations: OrganizationRepository, clock: Clock = Clock.system(ZONE)) {
     routing {
@@ -55,8 +56,8 @@ fun Application.configureTrips(reservations: ReservationRepository, trips: TripR
 
             post("/reservations/{id}/trip/start") {
                 val reservation = call.ownReservation(reservations) ?: return@post
-                // A trip is driven on the day of the reservation.
-                val startedAt = if (LocalDate.parse(reservation.date) == LocalDate.now(clock)) trips.start(reservation.id, OffsetDateTime.now(clock)) else null
+                // A trip is driven on the day of the reservation. Postgres keeps microseconds, so the start is cut to that.
+                val startedAt = if (LocalDate.parse(reservation.date) == LocalDate.now(clock)) trips.start(reservation.id, OffsetDateTime.now(clock).truncatedTo(ChronoUnit.MICROS)) else null
                 if (startedAt == null) call.respond(HttpStatusCode.Conflict)
                 else call.respond(StartTripResponse(reservation.id, startedAt.toInstant().toString()))
             }

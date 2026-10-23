@@ -201,7 +201,7 @@ paths:
         "404":
           description: Unknown reservation
         "409":
-          description: The daypart has already started, or the reservation has a trip
+          description: The daypart has already started, or the reservation has a trip or a started trip
   /reservations/{id}/trip:
     post:
       tags: [Trips]
@@ -235,7 +235,7 @@ paths:
         "404":
           description: Unknown reservation
         "409":
-          description: The reservation already has a trip, or its date has not come yet
+          description: The reservation already has a trip, its trip was started (end it with /trip/end), or its date has not come yet
   /reservations/{id}/trip/start:
     post:
       tags: [Trips]

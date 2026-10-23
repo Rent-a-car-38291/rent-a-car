@@ -10,6 +10,7 @@ import com.example.reservations.ReservationRepository
 import com.example.reservations.ZONE
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -129,6 +130,29 @@ class StartEndTripRoutesTest {
         assertEquals(HttpStatusCode.Created, client.oneCall(reservation, jan.token).status)
 
         assertEquals(HttpStatusCode.Conflict, client.start(reservation, jan.token).status)
+    }
+
+    @Test
+    fun AStartedTripCannotBeCancelledAndCanStillBeEnded() = withApp {
+        val jan = client.signUp("jan@example.com")
+        val reservation = reserve(jan)
+        client.start(reservation, jan.token)
+
+        val cancel = client.delete("/reservations/$reservation") { bearerAuth(jan.token) }
+
+        assertEquals(HttpStatusCode.Conflict, cancel.status)
+        assertEquals(HttpStatusCode.Created, client.end(reservation, trip(10), jan.token).status)
+    }
+
+    @Test
+    fun TheOneCallEndpointGives409ForAStartedTripAndNoPoints() = withApp {
+        val jan = client.signUp("jan@example.com")
+        val reservation = reserve(jan)
+        client.start(reservation, jan.token)
+
+        assertEquals(HttpStatusCode.Conflict, client.oneCall(reservation, jan.token).status)
+        assertEquals(0, client.bonusPoints(jan))
+        assertEquals(HttpStatusCode.Created, client.end(reservation, trip(10), jan.token).status)
     }
 
     @Test

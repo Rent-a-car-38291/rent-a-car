@@ -26,11 +26,11 @@ else
       Route --> Client : 409 Conflict
     else
       Route -> Repo : cancel(id)
-      Repo -> Db : SELECT reservation FOR UPDATE,\nthen look for a trip (one transaction)
+      Repo -> Db : SELECT reservation FOR UPDATE,\nthen look for a trip or a started trip (one transaction)
       alt reservation is gone
         Repo --> Route : GONE
         Route --> Client : 404 Not Found
-      else reservation has a trip
+      else reservation has a trip or a started trip
         Repo --> Route : HAS_TRIP
         Route --> Client : 409 Conflict
       else
