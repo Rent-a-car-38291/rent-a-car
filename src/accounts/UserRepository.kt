@@ -40,7 +40,6 @@ internal object Users : Table("users") {
     }
 }
 
-// ponytail: no migration tool (SchemaUtils.create only creates missing tables): a column added later gets an ALTER TABLE ... IF NOT EXISTS below, add Flyway when the schema changes in other ways on a database that already has data.
 internal fun Database.createUsers() = transaction(this) {
     SchemaUtils.create(Users)
     // SchemaUtils.create leaves an older table alone, so add the columns added later.
