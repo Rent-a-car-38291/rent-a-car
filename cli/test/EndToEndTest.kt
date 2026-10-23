@@ -46,7 +46,7 @@ class EndToEndTest {
             assertTrue("Reserved: reservation #" in output, output)
             assertTrue("Trip started at" in output, output)
             assertTrue("pointsAwarded" in output, output)
-            assertTrue("Sam" in output.substringAfter("bonusPoints  "), "Sam is on the leaderboard\n$output")
+            assertTrue("Sam" in output.substringAfter("name  bonusPoints"), "Sam is on the leaderboard\n$output")
             assertTrue("Logged out." in output, output)
         } finally {
             server.stop(0, 0)

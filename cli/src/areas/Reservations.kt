@@ -7,7 +7,7 @@ import java.time.LocalDate
 val reservationsMenu = Menu("Reservations", items = listOf(
     MenuItem("Reserve a car") { ctx ->
         val id = ctx.pickCar() ?: return@MenuItem
-        val date = ctx.io.date("Date", LocalDate.now())
+        val date = ctx.io.date("Date", today())
         val daypart = ctx.io.daypart()
         val body = buildJsonObject { put("date", date.toString()); put("daypart", daypart) }
         ctx.call("POST", "/cars/$id/reservations", body = body, hints = mapOf(
