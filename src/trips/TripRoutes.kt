@@ -4,6 +4,7 @@ import com.example.accounts.User
 import com.example.cars.CarRepository
 import com.example.cars.canManage
 import com.example.organizations.OrganizationRepository
+import com.example.reservations.Reservation
 import com.example.reservations.ReservationRepository
 import com.example.reservations.ZONE
 import io.ktor.http.HttpStatusCode
@@ -13,9 +14,11 @@ import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import java.time.Clock
 import java.time.LocalDate
+import java.time.OffsetDateTime
 
-fun Application.configureTrips(reservations: ReservationRepository, trips: TripRepository, cars: CarRepository, organizations: OrganizationRepository) {
+fun Application.configureTrips(reservations: ReservationRepository, trips: TripRepository, cars: CarRepository, organizations: OrganizationRepository, clock: Clock = Clock.system(ZONE)) {
     routing {
         authenticate {
             get("/trips") {
@@ -45,32 +48,56 @@ fun Application.configureTrips(reservations: ReservationRepository, trips: TripR
             }
 
             post("/reservations/{id}/trip") {
-                val user = call.principal<User>()!!
-                val id = call.parameters["id"]?.toIntOrNull()
-                val reservation = id?.let(reservations::find)
-                when {
-                    id == null -> call.respond(HttpStatusCode.BadRequest)
-                    reservation == null -> call.respond(HttpStatusCode.NotFound)
-                    reservation.userId != user.id -> call.respond(HttpStatusCode.Forbidden)
-                    else -> {
-                        val request = call.receive<TripRequest>() // Ktor answers a missing field or a non-integer with 400
-                        if (request.distanceKm !in 1..MAX_TRIP_KM || request.hardAccelerations < 0 || request.hardBrakes < 0) {
-                            call.respond(HttpStatusCode.BadRequest)
-                            return@post
-                        }
-                        // Nothing was driven yet: without this a renter could claim points for any reservation in the future.
-                        if (LocalDate.parse(reservation.date).isAfter(LocalDate.now(ZONE))) {
-                            call.respond(HttpStatusCode.Conflict)
-                            return@post
-                        }
-                        val score = calculateScore(request.distanceKm, request.hardAccelerations, request.hardBrakes)
-                        val points = bonusPoints(request.distanceKm, score)
-                        val saved = trips.record(id, user.id, request.distanceKm, score, points)
-                        if (saved == null) call.respond(HttpStatusCode.Conflict)
-                        else call.respond(HttpStatusCode.Created, TripResponse(saved.first, points, saved.second))
-                    }
-                }
+                val reservation = call.ownReservation(reservations) ?: return@post
+                // Nothing was driven yet: without this a renter could claim points for any reservation in the future.
+                call.recordTrip(trips, reservation.id, endedAt = null, notYet = LocalDate.parse(reservation.date).isAfter(LocalDate.now(clock)))
+            }
+
+            post("/reservations/{id}/trip/start") {
+                val reservation = call.ownReservation(reservations) ?: return@post
+                // A trip is driven on the day of the reservation.
+                val startedAt = if (LocalDate.parse(reservation.date) == LocalDate.now(clock)) trips.start(reservation.id, OffsetDateTime.now(clock)) else null
+                if (startedAt == null) call.respond(HttpStatusCode.Conflict)
+                else call.respond(StartTripResponse(reservation.id, startedAt.toInstant().toString()))
+            }
+
+            post("/reservations/{id}/trip/end") {
+                val reservation = call.ownReservation(reservations) ?: return@post
+                call.recordTrip(trips, reservation.id, endedAt = OffsetDateTime.now(clock), notYet = false)
             }
         }
     }
+}
+
+// The reservation of the path when it belongs to the logged-in user; otherwise answers 400, 404 or 403 and returns null.
+private suspend fun ApplicationCall.ownReservation(reservations: ReservationRepository): Reservation? {
+    val id = parameters["id"]?.toIntOrNull()
+    val reservation = id?.let(reservations::find)
+    val status = when {
+        id == null -> HttpStatusCode.BadRequest
+        reservation == null -> HttpStatusCode.NotFound
+        reservation.userId != principal<User>()!!.id -> HttpStatusCode.Forbidden
+        else -> return reservation
+    }
+    respond(status)
+    return null
+}
+
+// Reads the measured numbers and saves the trip with its score and points. 409 when `notYet`, when the reservation
+// already has a trip, or (with endedAt) when the trip was never started.
+private suspend fun ApplicationCall.recordTrip(trips: TripRepository, reservationId: Int, endedAt: OffsetDateTime?, notYet: Boolean) {
+    val request = receive<TripRequest>() // Ktor answers a missing field or a non-integer with 400
+    if (request.distanceKm !in 1..MAX_TRIP_KM || request.hardAccelerations < 0 || request.hardBrakes < 0) {
+        respond(HttpStatusCode.BadRequest)
+        return
+    }
+    if (notYet) {
+        respond(HttpStatusCode.Conflict)
+        return
+    }
+    val score = calculateScore(request.distanceKm, request.hardAccelerations, request.hardBrakes)
+    val points = bonusPoints(request.distanceKm, score)
+    val saved = trips.record(reservationId, principal<User>()!!.id, request.distanceKm, score, points, endedAt)
+    if (saved == null) respond(HttpStatusCode.Conflict)
+    else respond(HttpStatusCode.Created, TripResponse(saved.first, points, saved.second))
 }
