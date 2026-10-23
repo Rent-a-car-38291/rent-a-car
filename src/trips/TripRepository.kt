@@ -1,6 +1,7 @@
 package com.example.trips
 
 import com.example.accounts.Users
+import com.example.reservations.ReservationStatus
 import com.example.reservations.Reservations
 import com.example.reservations.createReservations
 import com.example.reservations.Daypart
@@ -60,6 +61,8 @@ internal fun Database.createTrips() {
         SchemaUtils.create(Trips, TripStarts)
         // SchemaUtils.create leaves an older table alone, so add the columns added later.
         exec("ALTER TABLE trips ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS duration_minutes INTEGER")
+        // Reservations from before they had a status: the ones with a trip are completed. A new trip completes its reservation itself.
+        exec("UPDATE reservations SET status = 'COMPLETED' WHERE status = 'RESERVED' AND id IN (SELECT reservation_id FROM trips)")
     }
 }
 
@@ -70,11 +73,18 @@ class TripRepository(dataSource: DataSource) {
         db.createTrips()
     }
 
+    // Locks the reservation row, so a cancel and a trip of the same reservation wait for each other. True while it is still RESERVED.
+    // Must run inside a transaction.
+    private fun lockReserved(reservationId: Int): Boolean =
+        Reservations.select(Reservations.status).where { Reservations.id eq reservationId }.forUpdate().singleOrNull()
+            ?.get(Reservations.status) == ReservationStatus.RESERVED.name
+
     // null when the reservation was already started: the primary key decides, so two requests at once can't both win.
-    // A reservation that already has a trip sent in one call can't be started either.
+    // A reservation that already has a trip sent in one call can't be started either, nor can a cancelled one.
     // shortcut: a reservation deleted just before the insert also gives null, so the route answers 409 instead of 404.
     fun start(reservationId: Int, now: OffsetDateTime): OffsetDateTime? = try {
         transaction(db) {
+            if (!lockReserved(reservationId)) return@transaction null
             val finished = !Trips.selectAll().where { Trips.reservationId eq reservationId }.empty()
             val inserted = !finished && TripStarts.insertIgnore {
                 it[TripStarts.reservationId] = reservationId
@@ -89,10 +99,11 @@ class TripRepository(dataSource: DataSource) {
     // Saves the trip and adds the points to the renter in one transaction, so there are never points without a trip.
     // Returns the trip and the renter's new total, or null when the reservation already has a trip.
     // With endedAt the trip must have been started: its duration runs from the start to endedAt. Without it the trip must not have been started.
-    // null also means one of those two was not the case.
+    // null also means one of those two was not the case, or that the reservation is cancelled. The reservation becomes COMPLETED in the same transaction.
     // shortcut: a reservation deleted just before the insert also gives null, so the route answers 409 instead of 404.
     fun record(reservationId: Int, userId: Int, distanceKm: Int, score: Int, points: Int, endedAt: OffsetDateTime? = null): Pair<Trip, Int>? = try {
         transaction(db) {
+            if (!lockReserved(reservationId)) return@transaction null
             val start = TripStarts.selectAll().where { TripStarts.reservationId eq reservationId }.singleOrNull()?.get(TripStarts.startedAt)
             // A started trip is ended with endedAt, never in one call, and an end needs its start.
             if ((endedAt == null) == (start != null)) return@transaction null
@@ -108,6 +119,7 @@ class TripRepository(dataSource: DataSource) {
             if (inserted.insertedCount == 0) {
                 null
             } else {
+                Reservations.update({ Reservations.id eq reservationId }) { it[status] = ReservationStatus.COMPLETED.name }
                 Users.update({ Users.id eq userId }) { it[bonusPoints] = bonusPoints + points }
                 val total = Users.selectAll().where { Users.id eq userId }.single()[Users.bonusPoints]
                 Trip(inserted[Trips.id], reservationId, distanceKm, score, startedAt?.toInstant()?.toString(), minutes) to total
