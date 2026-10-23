@@ -20,7 +20,11 @@ class FCEVCar (
     override val transmission: Transmission,
     override val color: String,
     val tankCapacityKg: Double,
-    val consumptionKgPer100Km: Double
+    val consumptionKgPer100Km: Double,
+    override val purchasePrice: Double = 0.0,
+    override val insurancePerYear: Double = 0.0,
+    override val roadTaxPerYear: Double = 0.0,
+    override val maintenancePerYear: Double = 0.0,
 ) : Car() {
     override fun costPerKm(prices: EnergyPrices) = consumptionKgPer100Km / 100 * prices.hydrogenPerKg
 }

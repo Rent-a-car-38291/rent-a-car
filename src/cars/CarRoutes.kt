@@ -49,6 +49,23 @@ fun Application.configureCars(repository: CarRepository) {
                 }
             }
 
+            // Owner only.
+            get("/cars/{id}/tco") {
+                val id = call.parameters["id"]?.toIntOrNull()
+                val car = id?.let(repository::findCar)
+                when {
+                    id == null -> call.respond(HttpStatusCode.BadRequest)
+                    car == null -> call.respond(HttpStatusCode.NotFound)
+                    car.ownerId != call.principal<User>()!!.id -> call.respond(HttpStatusCode.Forbidden)
+                    else -> {
+                        val raw = call.request.queryParameters["kmPerYear"]
+                        val kmPerYear = if (raw == null) STANDARD_KM_PER_YEAR else raw.toIntOrNull()?.takeIf { it >= 0 }
+                        if (kmPerYear == null) call.respond(HttpStatusCode.BadRequest)
+                        else call.respond(TcoResponse(id, kmPerYear, car.tcoPerYear(kmPerYear, EnergyPrices.STANDARD).roundTo(2), "EUR"))
+                    }
+                }
+            }
+
             put("/cars/{id}") {
                 val id = call.parameters.getOrFail<Int>("id")
                 val existing = repository.findCar(id)
@@ -58,7 +75,7 @@ fun Application.configureCars(repository: CarRepository) {
                     else -> {
                         val request = call.receive<AddCarRequest>()
                         // toCar rejects invalid fields with an IllegalArgumentException.
-                        val car = runCatching { request.toCar(existing.ownerId, id) }.getOrNull()
+                        val car = runCatching { request.toCar(existing.ownerId, id, existing) }.getOrNull()
                         if (car == null || request.type != existing.type) {
                             call.respond(HttpStatusCode.BadRequest)
                             return@put

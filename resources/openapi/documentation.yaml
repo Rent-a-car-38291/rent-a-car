@@ -69,11 +69,36 @@ paths:
           description: Non-numeric id
         "404":
           description: Unknown id
+  /cars/{id}/tco:
+    get:
+      tags: [Cars]
+      summary: Total cost of ownership per year
+      description: Owner only. Depreciation (the purchase price spread over 10 years) plus insurance, road tax, maintenance and the energy cost for kmPerYear at the standard prices, rounded to 2 decimals. kmPerYear is a whole number of km and defaults to 15000.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - { name: kmPerYear, in: query, description: Km driven per year, schema: { type: integer, minimum: 0, default: 15000, example: 12000 } }
+      responses:
+        "200":
+          description: The TCO per year
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tco"
+        "400":
+          description: Non-numeric id, or a negative or non-numeric kmPerYear
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Someone else's car
+        "404":
+          description: Unknown id
   /cars/{id}:
     put:
       tags: [Cars]
       summary: Update your own car
-      description: Same body as POST /cars. The owner and the status stay as they are, and the type can't change.
+      description: Same body as POST /cars. The owner and the status stay as they are, and the type can't change. A cost field that is left out keeps its current value.
       security:
         - bearerAuth: []
       parameters:
@@ -365,8 +390,6 @@ paths:
           description: The last admin can't leave
 components:
   parameters:
-components:
-  parameters:
     id:
       name: id
       in: path
@@ -427,7 +450,7 @@ components:
           FCEV: "#/components/schemas/FCEVCar"
     ICECar:
       type: object
-      required: [type, id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, fuelType, tankCapacityLitres, consumptionLitresPer100Km]
+      required: [type, id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, fuelType, tankCapacityLitres, consumptionLitresPer100Km, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear]
       properties:
         type: { type: string, enum: [ICE] }
         id: { type: integer, example: 1 }
@@ -447,9 +470,13 @@ components:
         fuelType: { type: string, enum: [Petrol, Diesel, LPG] }
         tankCapacityLitres: { type: number, example: 50.0 }
         consumptionLitresPer100Km: { type: number, example: 6.1 }
+        purchasePrice: { type: number, example: 25000.0, description: EUR }
+        insurancePerYear: { type: number, example: 600.0, description: EUR }
+        roadTaxPerYear: { type: number, example: 120.0, description: EUR }
+        maintenancePerYear: { type: number, example: 450.0, description: EUR }
     BEVCar:
       type: object
-      required: [type, id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, batteryCapacityKwh, consumptionKwhPer100Km]
+      required: [type, id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, batteryCapacityKwh, consumptionKwhPer100Km, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear]
       properties:
         type: { type: string, enum: [BEV] }
         id: { type: integer, example: 2 }
@@ -468,9 +495,13 @@ components:
         color: { type: string, example: White }
         batteryCapacityKwh: { type: number, example: 60.0 }
         consumptionKwhPer100Km: { type: number, example: 14.5 }
+        purchasePrice: { type: number, example: 25000.0, description: EUR }
+        insurancePerYear: { type: number, example: 600.0, description: EUR }
+        roadTaxPerYear: { type: number, example: 120.0, description: EUR }
+        maintenancePerYear: { type: number, example: 450.0, description: EUR }
     FCEVCar:
       type: object
-      required: [type, id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, tankCapacityKg, consumptionKgPer100Km]
+      required: [type, id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, tankCapacityKg, consumptionKgPer100Km, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear]
       properties:
         type: { type: string, enum: [FCEV] }
         id: { type: integer, example: 3 }
@@ -489,12 +520,24 @@ components:
         color: { type: string, example: Blue }
         tankCapacityKg: { type: number, example: 5.6 }
         consumptionKgPer100Km: { type: number, example: 0.76 }
+        purchasePrice: { type: number, example: 25000.0, description: EUR }
+        insurancePerYear: { type: number, example: 600.0, description: EUR }
+        roadTaxPerYear: { type: number, example: 120.0, description: EUR }
+        maintenancePerYear: { type: number, example: 450.0, description: EUR }
     CostPerKm:
       type: object
       required: [carId, costPerKm, currency]
       properties:
         carId: { type: integer, example: 1 }
         costPerKm: { type: number, example: 0.0525 }
+        currency: { type: string, example: EUR }
+    Tco:
+      type: object
+      required: [carId, kmPerYear, tcoPerYear, currency]
+      properties:
+        carId: { type: integer, example: 1 }
+        kmPerYear: { type: integer, example: 12000 }
+        tcoPerYear: { type: number, example: 4200.0 }
         currency: { type: string, example: EUR }
     Location:
       type: object
@@ -549,3 +592,7 @@ components:
         fuelType: { type: string, enum: [Petrol, Diesel, LPG], description: Required for ICE }
         capacity: { type: number, example: 75.0, description: "Battery in kWh (BEV), tank in litres (ICE) or kg (FCEV)" }
         consumption: { type: number, example: 16.2, description: Per 100 km, in the unit of the capacity }
+        purchasePrice: { type: number, example: 25000.0, description: "EUR. Left out: 0 on POST, the current value on PUT" }
+        insurancePerYear: { type: number, example: 600.0, description: "EUR. Left out: 0 on POST, the current value on PUT" }
+        roadTaxPerYear: { type: number, example: 120.0, description: "EUR. Left out: 0 on POST, the current value on PUT" }
+        maintenancePerYear: { type: number, example: 450.0, description: "EUR. Left out: 0 on POST, the current value on PUT" }
