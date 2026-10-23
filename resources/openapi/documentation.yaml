@@ -2,7 +2,10 @@ openapi: 3.0.3
 info:
   title: Rent my car API
   version: 0.1.0
-  description: Cars, accounts and organizations are stored in PostgreSQL. Login tokens are stored hashed and expire 7 days after login, so a restart does not log anyone out. Every error response has the body {"error": "<code>", "message": "<text>"}. Lists are paged with limit and offset, and X-Total-Count holds the size of the whole list.
+  description: >-
+    Cars, accounts and organizations are stored in PostgreSQL. Login tokens are stored hashed and expire 7 days after login,
+    so a restart does not log anyone out. Every error response has the body {"error": "<code>", "message": "<text>"}.
+    Lists are paged with limit and offset, and X-Total-Count holds the size of the whole list.
 paths:
   /cars:
     get:

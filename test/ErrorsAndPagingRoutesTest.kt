@@ -88,7 +88,11 @@ class ErrorsAndPagingRoutesTest {
         // 401: no token, with the Bearer challenge
         val unauthorized = client.get("/trips")
         unauthorized.error(HttpStatusCode.Unauthorized, "unauthorized")
-        assertEquals("Bearer", unauthorized.headers[HttpHeaders.WWWAuthenticate])
+        assertEquals(listOf("Bearer"), unauthorized.headers.getAll(HttpHeaders.WWWAuthenticate)) // once, not twice
+        // a wrong password is not a Bearer challenge
+        val wrongPassword = client.postJson("/login", """{"email":"nobody@example.com","password":"wrong"}""")
+        assertEquals("Wrong email or password.", wrongPassword.error(HttpStatusCode.Unauthorized, "unauthorized")["message"]!!.jsonPrimitive.content)
+        assertNull(wrongPassword.headers[HttpHeaders.WWWAuthenticate])
         // 400: an unreadable body, and a missing field
         client.postJson("/login", "{not json").error(HttpStatusCode.BadRequest, "bad_request")
         client.postJson("/login", """{"email":"a@example.com"}""").error(HttpStatusCode.BadRequest, "bad_request")

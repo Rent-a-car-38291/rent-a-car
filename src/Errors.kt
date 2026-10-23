@@ -1,6 +1,5 @@
 package com.example
 
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.plugins.BadRequestException
@@ -61,10 +60,8 @@ private fun Throwable.status() = when (this) {
 fun Application.configureErrors() {
     install(StatusPages) {
         status(*ERROR_STATUSES) { call, status ->
-            // The Bearer challenge of a missing token tells clients how to log in.
-            if (status == HttpStatusCode.Unauthorized) call.response.header(HttpHeaders.WWWAuthenticate, "Bearer")
-            val message = call.attributes.getOrNull(MessageKey) ?: status.defaultMessage()
-            call.respond(status, ErrorResponse(status.errorCode(), message))
+            // Headers set before, like the Bearer challenge of a missing token and Retry-After, stay on the response.
+            call.respond(status, ErrorResponse(status.errorCode(), call.attributes.getOrNull(MessageKey) ?: status.defaultMessage()))
         }
         exception<Throwable> { call, cause ->
             if (cause is CancellationException) throw cause
