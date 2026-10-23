@@ -54,7 +54,7 @@ internal object TripStarts : Table("trip_starts") {
     override val primaryKey = PrimaryKey(reservationId)
 }
 
-// Also used by the reservations, which look for a trip before they cancel.
+// Also used by the reservations, which look for a started trip (trip_starts) before they cancel.
 internal fun Database.createTrips() {
     createReservations() // trips reference reservations
     transaction(this) {
