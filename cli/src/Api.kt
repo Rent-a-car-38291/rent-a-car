@@ -63,6 +63,7 @@ fun errorMessage(status: Int, hints: Map<Int, String> = emptyMap()): String = hi
     404 -> "Not found. Check the id."
     409 -> "That is not possible in the current state (already taken, already done, or not allowed anymore)."
     413 -> "That is too large."
+    429 -> "Too many failed login attempts for that email. Wait a few minutes and try again."
     in 500..599 -> "The server had a problem (HTTP $status). Try again later."
     else -> "Unexpected answer from the server (HTTP $status)."
 }
