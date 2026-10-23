@@ -1,0 +1,47 @@
+@startuml
+title GET /organizations/{id}/report
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "OrganizationReportRoutes.kt" as Route
+participant "OrganizationRepository" as Orgs
+participant "CarRepository" as Cars
+participant "TripRepository" as Trips
+participant "Report.kt\n(buildReport, reportCsv)" as Report
+
+Client -> Auth : GET /organizations/{id}/report?format=csv
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt id is not a number
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Orgs : exists(id)
+    alt unknown organization
+      Route --> Client : 404 Not Found
+    else
+      Route -> Orgs : findMembership(id, user.id)
+      alt not a member
+        Route --> Client : 403 Forbidden
+      else format is not json or csv
+        Route --> Client : 400 Bad Request
+      else
+        Route -> Cars : carsOfOrganization(id)
+        Cars --> Route : List<Car>
+        Route -> Trips : usageByCar(carIds)\n(one query: reservations, trips, km, score sum)
+        Trips --> Route : Map<carId, CarUsage>
+        Route -> Report : buildReport(cars, usage)\n(average score, TCO per year)
+        Report --> Route : List<CarReportRow>
+        alt format = csv
+          Route --> Client : 200 OK, text/csv\nheader line and one row per car
+        else
+          Route --> Client : 200 OK, application/json\n[{carId, brand, licensePlate, reservations,\ntrips, totalKm, averageScore, tcoPerYear}, ...]
+        end
+      end
+    end
+  end
+end
+
+@enduml

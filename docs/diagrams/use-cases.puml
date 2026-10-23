@@ -43,6 +43,7 @@ rectangle "Rent-a-car" {
   usecase "View driving stats" as UC_Stats
   usecase "View leaderboard" as UC_Leaderboard
   usecase "View trips of\na car" as UC_CarTrips
+  usecase "View fleet report\nof an organization" as UC_Report
 
   usecase "Add car" as UC_AddCar
   usecase "Update car" as UC_UpdateCar
@@ -98,6 +99,7 @@ Owner --> UC_CarTrips
 UC_Tco .> UC_CostPerKm : <<include>>
 
 Member --> UC_OrgCars
+Member --> UC_Report
 Member --> UC_CarTrips
 Member --> UC_Leave
 Admin --> UC_Invite
