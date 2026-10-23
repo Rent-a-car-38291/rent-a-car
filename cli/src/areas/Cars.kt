@@ -32,7 +32,7 @@ val carsMenu = Menu("Cars", needsLogin = false, items = listOf(
             "type" to type, "maxRate" to maxRate?.toString(), "date" to date?.toString(), "daypart" to daypart,
             "lat" to lat?.toString(), "lon" to lon?.toString(), "maxDistanceKm" to maxDistance?.toString(),
             "bodyStyle" to bodyStyle, "transmission" to transmission, "fuelType" to fuelType, "minRange" to minRange?.toString(), "sort" to sort,
-        ), hints = mapOf(400 to "The server did not accept the filters. The type is BEV, ICE or FCEV and the date cannot be in the past."))
+        ), hints = mapOf(400 to "The server did not accept the filters. The type is BEV, ICE or FCEV, the date cannot be in the past and the shortest range cannot be negative."))
             ?.let { io.table(it.jsonArray, carColumns) }
     },
     MenuItem("Car details, photos and ratings") { ctx ->

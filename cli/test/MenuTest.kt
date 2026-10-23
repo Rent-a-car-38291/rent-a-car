@@ -37,6 +37,18 @@ class MenuTest {
     }
 
     @Test
+    fun `a location adds the longitude and distance prompts before the new filters`() {
+        val api = FakeApi("GET /cars" to cars)
+
+        // latitude 51.5, longitude 4.7, distance 10, then the five new filters skipped except the sort 'rate'
+        val output = runScript(api, "3", "1", "1", "", "", "", "51.5", "4.7", "10", "", "", "", "", "rate", "0", "0", "0")
+
+        val query = api.queries.single()
+        assertEquals(mapOf("lat" to "51.5", "lon" to "4.7", "maxDistanceKm" to "10.0", "sort" to "rate"), query.filterValues { it != null })
+        assertTrue("Peugeot" in output)
+    }
+
+    @Test
     fun `logging in shows the full menu, sends the token and logging out revokes it`() {
         val api = FakeApi(login, "POST /logout" to status(204))
         val session = Session()

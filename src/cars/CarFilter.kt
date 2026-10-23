@@ -25,7 +25,7 @@ val Car.rangeKm: Double get() {
         is ICECar -> tankCapacityLitres to consumptionLitresPer100Km
         is FCEVCar -> tankCapacityKg to consumptionKgPer100Km
     }
-    return if (consumption == 0.0) Double.POSITIVE_INFINITY else capacity / consumption * 100
+    return if (consumption == 0.0) Double.POSITIVE_INFINITY else capacity * 100 / consumption // multiply first: 57 / 100 * 100 is 56.99999999999999
 }
 
 private val sortKeys: Map<String, (Car) -> Double> = mapOf(

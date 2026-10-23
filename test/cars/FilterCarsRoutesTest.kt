@@ -92,11 +92,11 @@ class FilterCarsRoutesTest {
     }
 
     // The test cars all use 5 per 100 km: 0.0175 EUR per km for the BEVs at the standard prices and 0.105 for the petrol car.
+    // They all have the same range, so sorting by range is covered by CarFilterTest.
     @Test
-    fun SortsByCostPerKmWithTheCheapestFirstAndByRange() {
+    fun SortsByCostPerKmWithTheCheapestFirst() {
         check("?sort=costPerKm", listOf("FAR", "NEARER", "NEAR"))
         check("?sort=-costPerKm", listOf("NEAR", "FAR", "NEARER"))
-        check("?sort=range", listOf("FAR", "NEAR", "NEARER"))
     }
 
     @Test
