@@ -1,0 +1,22 @@
+@startuml
+title GET /leaderboard
+autonumber
+
+actor Client
+participant "TripRoutes.kt" as Route
+participant "TripRepository" as Repo
+database "users" as Db
+
+Client -> Route : GET /leaderboard?limit
+Route -> Route : parseLeaderboardLimit(query)
+alt limit is not a whole number from 1 to 100
+  Route --> Client : 400 Bad Request
+else
+  Route -> Repo : leaderboard(limit)
+  Repo -> Db : SELECT name, bonus_points FROM users WHERE bonus_points > 0\nORDER BY bonus_points DESC, name, id LIMIT limit
+  Db --> Repo : rows
+  Repo --> Route : List<LeaderboardEntry>
+  Route --> Client : 200 OK\n[{name, bonusPoints}, ...]
+end
+
+@enduml
