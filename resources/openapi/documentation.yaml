@@ -861,7 +861,7 @@ components:
         id: { type: integer, example: 1 }
         name: { type: string, example: Jan }
         email: { type: string, example: jan@example.com }
-        bonusPoints: { type: integer, example: 0, description: Earned by driving calmly, see POST /reservations/{id}/trip }
+        bonusPoints: { type: integer, example: 0, description: "Earned by driving calmly, see POST /reservations/{id}/trip" }
     TokenResponse:
       type: object
       required: [token]
@@ -906,7 +906,6 @@ components:
         roadTaxPerYear: { type: number, example: 120.0, description: EUR }
         maintenancePerYear: { type: number, example: 450.0, description: EUR }
         averageRating: { type: number, nullable: true, example: 4.3, description: "Average of the ratings, one decimal, null without ratings. Only in GET /cars and GET /cars/{id}" }
-        averageRating: { $ref: "#/components/schemas/AverageRating" }
     BEVCar:
       type: object
       required: [type, id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, batteryCapacityKwh, consumptionKwhPer100Km, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear]
@@ -934,7 +933,6 @@ components:
         roadTaxPerYear: { type: number, example: 120.0, description: EUR }
         maintenancePerYear: { type: number, example: 450.0, description: EUR }
         averageRating: { type: number, nullable: true, example: 4.3, description: "Average of the ratings, one decimal, null without ratings. Only in GET /cars and GET /cars/{id}" }
-        averageRating: { $ref: "#/components/schemas/AverageRating" }
     FCEVCar:
       type: object
       required: [type, id, ownerId, brand, licensePlate, mileage, status, rate, location, doors, bodyStyle, modelYear, power, transmission, color, tankCapacityKg, consumptionKgPer100Km, purchasePrice, insurancePerYear, roadTaxPerYear, maintenancePerYear]
@@ -962,7 +960,6 @@ components:
         roadTaxPerYear: { type: number, example: 120.0, description: EUR }
         maintenancePerYear: { type: number, example: 450.0, description: EUR }
         averageRating: { type: number, nullable: true, example: 4.3, description: "Average of the ratings, one decimal, null without ratings. Only in GET /cars and GET /cars/{id}" }
-        averageRating: { $ref: "#/components/schemas/AverageRating" }
     CostPerKm:
       type: object
       required: [carId, costPerKm, currency]
