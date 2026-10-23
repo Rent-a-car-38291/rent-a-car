@@ -128,6 +128,20 @@ class LeaderboardRoutesTest {
     }
 
     @Test
+    fun TheOffsetSkipsTheTopAndTheTotalCountIsTheWholeList() = withApp {
+        driver("Ann", 10)
+        driver("Bob", 30)
+        driver("Carl", 20)
+
+        val response = client.leaderboard("?limit=1&offset=1")
+
+        assertEquals(listOf("Carl"), response.entries().map { it["name"]!!.jsonPrimitive.content })
+        assertEquals("3", response.headers["X-Total-Count"])
+        assertEquals(emptyList(), client.leaderboard("?offset=3").entries())
+        assertEquals(HttpStatusCode.BadRequest, client.leaderboard("?offset=-1").status)
+    }
+
+    @Test
     fun AnInvalidLimitGivesBadRequest() = withApp {
         for (limit in listOf("0", "101", "-1", "abc", "1.5", "")) {
             assertEquals(HttpStatusCode.BadRequest, client.leaderboard("?limit=$limit").status, "limit=$limit")

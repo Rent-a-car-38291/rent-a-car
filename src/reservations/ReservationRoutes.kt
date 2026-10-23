@@ -1,6 +1,7 @@
 package com.example.reservations
 
 import com.example.accounts.User
+import com.example.setTotalCount
 import com.example.cars.CarRepository
 import com.example.cars.CarStatus
 import io.ktor.http.HttpStatusCode
@@ -75,7 +76,13 @@ fun Application.configureReservations(cars: CarRepository, reservations: Reserva
 
             get("/reservations") {
                 val filter = parseReservationFilter(call.request.queryParameters).getOrNull()
-                if (filter == null) call.respond(HttpStatusCode.BadRequest) else call.respond(reservations.list(call.principal<User>()!!.id, filter))
+                if (filter == null) {
+                    call.respond(HttpStatusCode.BadRequest)
+                } else {
+                    val userId = call.principal<User>()!!.id
+                    call.setTotalCount(reservations.count(userId, filter))
+                    call.respond(reservations.list(userId, filter))
+                }
             }
 
             delete("/reservations/{id}") {

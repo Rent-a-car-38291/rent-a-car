@@ -7,6 +7,7 @@ import com.example.accounts.configureSecurity
 import com.example.cars.PostgresCarRepository
 import com.example.cars.configureCars
 import com.example.configureRouting
+import com.example.configureErrors
 import com.example.configureSerialization
 import com.example.database.connectDatabase
 import com.example.images.ImageRepository
@@ -29,6 +30,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     configureSerialization()
+    configureErrors()
     configureRouting()
     val dataSource = connectDatabase()
     val users = UserRepository(dataSource)

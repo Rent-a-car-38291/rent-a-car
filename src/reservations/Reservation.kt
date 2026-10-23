@@ -1,5 +1,6 @@
 package com.example.reservations
 
+import com.example.parsePaging
 import io.ktor.http.Parameters
 import kotlinx.serialization.Serializable
 import java.time.LocalDate
@@ -27,18 +28,13 @@ enum class ReservationStatus {
 @Serializable
 data class Reservation(val id: Int, val carId: Int, val userId: Int, val date: String, val daypart: Daypart, val status: ReservationStatus = ReservationStatus.RESERVED)
 
-internal const val DEFAULT_RESERVATION_LIMIT = 20
-internal const val MAX_RESERVATION_LIMIT = 100
-
 data class ReservationFilter(val status: ReservationStatus?, val limit: Int, val offset: Int)
 
-// Failure when the status is unknown, the limit is outside 1..MAX_RESERVATION_LIMIT, the offset is negative or a value is not a number.
+// Failure when the status is unknown or the limit or offset is outside the paging rules.
 fun parseReservationFilter(query: Parameters): Result<ReservationFilter> = runCatching {
     val status = query["status"]?.let { value -> ReservationStatus.entries.single { it.name == value } }
-    val limit = query["limit"]?.toInt() ?: DEFAULT_RESERVATION_LIMIT
-    val offset = query["offset"]?.toInt() ?: 0
-    require(limit in 1..MAX_RESERVATION_LIMIT && offset >= 0)
-    ReservationFilter(status, limit, offset)
+    val paging = requireNotNull(parsePaging(query))
+    ReservationFilter(status, paging.limit, paging.offset)
 }
 
 @Serializable
