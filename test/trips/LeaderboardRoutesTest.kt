@@ -96,17 +96,27 @@ class LeaderboardRoutesTest {
 
         assertEquals(setOf("name", "bonusPoints"), Json.parseToJsonElement(body).jsonArray.single().jsonObject.keys)
         assertFalse(body.contains("@"))
-        assertFalse(body.contains("ann0@example.com"))
     }
 
     @Test
-    fun UsersWithoutPointsAndTheSampleFleetAreNotListed() = withApp {
+    fun UsersWithoutPointsAreNotListed() = withApp {
         driver("Ann", 10)
         driver("Zero", 0)
 
         val names = client.leaderboard().entries().map { it["name"]!!.jsonPrimitive.content }
 
         assertEquals(listOf("Ann"), names)
+    }
+
+    @Test
+    fun WithoutALimitTheTopTenIsShown() = withApp {
+        for (i in 1..11) driver("Driver${i.toString().padStart(2, '0')}", i)
+
+        val entries = client.leaderboard().entries()
+
+        assertEquals(DEFAULT_LEADERBOARD_LIMIT, entries.size)
+        assertEquals(11, entries.first()["bonusPoints"]!!.jsonPrimitive.int)
+        assertEquals(2, entries.last()["bonusPoints"]!!.jsonPrimitive.int)
     }
 
     @Test
