@@ -20,6 +20,7 @@ rectangle "Rent-a-car" {
   usecase "Log in" as UC_Login
   usecase "View cars" as UC_ViewCars
   usecase "Filter cars by type,\nrate and distance" as UC_Filter
+  usecase "Search cars free on\na date and daypart" as UC_FreeSearch
   usecase "View car details" as UC_Details
 
   usecase "Log out" as UC_Logout
@@ -53,6 +54,7 @@ Visitor --> UC_Login
 Visitor --> UC_ViewCars
 Visitor --> UC_Details
 UC_Filter .> UC_ViewCars : <<extend>>
+UC_FreeSearch .> UC_ViewCars : <<extend>>
 
 User --> UC_Logout
 User --> UC_UpdateAccount

@@ -8,8 +8,10 @@ paths:
     get:
       tags: [Cars]
       summary: List cars
-      description: The filters can be combined. With a distance filter the cars are sorted nearest first.
+      description: The filters can be combined. With a distance filter the cars are sorted nearest first. With date and daypart only the cars that are free then are listed (not reserved, not in Maintenance).
       parameters:
+        - { name: date, in: query, description: "ISO date, today or later. Together with daypart", schema: { type: string, format: date, example: "2026-10-12" } }
+        - { name: daypart, in: query, description: Together with date, schema: { type: string, enum: [MORNING, AFTERNOON, EVENING] } }
         - { name: type, in: query, schema: { type: string, enum: [BEV, ICE, FCEV] } }
         - { name: maxRate, in: query, description: Highest rate, schema: { type: number, example: 40 } }
         - { name: lat, in: query, description: Latitude (together with lon), schema: { type: number, example: 51.59 } }
@@ -25,7 +27,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/Car"
         "400":
-          description: Unknown type, a non-numeric value, only one of lat and lon, or maxDistanceKm without lat and lon
+          description: Unknown type, a non-numeric value, only one of lat and lon, or maxDistanceKm without lat and lon, only one of date and daypart, an invalid date or daypart, or a past date
     post:
       tags: [Cars]
       summary: Offer a car
