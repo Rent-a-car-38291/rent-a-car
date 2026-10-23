@@ -44,7 +44,7 @@ class MenuTest {
         val output = runScript(api, "3", "1", "1", "", "", "", "51.5", "4.7", "10", "", "", "", "", "rate", "0", "0", "0")
 
         val query = api.queries.single()
-        assertEquals(mapOf("lat" to "51.5", "lon" to "4.7", "maxDistanceKm" to "10.0", "sort" to "rate"), query.filterValues { it != null })
+        assertEquals(mapOf("lat" to "51.5", "lon" to "4.7", "maxDistanceKm" to "10.0", "sort" to "rate", "offset" to "0"), query.filterValues { it != null })
         assertTrue("Peugeot" in output)
     }
 
@@ -130,7 +130,7 @@ class MenuTest {
         // Reservations (3) > My reservations (2), status CANCELLED
         val output = runScript(api, "2", "a@b.c", "secret123", "3", "2", "cancelled", "0", "0", "0")
 
-        assertEquals(mapOf("status" to "CANCELLED"), api.queries[api.calls.indexOf("GET /reservations")])
+        assertEquals(mapOf("status" to "CANCELLED", "offset" to "0"), api.queries[api.calls.indexOf("GET /reservations")])
         assertTrue(Regex("9\\s+1\\s+2030-01-02\\s+EVENING\\s+CANCELLED").containsMatchIn(output), output)
     }
 
@@ -140,7 +140,7 @@ class MenuTest {
 
         val output = runScript(api, "2", "a@b.c", "secret123", "3", "2", "", "0", "0", "0")
 
-        assertEquals(mapOf("status" to null), api.queries[api.calls.indexOf("GET /reservations")])
+        assertEquals(mapOf("status" to null, "offset" to "0"), api.queries[api.calls.indexOf("GET /reservations")])
         assertTrue("The status must be RESERVED, COMPLETED or CANCELLED." in output)
     }
 

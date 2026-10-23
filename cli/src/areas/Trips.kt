@@ -36,14 +36,16 @@ val tripsMenu = Menu("Trips", items = listOf(
         io.say("Leave a filter empty to skip it.")
         val from = io.optionalDate("From date")
         val to = io.optionalDate("To date")
-        val limit = io.optionalInt("How many trips (1-100)", 1, 100)
-        ctx.call("GET", "/trips", mapOf("from" to from?.toString(), "to" to to?.toString(), "limit" to limit?.toString()), hints = mapOf(400 to "The dates must be valid and 'from' cannot be after 'to'."))
-            ?.let { io.table(it.jsonArray, listOf("date", "daypart", "carId", "distanceKm", "score", "durationMinutes")) }
+        val limit = io.optionalInt("Trips per page (1-100)", 1, 100)
+        ctx.callPages("/trips", mapOf("from" to from?.toString(), "to" to to?.toString(), "limit" to limit?.toString()), hints = mapOf(400 to "The dates must be valid and 'from' cannot be after 'to'.")) {
+            io.table(it, listOf("date", "daypart", "carId", "distanceKm", "score", "durationMinutes"))
+        }
     },
     MenuItem("Trips with a car I manage") { ctx ->
         val id = ctx.pickCar() ?: return@MenuItem
-        ctx.call("GET", "/cars/$id/trips", hints = mapOf(403 to "Only the owner of a car (or an organization member) can see its trips."))
-            ?.let { ctx.io.table(it.jsonArray, listOf("date", "daypart", "distanceKm", "score", "durationMinutes")) }
+        ctx.callPages("/cars/$id/trips", hints = mapOf(403 to "Only the owner of a car (or an organization member) can see its trips.")) {
+            ctx.io.table(it, listOf("date", "daypart", "distanceKm", "score", "durationMinutes"))
+        }
     },
     MenuItem("Rate the car after a finished trip") { ctx ->
         val id = ctx.pickReservation()
