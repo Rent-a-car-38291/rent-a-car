@@ -110,6 +110,17 @@ class MenuTest {
     }
 
     @Test
+    fun `the fleet report of an organization is shown as a table and a 403 gets its own hint`() {
+        val report = json("""[{"carId":4,"brand":"Tesla","licensePlate":"EV-1","reservations":3,"trips":2,"totalKm":40,"averageScore":80.5,"tcoPerYear":850.5}]""")
+        val shown = runScript(FakeApi(login, "POST /logout" to status(204), "GET /organizations/7/report" to report), "2", "a@b.c", "secret123", "7", "7", "7", "0", "0", "0")
+        val refused = runScript(FakeApi(login, "POST /logout" to status(204), "GET /organizations/7/report" to status(403)), "2", "a@b.c", "secret123", "7", "7", "7", "0", "0", "0")
+
+        // Organizations (7) > Fleet report (7), organization id 7
+        assertTrue(Regex("4\\s+Tesla\\s+EV-1\\s+3\\s+2\\s+40\\s+80.5\\s+850.5").containsMatchIn(shown), shown)
+        assertTrue("Only members of the organization can see its report." in refused, refused)
+    }
+
+    @Test
     fun `my reservations lists them from the server with an optional status filter`() {
         val api = FakeApi(
             login, "POST /logout" to status(204),

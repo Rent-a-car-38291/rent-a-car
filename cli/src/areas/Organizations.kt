@@ -43,4 +43,11 @@ val organizationsMenu = Menu("Organizations", items = listOf(
     MenuItem("Add an organization car") { ctx ->
         addCar(ctx, ctx.pickOrganization())
     },
+    MenuItem("Fleet report: usage and TCO per car (members)") { ctx ->
+        val id = ctx.pickOrganization()
+        ctx.call("GET", "/organizations/$id/report", hints = mapOf(
+            403 to "Only members of the organization can see its report.",
+            404 to "Unknown organization.",
+        ))?.let { ctx.io.table(it.jsonArray, listOf("carId", "brand", "licensePlate", "reservations", "trips", "totalKm", "averageScore", "tcoPerYear")) }
+    },
 ))
