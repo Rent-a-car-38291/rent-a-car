@@ -82,6 +82,7 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 | `POST`   | `/reservations/{id}/trip/end`   | End it, earn points      | `201`   | `400`, `401`, `403`, `404`, `409` |
 | `GET`    | `/trips`                  | Your trip history              | `200`   | `400`, `401`                      |
 | `GET`    | `/cars/{id}/trips`        | The trips of a car you manage  | `200`   | `400`, `401`, `403`, `404`        |
+| `GET`    | `/accounts/{id}/stats`    | Your driving totals            | `200`   | `400`, `401`, `403`, `404`        |
 | `POST`   | `/accounts`               | Register an account            | `201`   | `400`, `409`                      |
 | `POST`   | `/login`                  | Get a token                    | `200`   | `401`                             |
 | `POST`   | `/logout`                 | Revoke the token you used      | `204`   | `401`                             |
@@ -100,6 +101,8 @@ After driving, the renter sends the trip of their reservation to `POST /reservat
 The app can also time the trip: `POST /reservations/{id}/trip/start` (on the day of the reservation, once) stores the start, and `POST /reservations/{id}/trip/end` with the same body as above ends it. The trip then has `startedAt` and `durationMinutes` (whole minutes, rounded up, at least 1), and the points are awarded as before. Ending a trip that was not started, or twice, gives `409`, and so does sending a started trip in one call; a trip sent in one call has both fields `null`.
 
 `GET /trips` lists your own trips, newest first, with the car, date, daypart, `distanceKm` and `score`. `from` and `to` (ISO dates, inclusive) filter on the date of the reservation and `limit` (1-100, default 20) and `offset` page through the list; an invalid value gives `400`. `GET /cars/{id}/trips` does the same for everyone's trips with a car, for the owner of a private car or a member of the organization of an organization car (`403` for others).
+
+`GET /accounts/{id}/stats` shows your driving totals: `tripCount`, `totalKm`, `averageScore` (one decimal), `bestDaypart` (the daypart with the highest average score, the earliest on a tie) and `bonusPoints`. `averageScore` and `bestDaypart` are `null` without trips. Only finished trips count, and it only works on your own account (`403` for someone else's, `404` for an unknown one).
 
 A password needs 8 to 128 characters, and the email address must be unused. Everything under `/accounts/{id}` and `/logout` needs a login and only works on your own account. Routes that need a login take the token from `POST /login` in an `Authorization: Bearer <token>` header. Each endpoint has a [sequence diagram](docs/diagrams) with every status code.
 
