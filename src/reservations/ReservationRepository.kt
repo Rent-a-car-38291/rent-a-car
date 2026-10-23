@@ -63,7 +63,7 @@ internal fun Database.createReservations() {
 enum class CancelResult { CANCELLED, GONE, NOT_ALLOWED }
 
 class ReservationRepository(dataSource: DataSource) {
-    // createTrips: cancelling looks at the trips table, so it has to exist even when nothing else made it.
+    // createTrips: cancelling looks at the trip_starts table, so it has to exist even when nothing else made it.
     private val db = Database.connect(dataSource).also { it.createTrips() }
 
     fun find(id: Int): Reservation? = transaction(db) { Reservations.selectAll().where { Reservations.id eq id }.singleOrNull()?.toReservation() }
