@@ -67,9 +67,9 @@ The connection defaults match `docker-compose.yml`. Override them with the envir
 RENT_A_CAR_URL=http://localhost:9000 ./kotlin run -m cli   # another server (or pass the url as the first argument)
 ```
 
-Start screen: register, log in, browse as a visitor (the car list, availability, costs and the leaderboard need no login) or quit. After login the main menu has the areas **Cars** (search, details with photos and ratings, availability, offer, update and delete your car), **Costs** (cost per km, quote, compare car types, TCO), **Reservations** (reserve, cancel), **Trips** (start, end, record in one go, history, rate), **Insights** (leaderboard, your stats), **Account** (update, password, delete) and **Organizations** (create, invite, join, roles, leave, organization cars). Type `back` at any prompt to cancel the action; `0` goes one menu up. Cars are picked from a numbered list, dates are `YYYY-MM-DD` and dayparts are picked from a list.
+Start screen: register, log in, browse as a visitor (the car list, availability, costs and the leaderboard need no login) or quit. After login the main menu has the areas **Cars** (search, details with photos and ratings, availability, offer, update and delete your car), **Costs** (cost per km, quote, compare car types, TCO), **Reservations** (reserve, list yours with their status, cancel), **Trips** (start, end, record in one go, history, rate), **Insights** (leaderboard, your stats), **Account** (update, password, delete) and **Organizations** (create, invite, join, roles, leave, organization cars). Type `back` at any prompt to cancel the action; `0` goes one menu up. Cars are picked from a numbered list, dates are `YYYY-MM-DD` and dayparts are picked from a list.
 
-The token is only kept in memory and the passwords are echoed while typing (`shortcut:` plain stdin). The API has no "who am I", no list of your reservations or organizations and no list of members, so the client shows the account id when you register (it asks for it once if you only log in) and keeps the reservations and organizations you made during the run for its pickers; others can be typed by id. Photo upload and listing members are not in the client.
+The token is only kept in memory and the passwords are echoed while typing (`shortcut:` plain stdin). The API has no "who am I", no list of your organizations and no list of members, so the client shows the account id when you register (it asks for it once if you only log in) and keeps the reservations and organizations you made during the run for its pickers; others can be typed by id (**Reservations > My reservations** shows the ids). Photo upload and listing members are not in the client.
 
 ### Adding a menu entry
 
@@ -101,7 +101,7 @@ docker compose up -d
 1. **Register** (name, email, a password of 8+ characters). You are logged in and the main menu opens.
 2. **Cars > List and search cars**: press Enter on every filter to see the fleet; try type `BEV`. **Car details** shows photos and ratings.
 3. **Costs > Quote a trip**: pick a car and a distance. **Cost per km** shows the energy price.
-4. **Reservations > Reserve a car**: pick a car, press Enter for today and pick a daypart.
+4. **Reservations > Reserve a car**: pick a car, press Enter for today and pick a daypart. **My reservations** shows them with their status.
 5. **Trips > Start my trip**, then **End my trip** (distance, hard accelerations, hard brakes): you earn bonus points. **Rate the car** afterwards.
 6. **Insights > Leaderboard** and **My driving stats** show your points.
 7. **Organizations > Create an organization**, then **Invite someone** for a code; a second client (register another account) can **Join with an invite code**.
@@ -130,6 +130,7 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 | `GET`    | `/cars/{id}/tco`          | Total cost of ownership a year | `200`   | `400`, `401`, `403`, `404`        |
 | `POST`   | `/cars/{id}/reservations` | Reserve a car for a daypart    | `201`   | `400`, `401`, `404`, `409`        |
 | `GET`    | `/cars/{id}/availability` | Free dayparts on a date        | `200`   | `400`, `404`                      |
+| `GET`    | `/reservations`           | Your reservations with status  | `200`   | `400`, `401`                      |
 | `DELETE` | `/reservations/{id}`      | Cancel your reservation        | `204`   | `400`, `401`, `403`, `404`, `409` |
 | `POST`   | `/reservations/{id}/trip` | Record a trip, earn points     | `201`   | `400`, `401`, `403`, `404`, `409` |
 | `POST`   | `/reservations/{id}/trip/start` | Start your trip          | `200`   | `400`, `401`, `403`, `404`, `409` |
@@ -147,7 +148,7 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 | `PUT`    | `/accounts/{id}/password` | Change your own password       | `204`   | `400`, `401`, `403`, `404`        |
 | `DELETE` | `/accounts/{id}`          | Delete your own account        | `204`   | `400`, `401`, `403`, `404`        |
 
-A car is rented per daypart: `MORNING` (06:00-12:00), `AFTERNOON` (12:00-18:00) or `EVENING` (18:00-24:00), once per car and date. Pass the `date` (`2026-10-12`) and `daypart` to `POST /cars/{id}/reservations`; `GET /cars/{id}/availability?date=2026-10-12` lists what is still free. `GET /cars?date=2026-10-12&daypart=MORNING` lists only the cars that are free then (not reserved, not in `Maintenance`) and combines with the other filters; `date` and `daypart` come together, and a missing, invalid or past value gives `400`. A car in `Maintenance` can't be reserved. There is no `Rented` status. The renter can cancel with `DELETE /reservations/{id}` until the daypart starts (its `from` time), after which, or once it has a trip or a started trip, the answer is `409`; the daypart is free again for anyone.
+A car is rented per daypart: `MORNING` (06:00-12:00), `AFTERNOON` (12:00-18:00) or `EVENING` (18:00-24:00), once per car and date. Pass the `date` (`2026-10-12`) and `daypart` to `POST /cars/{id}/reservations`; `GET /cars/{id}/availability?date=2026-10-12` lists what is still free. `GET /cars?date=2026-10-12&daypart=MORNING` lists only the cars that are free then (not reserved, not in `Maintenance`) and combines with the other filters; `date` and `daypart` come together, and a missing, invalid or past value gives `400`. A car in `Maintenance` can't be reserved. There is no `Rented` status. A reservation has a `status`: `RESERVED` (upcoming), `COMPLETED` (its trip was recorded) or `CANCELLED`. The renter can cancel with `DELETE /reservations/{id}` until the daypart starts (its `from` time): the reservation stays in the list as `CANCELLED` and its daypart is free again for anyone (only one active reservation per car, date and daypart). After the daypart starts, with a trip or a started trip, or when it is already completed or cancelled, the answer is `409`; a trip can't be recorded or started on a cancelled reservation (`409`). `GET /reservations` lists your own reservations, newest first, with an optional `status` filter and `limit` (1-100, default 20) and `offset` paging; an invalid value gives `400`.
 
 A car is private or belongs to an organization. `POST /cars` with an `organizationId` (you must be a member, else `403`) makes an organization car: it has no `ownerId`, every member can update it and see its TCO, and only an admin can delete it. Private cars are managed by their owner only. Deleting an account removes its private cars; organization cars stay.
 

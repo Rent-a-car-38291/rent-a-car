@@ -7,7 +7,7 @@ participant "Ktor\n(bearer authentication)" as Auth
 participant "ReservationRoutes.kt" as Route
 participant "CarRepository" as Cars
 participant "ReservationRepository" as Repo
-database "reservations\nUNIQUE (car_id, date, daypart)" as Db
+database "reservations\nUNIQUE (car_id, date, daypart)\nWHERE status <> CANCELLED" as Db
 
 Client -> Auth : POST /cars/{id}/reservations\n{date, daypart}
 alt missing or invalid token
@@ -26,14 +26,14 @@ else
     else
       Route -> Repo : reserve(id, user.id, date, daypart)
       Repo -> Db : INSERT
-      alt daypart already reserved
+      alt daypart already reserved\n(by an active reservation)
         Db --> Repo : unique violation
         Repo --> Route : null
         Route --> Client : 409 Conflict
       else
         Db --> Repo : row
         Repo --> Route : Reservation
-        Route --> Client : 201 Created\n{id, carId, userId, date, daypart}
+        Route --> Client : 201 Created\n{id, carId, userId, date, daypart,\nstatus: RESERVED}
       end
     end
   end

@@ -1,0 +1,27 @@
+@startuml
+title GET /reservations
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "ReservationRoutes.kt" as Route
+participant "ReservationRepository" as Repo
+database "reservations" as Db
+
+Client -> Auth : GET /reservations?status=&limit=&offset=
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt unknown status, limit outside 1-100,\nnegative offset or a value that is not a number
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Repo : list(user.id, filter)
+    Repo -> Db : SELECT WHERE user_id = ? [AND status = ?]\nORDER BY date, daypart, id DESC\nLIMIT / OFFSET (one query)
+    Db --> Repo : rows
+    Repo --> Route : List<Reservation>
+    Route --> Client : 200 OK\n[{id, carId, userId, date, daypart, status}, ...]
+  end
+end
+
+@enduml
