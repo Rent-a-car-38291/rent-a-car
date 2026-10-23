@@ -16,7 +16,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 
-// "Today" for the past-date check; ponytail: one fixed zone, make it a setting when cars outside the Netherlands are rented.
+// "Today" for the past-date check; shortcut: one fixed zone, make it a setting when cars outside the Netherlands are rented.
 internal val ZONE = ZoneId.of("Europe/Amsterdam")
 
 // The year bound keeps out dates (+999999999-01-01) that parse but that Postgres refuses.
