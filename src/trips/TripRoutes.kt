@@ -31,6 +31,17 @@ fun Application.configureTrips(reservations: ReservationRepository, trips: TripR
                 call.respond(trips.history(call.principal<User>()!!.id, null, filter))
             }
 
+            get("/accounts/{id}/stats") {
+                val id = call.parameters["id"]?.toIntOrNull()
+                val stats = id?.let(trips::stats)
+                when {
+                    id == null -> call.respond(HttpStatusCode.BadRequest)
+                    stats == null -> call.respond(HttpStatusCode.NotFound)
+                    id != call.principal<User>()!!.id -> call.respond(HttpStatusCode.Forbidden)
+                    else -> call.respond(stats)
+                }
+            }
+
             get("/cars/{id}/trips") {
                 val id = call.parameters["id"]?.toIntOrNull()
                 val car = id?.let(cars::findCar)
