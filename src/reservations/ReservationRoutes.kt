@@ -10,8 +10,10 @@ import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import java.time.Clock
 import java.time.DateTimeException
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
 
 // "Today" for the past-date check; ponytail: one fixed zone, make it a setting when cars outside the Netherlands are rented.
@@ -24,7 +26,7 @@ private fun parseDate(text: String?): LocalDate? = try {
     null
 }
 
-fun Application.configureReservations(cars: CarRepository, reservations: ReservationRepository) {
+fun Application.configureReservations(cars: CarRepository, reservations: ReservationRepository, clock: Clock = Clock.system(ZONE)) {
     routing {
         // The free dayparts of a date; none when the car is in maintenance.
         get("/cars/{id}/availability") {
@@ -57,6 +59,23 @@ fun Application.configureReservations(cars: CarRepository, reservations: Reserva
                         val reservation = reservations.reserve(id, user.id, date, daypart)
                         if (reservation == null) call.respond(HttpStatusCode.Conflict) else call.respond(HttpStatusCode.Created, reservation)
                     }
+                }
+            }
+
+            delete("/reservations/{id}") {
+                val user = call.principal<User>()!!
+                val id = call.parameters["id"]?.toIntOrNull()
+                val reservation = id?.let(reservations::find)
+                when {
+                    id == null -> call.respond(HttpStatusCode.BadRequest)
+                    reservation == null -> call.respond(HttpStatusCode.NotFound)
+                    reservation.userId != user.id -> call.respond(HttpStatusCode.Forbidden)
+                    hasStarted(LocalDate.parse(reservation.date), reservation.daypart, LocalDateTime.now(clock)) -> call.respond(HttpStatusCode.Conflict)
+                    else -> call.respond(when (reservations.cancel(id)) {
+                        CancelResult.CANCELLED -> HttpStatusCode.NoContent
+                        CancelResult.GONE -> HttpStatusCode.NotFound
+                        CancelResult.HAS_TRIP -> HttpStatusCode.Conflict
+                    })
                 }
             }
         }

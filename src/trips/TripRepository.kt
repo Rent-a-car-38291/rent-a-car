@@ -19,7 +19,7 @@ import javax.sql.DataSource
 private const val FOREIGN_KEY_VIOLATION = "23503"
 
 // A reservation has at most one trip, the unique index decides. Deleting the reservation takes its trip along.
-private object Trips : Table("trips") {
+internal object Trips : Table("trips") {
     val id = integer("id").autoIncrement()
     val reservationId = integer("reservation_id").references(Reservations.id, onDelete = ReferenceOption.CASCADE).uniqueIndex("trips_reservation_id_key")
     val distanceKm = integer("distance_km")
@@ -27,12 +27,17 @@ private object Trips : Table("trips") {
     override val primaryKey = PrimaryKey(id)
 }
 
+// Also used by the reservations, which look for a trip before they cancel.
+internal fun Database.createTrips() {
+    createReservations() // trips reference reservations
+    transaction(this) { SchemaUtils.create(Trips) }
+}
+
 class TripRepository(dataSource: DataSource) {
     private val db = Database.connect(dataSource)
 
     init {
-        db.createReservations() // trips reference reservations
-        transaction(db) { SchemaUtils.create(Trips) }
+        db.createTrips()
     }
 
     // Saves the trip and adds the points to the renter in one transaction, so there are never points without a trip.
