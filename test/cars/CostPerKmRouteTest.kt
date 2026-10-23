@@ -56,4 +56,29 @@ class CostPerKmRouteTest {
     fun NonNumericIdReturns400() = withApp {
         assertEquals(HttpStatusCode.BadRequest, client.get("/cars/abc/cost-per-km").status)
     }
+
+    @Test
+    fun QuoteAddsEnergyCostAndRentalRate() = withApp {
+        val response = client.get("/cars/7/quote?distanceKm=120")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+        assertEquals(7, json["carId"]!!.jsonPrimitive.int)
+        assertEquals(120.0, json["distanceKm"]!!.jsonPrimitive.double)
+        assertEquals(6.3, json["energyCost"]!!.jsonPrimitive.double, 1e-9) // 0.0525 EUR per km * 120
+        assertEquals(55.0, json["rentalRate"]!!.jsonPrimitive.double)
+        assertEquals(61.3, json["total"]!!.jsonPrimitive.double, 1e-9)
+        assertEquals("EUR", json["currency"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun QuoteWithMissingOrOutOfRangeDistanceReturns400() = withApp {
+        listOf("/cars/7/quote", "/cars/7/quote?distanceKm=abc", "/cars/7/quote?distanceKm=0", "/cars/7/quote?distanceKm=10001", "/cars/abc/quote?distanceKm=5")
+            .forEach { assertEquals(HttpStatusCode.BadRequest, client.get(it).status, it) }
+    }
+
+    @Test
+    fun QuoteForUnknownCarReturns404() = withApp {
+        assertEquals(HttpStatusCode.NotFound, client.get("/cars/999/quote?distanceKm=10").status)
+    }
 }
