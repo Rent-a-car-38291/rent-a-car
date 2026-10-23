@@ -42,15 +42,15 @@ fun Application.configureAccounts(
 
         post("/login") {
             val request = call.receive<LoginRequest>()
-            // A locked email is refused before the password is checked, also when the password is right.
-            loginLimiter.lockedFor(request.email)?.let { seconds ->
+            // The attempt is counted before the password is checked, so parallel guesses can't all slip through.
+            // A locked email is refused, also when the password is right.
+            loginLimiter.tryAcquire(request.email)?.let { seconds ->
                 call.response.headers.append(HttpHeaders.RetryAfter, seconds.toString())
                 call.respond(HttpStatusCode.TooManyRequests)
                 return@post
             }
             val user = users.authenticate(request.email.trim(), request.password)
             if (user == null) {
-                loginLimiter.recordFailure(request.email)
                 call.respond(HttpStatusCode.Unauthorized)
                 return@post
             }
