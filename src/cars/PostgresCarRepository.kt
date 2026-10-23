@@ -119,6 +119,9 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
 
     override fun allCars(): List<Car> = transaction(db) { Cars.selectAll().orderBy(Cars.id).map { it.toCar() } }
 
+    override fun carsOfOrganization(organizationId: Int): List<Car> =
+        transaction(db) { Cars.selectAll().where { Cars.organizationId eq organizationId }.orderBy(Cars.id).map { it.toCar() } }
+
     // Translate the Kotlin subclass into the values for the type-specific columns.
     private fun typeColumns(car: Car) = when (car) {
         is BEVCar -> TypeColumns("BEV", null, car.batteryCapacityKwh, car.consumptionKwhPer100Km)

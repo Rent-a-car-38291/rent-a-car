@@ -21,6 +21,8 @@ import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.core.intLiteral
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.plus
@@ -172,6 +174,20 @@ class TripRepository(dataSource: DataSource) {
             .groupBy(Reservations.daypart)
             .map { DaypartTotals(Daypart.valueOf(it[Reservations.daypart]), it[count].toInt(), it[km]!!.toLong(), it[scoreSum]!!.toLong()) }
         calculateStats(totals, bonus)
+    }
+
+    // Reservations and finished trips per car in one query. Cancelled reservations are left out (they never have a trip);
+    // a car without reservations is not in the map.
+    fun usageByCar(carIds: Collection<Int>): Map<Int, CarUsage> = transaction(db) {
+        if (carIds.isEmpty()) return@transaction emptyMap()
+        val reservations = Reservations.id.count()
+        val trips = Trips.id.count()
+        val km = Trips.distanceKm.castTo(LongColumnType()).sum()
+        val scoreSum = Trips.score.castTo(LongColumnType()).sum()
+        Reservations.leftJoin(Trips).select(Reservations.carId, reservations, trips, km, scoreSum)
+            .where { (Reservations.carId inList carIds) and (Reservations.status neq ReservationStatus.CANCELLED.name) }
+            .groupBy(Reservations.carId)
+            .associate { it[Reservations.carId] to CarUsage(it[reservations].toInt(), it[trips].toInt(), it[km] ?: 0, it[scoreSum] ?: 0) }
     }
 
     // The most points first, equal points by name and then id so the order is stable. A user without points is not listed,
