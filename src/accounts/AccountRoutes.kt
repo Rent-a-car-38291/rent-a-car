@@ -17,7 +17,12 @@ private fun isValid(name: String, email: String) = name.isNotEmpty() && EMAIL_PA
 
 private fun ApplicationCall.bearerToken() = (request.parseAuthorizationHeader() as? HttpAuthHeader.Single)?.blob
 
-fun Application.configureAccounts(users: UserRepository, organizations: OrganizationRepository, tokens: TokenRepository) {
+fun Application.configureAccounts(
+    users: UserRepository,
+    organizations: OrganizationRepository,
+    tokens: TokenRepository,
+    loginLimiter: LoginLimiter = LoginLimiter(),
+) {
     routing {
         post("/accounts") {
             val request = call.receive<RegisterRequest>() // Ktor answers unreadable bodies with 400 or 415
@@ -37,11 +42,19 @@ fun Application.configureAccounts(users: UserRepository, organizations: Organiza
 
         post("/login") {
             val request = call.receive<LoginRequest>()
+            // A locked email is refused before the password is checked, also when the password is right.
+            loginLimiter.lockedFor(request.email)?.let { seconds ->
+                call.response.headers.append(HttpHeaders.RetryAfter, seconds.toString())
+                call.respond(HttpStatusCode.TooManyRequests)
+                return@post
+            }
             val user = users.authenticate(request.email.trim(), request.password)
             if (user == null) {
+                loginLimiter.recordFailure(request.email)
                 call.respond(HttpStatusCode.Unauthorized)
                 return@post
             }
+            loginLimiter.reset(request.email)
             call.respond(mapOf("token" to tokens.issue(user.id)))
         }
 
