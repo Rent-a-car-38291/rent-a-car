@@ -1,0 +1,45 @@
+@startuml
+title DELETE /reservations/{id}
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "ReservationRoutes.kt" as Route
+participant "ReservationRepository" as Repo
+database "reservations\ntrips" as Db
+
+Client -> Auth : DELETE /reservations/{id}
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt id is not a number
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Repo : find(id)
+    Repo --> Route : Reservation?
+    alt unknown id
+      Route --> Client : 404 Not Found
+    else reservation.userId != user.id
+      Route --> Client : 403 Forbidden
+    else hasStarted(date, daypart, now)\nnow >= date at daypart.from (local time)
+      Route --> Client : 409 Conflict
+    else
+      Route -> Repo : cancel(id)
+      Repo -> Db : SELECT reservation FOR UPDATE,\nthen look for a trip (one transaction)
+      alt reservation is gone
+        Repo --> Route : GONE
+        Route --> Client : 404 Not Found
+      else reservation has a trip
+        Repo --> Route : HAS_TRIP
+        Route --> Client : 409 Conflict
+      else
+        Repo -> Db : DELETE reservation
+        Repo --> Route : CANCELLED
+        Route --> Client : 204 No Content\n(the daypart is free again)
+      end
+    end
+  end
+end
+
+@enduml
