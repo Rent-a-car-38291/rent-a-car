@@ -1,0 +1,68 @@
+@startuml
+title PUT and DELETE /organizations/{id}/members/{userId}
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "OrganizationRoutes.kt" as Route
+participant "OrganizationRepository" as Repo
+
+== Change a role (admin only) ==
+Client -> Auth : PUT /organizations/{id}/members/{userId}\n{ "role": "ADMIN" | "MEMBER" }
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt id or userId is not a number, or unreadable body
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Repo : exists(id)
+    alt unknown organization
+      Route --> Client : 404 Not Found
+    else
+      Route -> Repo : findMembership(id, user.id)
+      alt caller is not an ADMIN
+        Route --> Client : 403 Forbidden
+      else
+        Route -> Repo : setRole(id, userId, role)
+        note right of Repo : row locks: two changes at once\ncannot remove the last admin
+        alt userId is not a member
+          Route --> Client : 404 Not Found
+        else demotes the last admin
+          Route --> Client : 409 Conflict
+        else
+          Route --> Client : 200 OK\n{ "userId", "organizationId", "role" }
+        end
+      end
+    end
+  end
+end
+
+== Remove a member, or leave yourself ==
+Client -> Auth : DELETE /organizations/{id}/members/{userId}
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt id or userId is not a number
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Repo : exists(id)
+    alt unknown organization
+      Route --> Client : 404 Not Found
+    else userId is not the caller and the caller is not an ADMIN
+      Route --> Client : 403 Forbidden
+    else
+      Route -> Repo : remove(id, userId)
+      alt userId is not a member
+        Route --> Client : 404 Not Found
+      else removes the last admin
+        Route --> Client : 409 Conflict
+      else
+        Route --> Client : 204 No Content
+      end
+    end
+  end
+end
+
+@enduml
