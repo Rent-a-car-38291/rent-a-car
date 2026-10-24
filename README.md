@@ -2,16 +2,23 @@
 
 [![Build](https://github.com/Rent-a-car-38291/rent-a-car/actions/workflows/build.yml/badge.svg)](https://github.com/Rent-a-car-38291/rent-a-car/actions/workflows/build.yml)
 
-A car rental backend for the Avans course: browse a fleet of petrol, electric and hydrogen cars, and register, log in and manage your account.
+A car rental backend for the Avans course: people offer their car (or the cars of their rental company), renters reserve it for a part of the day, drive, and earn bonus points for calm driving. There is no frontend: the API is described in Swagger UI, and a [console client](#console-client) lets you use every feature from menus.
 
 Built with [Ktor](https://ktor.io) and Kotlin, and the [Kotlin Toolchain](https://github.com/JetBrains/amper) (Amper).
 
 ## Features
 
-- Cars of three kinds: combustion (`ICE`), battery electric (`BEV`) and hydrogen (`FCEV`), with a sample fleet
-- Register, log in and out, and update or delete your own account, with bearer tokens for protected routes
-- Cars and accounts are stored in PostgreSQL
-- Passwords are stored hashed
+- **Cars**: three kinds, combustion (`ICE`), battery electric (`BEV`) and hydrogen (`FCEV`), with a sample fleet. Offer, update and delete your own car, with photos (JPEG or PNG) and a service record that says when a car is due for service.
+- **Finding a car**: filter by type, body style, transmission, fuel, minimum range, maximum rate and distance from a location, sort by rate, range or cost per km, or show only the cars that are free on a date and daypart. Lists are paged.
+- **Costs**: the energy cost per km of a car, a quote for a trip of a given distance (energy plus rental rate), the total cost of ownership (TCO) per year, and a comparison of the cost and CO2 of the three car types for a distance.
+- **Reservations**: reserve a car for the morning, afternoon or evening of a day (one reservation per car, date and daypart, also when two people try at once), see which dayparts are free, list your own reservations by status (`RESERVED`, `COMPLETED`, `CANCELLED`) and cancel one before it starts.
+- **Trips and bonus points**: record a trip in one call, or start it and end it later so the duration is known. The server scores the trip on hard accelerations and hard brakes and awards bonus points. Trip history for a renter and for a car's managers, driving totals per user, and a public leaderboard.
+- **Ratings**: rate a car once after a finished trip; the average and count show on the car.
+- **Accounts**: register, log in and out, update your name and email, change your password and delete your account. Passwords are stored hashed, login tokens are stored hashed and expire after 7 days, and repeated failed logins for one email are refused for a while (`429`).
+- **Organizations**: create an organization (a rental company), invite people with a one-time code, give members the role `ADMIN` or `MEMBER`, let every member manage the organization's cars (only an admin deletes one) and see a usage and TCO report per car.
+- **API**: one error body for every error, `limit`/`offset` paging with `X-Total-Count`, Swagger UI in development mode and an OpenAPI description.
+- **Console client**: menus for all of the above, to demo the application without a frontend.
+- Cars, accounts, organizations, reservations, trips, ratings, photo records and tokens are stored in PostgreSQL; the tables are created when the server starts.
 
 ## Getting started
 
@@ -57,6 +64,19 @@ curl http://localhost:8080/cars
 A rule gets a unit test for each edge value; a route gets an integration test for each status code it can answer.
 
 The connection defaults match `docker-compose.yml`. Override them with the environment variables `DATABASE_URL`, `DATABASE_USER` and `DATABASE_PASSWORD`. Car photos are stored as files in the directory `uploads` (set `IMAGES_DIRECTORY` to change it), next to the database rows that hold their urls. The tables are created when the server starts, and the cars table is filled with sample cars when it is empty. Login tokens are stored (only their SHA-256 hash) and expire 7 days after login, so a restart does not log anyone out. The tests don't need Docker: they start their own Postgres.
+
+## Configuration
+
+The defaults match `docker-compose.yml` and need no setup for local development.
+
+| Variable | Default | Used for |
+| -------- | ------- | -------- |
+| `DATABASE_URL` | `jdbc:postgresql://localhost:5432/rentacar` | JDBC url of the PostgreSQL database |
+| `DATABASE_USER` | `rentacar` | Database user |
+| `DATABASE_PASSWORD` | `rentacar` | Database password |
+| `IMAGES_DIRECTORY` | `uploads` | Directory where the car photos are stored |
+| `KTOR_DEVELOPMENT` | `true` | Development mode, which serves Swagger UI at `/swagger`; set `false` outside local development |
+| `RENT_A_CAR_URL` | `http://localhost:8080` | Server the console client talks to (or pass the url as its first argument) |
 
 ## Console client
 
@@ -115,40 +135,47 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 
 ## API
 
-| Method   | Path                      | Description                    | Success | Errors                            |
-| -------- | ------------------------- | ------------------------------ | ------- | --------------------------------- |
-| `GET`    | `/cars`                   | List, filter and sort cars     | `200`   | `400`                             |
-| `POST`   | `/cars`                   | Offer a car                    | `201`   | `400`, `401`, `403`, `409`        |
-| `PUT`    | `/cars/{id}`              | Update a car you may manage    | `200`   | `400`, `401`, `403`, `404`, `409` |
-| `DELETE` | `/cars/{id}`              | Delete a car you may delete    | `204`   | `400`, `401`, `403`, `404`        |
-| `GET`    | `/cars/compare`           | Compare cost and CO2 per car type | `200` | `400`                          |
-| `GET`    | `/cars/{id}/cost-per-km`  | Energy cost of one km          | `200`   | `400`, `404`                      |
-| `GET`    | `/cars/{id}/quote`        | Quote a trip before reserving  | `200`   | `400`, `404`                      |
-| `PUT`    | `/cars/{id}/service`      | Mark a car as serviced         | `204`   | `400`, `401`, `403`, `404`        |
-| `GET`    | `/cars/{id}`              | Get a car with its photo urls  | `200`   | `400`, `401`, `404`               |
-| `POST`   | `/cars/{id}/images`       | Add a JPEG or PNG photo        | `201`   | `400`, `401`, `403`, `404`, `409`, `413` |
-| `GET`    | `/images/{name}`          | Download a photo               | `200`   | `404`                             |
-| `GET`    | `/cars/{id}/tco`          | Total cost of ownership a year | `200`   | `400`, `401`, `403`, `404`        |
-| `POST`   | `/cars/{id}/reservations` | Reserve a car for a daypart    | `201`   | `400`, `401`, `404`, `409`        |
-| `GET`    | `/cars/{id}/availability` | Free dayparts on a date        | `200`   | `400`, `404`                      |
-| `GET`    | `/reservations`           | Your reservations with status  | `200`   | `400`, `401`                      |
-| `DELETE` | `/reservations/{id}`      | Cancel your reservation        | `204`   | `400`, `401`, `403`, `404`, `409` |
-| `POST`   | `/reservations/{id}/trip` | Record a trip, earn points     | `201`   | `400`, `401`, `403`, `404`, `409` |
-| `POST`   | `/reservations/{id}/trip/start` | Start your trip          | `200`   | `400`, `401`, `403`, `404`, `409` |
-| `POST`   | `/reservations/{id}/trip/end`   | End it, earn points      | `201`   | `400`, `401`, `403`, `404`, `409` |
-| `GET`    | `/trips`                  | Your trip history              | `200`   | `400`, `401`                      |
-| `GET`    | `/cars/{id}/trips`        | The trips of a car you manage  | `200`   | `400`, `401`, `403`, `404`        |
-| `GET`    | `/accounts/{id}/stats`    | Your driving totals            | `200`   | `400`, `401`, `403`, `404`        |
-| `GET`    | `/leaderboard`            | The drivers with most points   | `200`   | `400`                             |
-| `POST`   | `/reservations/{id}/rating` | Rate the car after your trip | `201`   | `400`, `401`, `403`, `404`, `409` |
-| `GET`    | `/cars/{id}/ratings`      | The ratings and average of a car | `200` | `400`, `404`                      |
-| `GET`    | `/organizations/{id}/report` | Usage and TCO per car of an organization | `200` | `400`, `401`, `403`, `404` |
-| `POST`   | `/accounts`               | Register an account            | `201`   | `400`, `409`                      |
-| `POST`   | `/login`                  | Get a token                    | `200`   | `401`, `429`                      |
-| `POST`   | `/logout`                 | Revoke the token you used      | `204`   | `401`                             |
-| `PUT`    | `/accounts/{id}`          | Update your own name and email | `200`   | `400`, `401`, `403`, `404`, `409` |
-| `PUT`    | `/accounts/{id}/password` | Change your own password       | `204`   | `400`, `401`, `403`, `404`        |
-| `DELETE` | `/accounts/{id}`          | Delete your own account        | `204`   | `400`, `401`, `403`, `404`        |
+Every endpoint, taken from [`documentation.yaml`](resources/openapi/documentation.yaml). `Login` says whether the `Authorization: Bearer <token>` header is needed; every endpoint can also answer `500` and the other codes of [Errors and paging](#errors-and-paging). The paragraphs below the table explain the rules per area.
+
+| Method   | Path                                   | Description                                             | Login | Success | Errors                                   |
+| -------- | -------------------------------------- | ------------------------------------------------------- | ----- | ------- | ---------------------------------------- |
+| `GET`    | `/cars`                                | List cars                                               | no    | `200`   | `400`                                    |
+| `POST`   | `/cars`                                | Offer a car                                             | yes   | `201`   | `400`, `401`, `403`, `409`               |
+| `GET`    | `/cars/compare`                        | Compare car types for a distance                        | no    | `200`   | `400`                                    |
+| `GET`    | `/cars/{id}/cost-per-km`               | Running cost per km                                     | no    | `200`   | `400`, `404`                             |
+| `GET`    | `/cars/{id}/quote`                     | Quote a trip before reserving                           | no    | `200`   | `400`, `404`                             |
+| `GET`    | `/cars/{id}/tco`                       | Total cost of ownership per year                        | yes   | `200`   | `400`, `401`, `403`, `404`               |
+| `POST`   | `/cars/{id}/images`                    | Add a photo to a car                                    | yes   | `201`   | `400`, `401`, `403`, `404`, `409`, `413` |
+| `GET`    | `/images/{name}`                       | Download a photo                                        | no    | `200`   | `404`                                    |
+| `POST`   | `/cars/{id}/reservations`              | Reserve a car for a daypart                             | yes   | `201`   | `400`, `401`, `404`, `409`               |
+| `GET`    | `/reservations`                        | Your reservations                                       | yes   | `200`   | `400`, `401`                             |
+| `DELETE` | `/reservations/{id}`                   | Cancel your reservation                                 | yes   | `204`   | `400`, `401`, `403`, `404`, `409`        |
+| `POST`   | `/reservations/{id}/trip`              | Record the trip of a reservation and award bonus points | yes   | `201`   | `400`, `401`, `403`, `404`, `409`        |
+| `POST`   | `/reservations/{id}/trip/start`        | Start the trip of a reservation                         | yes   | `200`   | `400`, `401`, `403`, `404`, `409`        |
+| `POST`   | `/reservations/{id}/trip/end`          | End a started trip and award bonus points               | yes   | `201`   | `400`, `401`, `403`, `404`, `409`        |
+| `GET`    | `/trips`                               | Your trip history                                       | yes   | `200`   | `400`, `401`                             |
+| `GET`    | `/cars/{id}/trips`                     | The trips of a car                                      | yes   | `200`   | `400`, `401`, `403`, `404`               |
+| `GET`    | `/accounts/{id}/stats`                 | Your driving totals                                     | yes   | `200`   | `400`, `401`, `403`, `404`               |
+| `GET`    | `/leaderboard`                         | The drivers with the most bonus points                  | no    | `200`   | `400`                                    |
+| `POST`   | `/reservations/{id}/rating`            | Rate the car of your reservation                        | yes   | `201`   | `400`, `401`, `403`, `404`, `409`        |
+| `GET`    | `/cars/{id}/ratings`                   | The ratings of a car                                    | no    | `200`   | `400`, `404`                             |
+| `GET`    | `/cars/{id}/availability`              | Free dayparts of a car on a date                        | no    | `200`   | `400`, `404`                             |
+| `PUT`    | `/cars/{id}/service`                   | Mark a car as serviced                                  | yes   | `204`   | `400`, `401`, `403`, `404`               |
+| `GET`    | `/cars/{id}`                           | Get a car                                               | yes   | `200`   | `400`, `401`, `404`                      |
+| `PUT`    | `/cars/{id}`                           | Update your own car, or an organization car as a member | yes   | `200`   | `400`, `401`, `403`, `404`, `409`        |
+| `DELETE` | `/cars/{id}`                           | Delete your own car, or an organization car as an admin | yes   | `204`   | `400`, `401`, `403`, `404`               |
+| `POST`   | `/accounts`                            | Register an account                                     | no    | `201`   | `400`, `409`                             |
+| `POST`   | `/login`                               | Log in and get a bearer token                           | no    | `200`   | `400`, `401`, `429`                      |
+| `POST`   | `/logout`                              | Log out                                                 | yes   | `204`   | `401`                                    |
+| `PUT`    | `/accounts/{id}`                       | Update your own name and email                          | yes   | `200`   | `400`, `401`, `403`, `404`, `409`        |
+| `DELETE` | `/accounts/{id}`                       | Delete your own account                                 | yes   | `204`   | `400`, `401`, `403`, `404`, `409`        |
+| `PUT`    | `/accounts/{id}/password`              | Change your own password                                | yes   | `204`   | `400`, `401`, `403`, `404`               |
+| `POST`   | `/organizations`                       | Create an organization                                  | yes   | `201`   | `400`, `401`                             |
+| `POST`   | `/organizations/{id}/invites`          | Create an invite code (admin only)                      | yes   | `201`   | `400`, `401`, `403`, `404`               |
+| `GET`    | `/organizations/{id}/report`           | Usage and TCO per car of the organization               | yes   | `200`   | `400`, `401`, `403`, `404`               |
+| `POST`   | `/invites/{code}/accept`               | Join an organization with an invite code                | yes   | `204`   | `401`, `404`, `409`                      |
+| `PUT`    | `/organizations/{id}/members/{userId}` | Change the role of a member (admin only)                | yes   | `200`   | `400`, `401`, `403`, `404`, `409`        |
+| `DELETE` | `/organizations/{id}/members/{userId}` | Remove a member or leave                                | yes   | `204`   | `400`, `401`, `403`, `404`, `409`        |
 
 Cars are found with the query parameters of `GET /cars`, which all combine: `type`, `maxRate`, `bodyStyle`, `transmission`, `fuelType` (only combustion cars have one), `minRange` (km on a full tank or battery) and a location (`lat`, `lon`, `maxDistanceKm`). `sort` orders by `rate`, `range` or `costPerKm` (energy cost per km at the standard prices), with a leading `-` for descending, for example `GET /cars?sort=costPerKm` lists the cheapest car per km first; equal values keep the fleet order. With a location the nearest car always comes first and `sort` is only checked. An unknown filter or sort value gives `400`.
 
@@ -211,13 +238,24 @@ To page in code, parse the parameters with `parsePaging` (`src/Paging.kt`), set 
 ```
 src/
 ├── Application.kt        wires the modules together
-├── accounts/             users, login tokens, account routes
-├── cars/                 the car hierarchy, repository and routes
-└── database/             the PostgreSQL connection
-resources/                server configuration and the SQL that creates the tables
-test/                     mirrors src/
+├── Errors.kt, Paging.kt  the one error body and the paging helper every route uses
+├── Routing.kt            static files and Swagger UI
+├── Serialization.kt      JSON
+├── accounts/             users, login tokens, login rate limit, account routes
+├── cars/                 the car hierarchy, repository, filters, costs, quote, compare and routes
+├── database/             the PostgreSQL connection
+├── images/               car photos: records, files on disk and routes
+├── organizations/        organizations, invites, members, the usage report
+├── ratings/              ratings of a car after a trip
+├── reservations/         reservations by daypart, their status and availability
+└── trips/                trips, scoring and bonus points, history, stats, leaderboard
+resources/                application.yaml (settings), logback.xml, openapi/documentation.yaml and static/
+test/                     mirrors src/ (unit and route tests, test Postgres in database/)
 cli/                      the console client, its own module (src/areas/ has one file per menu)
 docs/diagrams/            PlantUML sources and exported PNGs
+.github/workflows/        the build: ./kotlin test and ./kotlin build on every push and pull request
+module.yaml, project.yaml the Amper build files: the server module and the list of modules
+docker-compose.yml        the local PostgreSQL
 ```
 
 ## Diagrams
