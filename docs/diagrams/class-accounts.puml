@@ -9,16 +9,17 @@ package com.example.accounts <<Folder>> {
     - EMAIL_PATTERN : Regex
     - isValid(name : String, email : String) : Boolean
     - ApplicationCall.bearerToken() : String?
-    + Application.configureAccounts(users : UserRepository)
+    + Application.configureAccounts(users : UserRepository, organizations : OrganizationRepository,\n  tokens : TokenRepository, loginLimiter : LoginLimiter)
   }
   class "Security.kt" as Security <<(F,orchid) file>> {
-    + Application.configureSecurity(users : UserRepository)
+    + Application.configureSecurity(users : UserRepository, tokens : TokenRepository)
   }
   class User {
     + id : Int
     + name : String
     + email : String
     + passwordHash : String
+    + bonusPoints : Int
     + toResponse() : UserResponse
   }
   class RegisterRequest <<data>> {
@@ -42,9 +43,9 @@ package com.example.accounts <<Folder>> {
     + id : Int
     + name : String
     + email : String
+    + bonusPoints : Int
   }
   class UserRepository {
-    - dataSource : DataSource
     - dummyHash : String
     + register(name : String, email : String, password : String) : User?
     + authenticate(email : String, password : String) : User?
@@ -52,8 +53,6 @@ package com.example.accounts <<Folder>> {
     + update(id : Int, name : String, email : String) : User?
     + changePassword(id : Int, currentPassword : String, newPassword : String) : Boolean
     + delete(id : Int) : Boolean
-    + clear()
-    - queryUser(sql : String, parameters : Any) : User?
     - hash(password : String, salt : ByteArray) : String
     - verify(password : String, passwordHash : String) : Boolean
   }
@@ -65,9 +64,27 @@ package com.example.accounts <<Folder>> {
     + revokeAll(userId : Int, except : String? = null)
     - hash(token : String) : String
   }
+  class LoginLimiter {
+    - maxFailures : Int = 5
+    - window : Duration = 15 minutes
+    + tryAcquire(email : String) : Long?
+    + lockedFor(email : String) : Long?
+    + reset(email : String)
+  }
+  class Users <<table>> {
+    id, name, email (unique, ignoring case)
+    password_hash, bonus_points
+  }
+  class Tokens <<table>> {
+    token_hash (SHA-256), user_id
+    expires_at (7 days)
+  }
 }
 
 UserRepository ..> User : reads and writes
+UserRepository ..> Users
+TokenRepository ..> Tokens
+Tokens "0..*" --> "1" Users : user_id (cascade)
 User ..> UserResponse : <<creates>>
 AccountRoutes ..> RegisterRequest : receives
 AccountRoutes ..> LoginRequest : receives
@@ -77,6 +94,7 @@ AccountRoutes ..> UserResponse : responds
 AccountRoutes ..> User : principal
 AccountRoutes ..> UserRepository
 AccountRoutes ..> TokenRepository
+AccountRoutes ..> LoginLimiter : 429 after 5 failures
 Security ..> TokenRepository : userId(token)
 Security ..> UserRepository : find(id)
 
