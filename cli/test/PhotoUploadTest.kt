@@ -1,6 +1,7 @@
 package com.example.cli
 
 import com.example.cli.areas.readPhoto
+import com.example.cli.areas.typedPath
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Base64
@@ -60,6 +61,24 @@ class PhotoUploadTest {
         val atLimit = tinyPng + ByteArray(5 * 1024 * 1024 - tinyPng.size)
         assertNull(readPhoto(file("limit.png", atLimit)).problem)
         assertEquals("The file is larger than 5 MB.", readPhoto(file("big.png", atLimit + 1)).problem)
-        assertNotNull(readPhoto(Files.createTempDirectory("a-folder")).problem)
+    }
+
+    @Test
+    fun `a file name cannot break the multipart header`() {
+        assertEquals("my _car_.png", safeFileName("my \"car\".png"))
+        assertEquals("a_b_c_d.png", safeFileName("a\\b\rc\nd.png"))
+        assertEquals("kar-\u00e9.png", safeFileName("kar-\u00e9.png"))
+    }
+
+    @Test
+    fun `a typed path loses its quotes and escapes and expands the home folder`() {
+        assertEquals(Path.of("/a b/c.png"), typedPath("'/a b/c.png'"))
+        assertEquals(Path.of("/a b/c.png"), typedPath("/a\\ b/c.png"))
+        assertEquals(Path.of(System.getProperty("user.home"), "pics", "c.png"), typedPath("~/pics/c.png"))
+    }
+
+    @Test
+    fun `a folder is refused with its own message`() {
+        assertTrue("is a folder" in readPhoto(Files.createTempDirectory("a-folder")).problem!!)
     }
 }
