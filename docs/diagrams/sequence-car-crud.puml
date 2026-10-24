@@ -1,0 +1,90 @@
+@startuml
+title POST /cars, GET /cars/{id} and PUT /cars/{id}
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "CarRoutes.kt" as Route
+participant "OrganizationRepository" as Orgs
+participant "CarRepository" as Cars
+
+== Offer a car: POST /cars ==
+Client -> Auth : POST /cars\n{ type, brand, licensePlate, ..., organizationId? }
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt unreadable body
+    Route --> Client : 400 Bad Request
+  else
+    opt organizationId is set
+      Route -> Orgs : findMembership(organizationId, user.id)
+      Orgs --> Route : Membership?
+    end
+    alt organizationId is set and the user is no member (or the organization is unknown)
+      Route --> Client : 403 Forbidden
+    else a field is missing or out of range
+      Route --> Client : 400 Bad Request
+    else
+      note over Route : a private car gets the user as owner,\nan organization car has no owner
+      Route -> Cars : addCar(car)
+      alt license plate already used
+        Cars --> Route : LicensePlateTakenException
+        Route --> Client : 409 Conflict
+      else
+        Cars --> Route : Car
+        Route --> Client : 201 Created\nthe car
+      end
+    end
+  end
+end
+
+== View a car: GET /cars/{id} ==
+Client -> Auth : GET /cars/{id}
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt id is not a number
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Cars : findCar(id)
+    alt unknown id
+      Route --> Client : 404 Not Found
+    else
+      Route --> Client : 200 OK\nthe car with serviceDue, images and averageRating
+    end
+  end
+end
+
+== Update a car: PUT /cars/{id} ==
+Client -> Auth : PUT /cars/{id}\nsame body as POST /cars
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt id is not a number
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Cars : findCar(id)
+    alt unknown id
+      Route --> Client : 404 Not Found
+    else not the owner, and not a member for an organization car (canManage)
+      Route --> Client : 403 Forbidden
+    else unreadable body, invalid field, another type,\nor another organization
+      Route --> Client : 400 Bad Request
+    else
+      note over Route : the status stays as it is
+      Route -> Cars : updateCar(car)
+      alt license plate already used
+        Route --> Client : 409 Conflict
+      else the car was deleted meanwhile
+        Route --> Client : 404 Not Found
+      else
+        Route --> Client : 200 OK\nthe updated car
+      end
+    end
+  end
+end
+
+@enduml
