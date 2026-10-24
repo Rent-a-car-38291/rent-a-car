@@ -13,7 +13,7 @@ alt missing or invalid token
   Auth --> Client : 401 Unauthorized
 else
   Auth -> Route : user
-  alt id or userId is not a number, or unreadable body
+  alt id or userId is not a number
     Route --> Client : 400 Bad Request
   else
     Route -> Repo : exists(id)
@@ -23,6 +23,8 @@ else
       Route -> Repo : findMembership(id, user.id)
       alt caller is not an ADMIN
         Route --> Client : 403 Forbidden
+      else unreadable body or unknown role
+        Route --> Client : 400 Bad Request
       else
         Route -> Repo : setRole(id, userId, role)
         note right of Repo : row locks: two changes at once\ncannot remove the last admin
