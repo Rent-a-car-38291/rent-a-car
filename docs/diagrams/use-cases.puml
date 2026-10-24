@@ -19,7 +19,8 @@ rectangle "Rent-a-car" {
   usecase "Register" as UC_Register
   usecase "Log in" as UC_Login
   usecase "View and search cars\n(filter, sort, free on a daypart)" as UC_ViewCars
-  usecase "View car details\nand photos" as UC_Details
+  usecase "Download a photo" as UC_Download
+  usecase "View car details\n(service due, photo urls, rating)" as UC_Details
   usecase "View ratings of a car" as UC_Ratings
   usecase "View availability" as UC_Availability
   usecase "View cost per km" as UC_CostPerKm
@@ -63,7 +64,7 @@ rectangle "Rent-a-car" {
 Visitor --> UC_Register
 Visitor --> UC_Login
 Visitor --> UC_ViewCars
-Visitor --> UC_Details
+Visitor --> UC_Download
 Visitor --> UC_Ratings
 Visitor --> UC_Availability
 Visitor --> UC_CostPerKm
@@ -72,6 +73,7 @@ Visitor --> UC_Compare
 Visitor --> UC_Leaderboard
 note right of UC_Login : After 5 failed logins for one email\nwithin 15 minutes: 429 until the\nwindow has passed
 
+User --> UC_Details
 User --> UC_Logout
 User --> UC_UpdateAccount
 User --> UC_ChangePassword
