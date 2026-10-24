@@ -34,8 +34,16 @@ class Context(val api: Api, val io: Console, val session: Session = Session()) {
         body: JsonElement? = null,
         hints: Map<Int, String> = emptyMap(),
     ): ApiResponse? {
+        return answer(path, hints) { api.call(method, path, query, body) }
+    }
+
+    /** Uploads a file like [call] does a JSON request: the JSON answer, or null after a friendly message. */
+    fun upload(path: String, fileName: String, contentType: String, bytes: ByteArray, hints: Map<Int, String> = emptyMap()): JsonElement? =
+        answer(path, hints) { api.upload(path, fileName, contentType, bytes) }?.let { it.body ?: JsonObject(emptyMap()) }
+
+    private fun answer(path: String, hints: Map<Int, String>, send: () -> ApiResponse): ApiResponse? {
         val response = try {
-            api.call(method, path, query, body)
+            send()
         } catch (e: ServerUnreachable) {
             io.say("! ${e.message}")
             return null
