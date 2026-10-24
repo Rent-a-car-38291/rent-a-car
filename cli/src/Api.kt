@@ -33,6 +33,9 @@ interface Api {
     fun upload(path: String, fileName: String, contentType: String, bytes: ByteArray): ApiResponse
 }
 
+/** A file name that cannot break the multipart header: quotes, backslashes and line breaks become underscores (the server picks its own name anyway). */
+internal fun safeFileName(name: String) = name.replace(Regex("[\"\\\\\r\n]"), "_")
+
 class ServerUnreachable(message: String) : Exception(message)
 
 class HttpApi(private val baseUrl: String) : Api {
@@ -58,7 +61,7 @@ class HttpApi(private val baseUrl: String) : Api {
 
     override fun upload(path: String, fileName: String, contentType: String, bytes: ByteArray): ApiResponse {
         val boundary = "----rentacar" + UUID.randomUUID().toString().replace("-", "")
-        val head = "--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"$fileName\"\r\nContent-Type: $contentType\r\n\r\n"
+        val head = "--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"${safeFileName(fileName)}\"\r\nContent-Type: $contentType\r\n\r\n"
         val body = head.toByteArray() + bytes + "\r\n--$boundary--\r\n".toByteArray()
         val request = try {
             HttpRequest.newBuilder(URI.create(baseUrl.trimEnd('/') + path)).timeout(Duration.ofSeconds(60))

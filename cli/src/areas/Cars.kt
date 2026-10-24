@@ -80,7 +80,7 @@ val carsMenu = Menu("Cars", needsLogin = false, items = listOf(
     },
     MenuItem("Add a photo to a car I manage") { ctx ->
         val id = ctx.pickCar() ?: return@MenuItem
-        val photo = readPhoto(Path.of(ctx.io.text("Path of the JPEG or PNG file").removeSurrounding("\"").removeSurrounding("'")))
+        val photo = readPhoto(typedPath(ctx.io.text("Path of the JPEG or PNG file")))
         if (photo.problem != null) return@MenuItem ctx.io.say("! ${photo.problem}")
         ctx.upload("/cars/$id/images", photo.name, photo.contentType!!, photo.bytes!!, hints = mapOf(
             400 to "The server did not accept the file. Use a JPEG or PNG picture.",
@@ -154,6 +154,7 @@ class Photo(val name: String, val contentType: String? = null, val bytes: ByteAr
 /** Reads the file and checks what the server checks too (a real JPEG or PNG, at most 5 MB), so the user hears it before the upload. */
 internal fun readPhoto(path: Path): Photo {
     val name = path.fileName?.toString() ?: "photo"
+    if (Files.isDirectory(path)) return Photo(name, problem = "$path is a folder, give the path of a picture.")
     if (!Files.isRegularFile(path)) return Photo(name, problem = "There is no file at $path.")
     if (!Files.isReadable(path)) return Photo(name, problem = "The file at $path cannot be read.")
     if (Files.size(path) > MAX_PHOTO_BYTES) return Photo(name, problem = "The file is larger than 5 MB.")
@@ -167,3 +168,9 @@ internal fun readPhoto(path: Path): Photo {
 }
 
 private fun ByteArray.startsWith(prefix: ByteArray) = size >= prefix.size && prefix.indices.all { this[it] == prefix[it] }
+
+/** A path as typed in the terminal: no shell is involved, so remove the quotes and `\ ` escapes of a dragged file and expand a leading `~`. */
+internal fun typedPath(raw: String): Path {
+    val text = raw.trim().removeSurrounding("\"").removeSurrounding("'").replace("\\ ", " ")
+    return Path.of(if (text == "~" || text.startsWith("~/")) System.getProperty("user.home") + text.drop(1) else text)
+}
