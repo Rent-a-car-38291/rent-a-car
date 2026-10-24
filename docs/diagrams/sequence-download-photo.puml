@@ -1,0 +1,26 @@
+@startuml
+title GET /images/{name}
+autonumber
+
+actor Client
+participant "ImageRoutes.kt" as Route
+participant "ImageRepository" as Repo
+database "uploads/" as Files
+
+Client -> Route : GET /images/{name}\n(no login needed)
+Route -> Repo : file(name)
+note right of Repo : only a name that is in the images table\nresolves to a file, so a name like ../x finds nothing
+Repo --> Route : Path?
+alt unknown name, or not a .jpg / .png file
+  Route --> Client : 404 Not Found
+else
+  Route -> Files : read the file
+  alt the file is gone from the disk
+    Route --> Client : 404 Not Found
+  else
+    Files --> Route : bytes
+    Route --> Client : 200 OK\nContent-Type: image/jpeg or image/png
+  end
+end
+
+@enduml

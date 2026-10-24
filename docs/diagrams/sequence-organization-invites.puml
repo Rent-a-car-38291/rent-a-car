@@ -1,0 +1,53 @@
+@startuml
+title POST /organizations/{id}/invites and POST /invites/{code}/accept
+autonumber
+
+actor Admin
+actor "New member" as Member
+participant "Ktor\n(bearer authentication)" as Auth
+participant "OrganizationRoutes.kt" as Route
+participant "OrganizationRepository" as Repo
+
+== Create an invite (admin only) ==
+Admin -> Auth : POST /organizations/{id}/invites
+alt missing or invalid token
+  Auth --> Admin : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt id is not a number
+    Route --> Admin : 400 Bad Request
+  else
+    Route -> Repo : exists(id)
+    alt unknown organization
+      Route --> Admin : 404 Not Found
+    else
+      Route -> Repo : findMembership(id, user.id)
+      alt not an ADMIN of this organization
+        Route --> Admin : 403 Forbidden
+      else
+        Route -> Repo : invite(id)
+        note right of Repo : random code, valid for 7 days,\nworks once
+        Route --> Admin : 201 Created\n{ "code": "..." }
+      end
+    end
+  end
+end
+
+== Accept an invite ==
+Member -> Auth : POST /invites/{code}/accept
+alt missing or invalid token
+  Auth --> Member : 401 Unauthorized
+else
+  Auth -> Route : user
+  Route -> Repo : accept(code, user.id)
+  note right of Repo : row lock: one code, one use,\nalso when two users accept at once
+  alt unknown, used or expired code
+    Route --> Member : 404 Not Found
+  else already a member
+    Route --> Member : 409 Conflict
+  else
+    Route --> Member : 204 No Content\n(joined as MEMBER, code is used up)
+  end
+end
+
+@enduml
