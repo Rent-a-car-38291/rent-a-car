@@ -14,6 +14,9 @@ package com.example <<Folder>> {
   class "Serialization.kt" as Serialization <<(F,orchid) file>> {
     + Application.configureSerialization()
   }
+  class "Errors.kt" as Errors <<(F,orchid) file>> {
+    + Application.configureErrors()
+  }
   class "Routing.kt" as Routing <<(F,orchid) file>> {
     + Application.configureRouting()
   }
@@ -21,17 +24,46 @@ package com.example <<Folder>> {
 
 package com.example.cars <<Folder>> {
   class "CarRoutes.kt" as CarRoutes <<(F,orchid) file>> {
-    + Application.configureCars(repository : CarRepository)
+    + Application.configureCars(repository : CarRepository, organizations : OrganizationRepository,\n  images : ImageRepository?, reservations : ReservationRepository?, ratings : RatingRepository?)
+  }
+  class "CarAccess.kt" as CarAccess <<(F,orchid) file>> {
+    + canManage(user : User, car : Car, organizations : OrganizationRepository) : Boolean
+    + canDelete(user : User, car : Car, organizations : OrganizationRepository) : Boolean
+  }
+  class "CarFilter.kt" as CarFilter <<(F,orchid) file>> {
+    + filterCars(cars : List<Car>, query : Parameters) : List<Car>?
+  }
+  class "Quote.kt" as Quote <<(F,orchid) file>> {
+    + Car.quote(distanceKm : Double, prices : EnergyPrices) : QuoteResponse
+  }
+  class "Compare.kt" as Compare <<(F,orchid) file>> {
+    + Car.co2KgPerKm() : Double
+    + compareTypes(cars : List<Car>, distanceKm : Double, prices : EnergyPrices) : CompareResponse
   }
   interface CarRepository {
     + allCars() : List<Car>
+    + findCar(id : Int) : Car?
+    + carsOfOrganization(organizationId : Int) : List<Car>
+    + addCar(car : Car) : Car
+    + updateCar(car : Car) : Car?
+    + markServiced(carId : Int) : Boolean
+    + deleteCarById(carId : Int) : Boolean
   }
-  class InMemoryCarRepository {
-    - cars : List<Car>
-    + allCars() : List<Car>
+  class PostgresCarRepository {
+    - Cars : table
+  }
+  class EnergyPrices <<data>> {
+    + petrolPerLitre : Double
+    + dieselPerLitre : Double
+    + lpgPerLitre : Double
+    + electricityPerKwh : Double
+    + hydrogenPerKg : Double
+    + perLitre(fuelType : FuelType) : Double
   }
   abstract class Car <<sealed>> {
     + id : Int
+    + ownerId : Int?
+    + organizationId : Int?
     + brand : String
     + licensePlate : String
     + mileage : Int
@@ -45,6 +77,12 @@ package com.example.cars <<Folder>> {
     + power : Int
     + transmission : Transmission
     + color : String
+    + purchasePrice : Double
+    + insurancePerYear : Double
+    + roadTaxPerYear : Double
+    + maintenancePerYear : Double
+    + tcoPerYear(kmPerYear : Int, prices : EnergyPrices) : Double
+    + {abstract} costPerKm(prices : EnergyPrices) : Double
   }
   class ICECar <<"ICE">> {
     + fuelType : FuelType
@@ -96,14 +134,19 @@ Car --> "1" CarStatus
 Car --> "1" BodyStyle
 Car --> "1" Transmission
 ICECar --> "1" FuelType
+Car ..> EnergyPrices
 
-CarRepository <|.. InMemoryCarRepository
-InMemoryCarRepository o-- "0..*" Car
+CarRepository <|.. PostgresCarRepository
+PostgresCarRepository ..> Car : reads and writes
 
 Application ..> Serialization
+Application ..> Errors
 Application ..> Routing
 Application ..> CarRoutes
 CarRoutes --> CarRepository
-CarRoutes ..> InMemoryCarRepository : default
+CarRoutes ..> CarAccess
+CarRoutes ..> CarFilter
+CarRoutes ..> Quote
+CarRoutes ..> Compare
 
 @enduml

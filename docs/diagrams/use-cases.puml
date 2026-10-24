@@ -1,5 +1,5 @@
 @startuml
-' Use cases from the GitHub issues. Organization use cases are extras.
+' Use cases of the finished application, one per thing a person can do. Everything is also available in the console client.
 left to right direction
 
 actor Visitor
@@ -18,12 +18,15 @@ Member <|-- Admin
 rectangle "Rent-a-car" {
   usecase "Register" as UC_Register
   usecase "Log in" as UC_Login
-  usecase "View cars" as UC_ViewCars
-  usecase "Filter and sort cars" as UC_Filter
-  usecase "Search cars free on\na date and daypart" as UC_FreeSearch
-  usecase "View car details" as UC_Details
-  usecase "Compare cost and CO2\nper car type" as UC_Compare
+  usecase "View and search cars\n(filter, sort, free on a daypart)" as UC_ViewCars
+  usecase "Download a photo" as UC_Download
+  usecase "View car details\n(service due, photo urls, rating)" as UC_Details
   usecase "View ratings of a car" as UC_Ratings
+  usecase "View availability" as UC_Availability
+  usecase "View cost per km" as UC_CostPerKm
+  usecase "Get a quote for a trip" as UC_Quote
+  usecase "Compare cost and CO2\nof car types" as UC_Compare
+  usecase "View leaderboard" as UC_Leaderboard
 
   usecase "Log out" as UC_Logout
   usecase "Update account" as UC_UpdateAccount
@@ -31,78 +34,80 @@ rectangle "Rent-a-car" {
   usecase "Delete account" as UC_DeleteAccount
   usecase "Remove own cars" as UC_RemoveOwnCars
   usecase "Create organization" as UC_CreateOrg
+  usecase "Accept invite" as UC_Accept
+  usecase "View driving stats" as UC_Stats
 
   usecase "Reserve a car\nfor a daypart" as UC_Reserve
-  usecase "View availability" as UC_Availability
-  usecase "View my reservations\nwith status" as UC_MyReservations
-  usecase "Cancel reservation" as UC_Cancel
-  usecase "Record trip and\nearn bonus points" as UC_Trip
-  usecase "Rate a car" as UC_Rate
+  usecase "View my reservations" as UC_MyReservations
+  usecase "Cancel a reservation" as UC_Cancel
+  usecase "Record a trip and\nearn bonus points" as UC_Trip
   usecase "Start and end a trip" as UC_StartEnd
-  usecase "View trip history" as UC_TripHistory
-  usecase "View driving stats" as UC_Stats
-  usecase "View leaderboard" as UC_Leaderboard
-  usecase "View trips of\na car" as UC_CarTrips
-  usecase "View fleet report\nof an organization" as UC_Report
+  usecase "View my trip history" as UC_History
+  usecase "Rate a car" as UC_Rate
 
   usecase "Add car" as UC_AddCar
   usecase "Update car" as UC_UpdateCar
   usecase "Remove car" as UC_RemoveCar
   usecase "Add photo" as UC_Photo
-  usecase "View cost per km" as UC_CostPerKm
   usecase "View TCO" as UC_Tco
+  usecase "Mark car as serviced" as UC_Service
+  usecase "View trips of a car" as UC_CarTrips
 
-  usecase "Accept invite" as UC_Accept
   usecase "Manage organization cars" as UC_OrgCars
   usecase "Leave organization" as UC_Leave
+  usecase "View organization report" as UC_Report
   usecase "Invite members" as UC_Invite
   usecase "Manage members" as UC_Members
+  usecase "Remove organization car" as UC_OrgRemove
 }
 
 Visitor --> UC_Register
 Visitor --> UC_Login
 Visitor --> UC_ViewCars
-Visitor --> UC_Details
+Visitor --> UC_Download
+Visitor --> UC_Ratings
+Visitor --> UC_Availability
+Visitor --> UC_CostPerKm
+Visitor --> UC_Quote
 Visitor --> UC_Compare
-UC_Filter .> UC_ViewCars : <<extend>>
-UC_FreeSearch .> UC_ViewCars : <<extend>>
+Visitor --> UC_Leaderboard
+note right of UC_Login : After 5 failed logins for one email\nwithin 15 minutes: 429 until the\nwindow has passed
 
+User --> UC_Details
 User --> UC_Logout
 User --> UC_UpdateAccount
 User --> UC_ChangePassword
 User --> UC_DeleteAccount
 User --> UC_CreateOrg
 User --> UC_Accept
+User --> UC_Stats
 UC_DeleteAccount .> UC_RemoveOwnCars : <<include>>
 
 Renter --> UC_Reserve
 Renter --> UC_MyReservations
 Renter --> UC_Cancel
 Renter --> UC_Trip
-Renter --> UC_Rate
-UC_Rate .> UC_Trip : <<include>>
-Visitor --> UC_Ratings
 Renter --> UC_StartEnd
-UC_StartEnd .> UC_Trip : <<extend>>
-Renter --> UC_TripHistory
-Renter --> UC_Stats
-Visitor --> UC_Leaderboard
+Renter --> UC_History
+Renter --> UC_Rate
 UC_Reserve .> UC_Availability : <<include>>
 
 Owner --> UC_AddCar
 Owner --> UC_UpdateCar
 Owner --> UC_RemoveCar
 Owner --> UC_Photo
-Owner --> UC_CostPerKm
 Owner --> UC_Tco
+Owner --> UC_Service
 Owner --> UC_CarTrips
 UC_Tco .> UC_CostPerKm : <<include>>
 
 Member --> UC_OrgCars
-Member --> UC_Report
-Member --> UC_CarTrips
 Member --> UC_Leave
+Member --> UC_Report
+UC_OrgCars .> UC_AddCar : <<extend>>
+UC_OrgCars .> UC_UpdateCar : <<extend>>
 Admin --> UC_Invite
 Admin --> UC_Members
+Admin --> UC_OrgRemove
 
 @enduml

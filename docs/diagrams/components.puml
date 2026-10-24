@@ -1,49 +1,92 @@
 @startuml
-' Layers of the server as it runs today. Dashed parts are planned.
+' Layers of the server as it runs today: a request goes through the plugins to a route, which uses repositories and pure logic.
 skinparam componentStyle uml2
 
-actor "Mobile app / client" as Client
+actor "Console client\nSwagger UI\nany HTTP client" as Client
 
 node "Ktor server (Netty, port 8080)" {
   package "Plugins" {
     component "ContentNegotiation\n(kotlinx JSON)" as Json
-    component "Authentication\n(bearer token)" as Auth
+    component "StatusPages\n(one error body, Errors.kt)" as Errors
+    component "Authentication\n(bearer token, Security.kt)" as Auth
   }
 
   package "Routes" {
-    component "CarRoutes.kt\nGET /cars" as CarRoutes
-    component "AccountRoutes.kt\nPOST /accounts\nPOST /login\nDELETE /accounts/{id}" as AccountRoutes
+    component "CarRoutes\ncars, cost per km, quote,\ncompare, tco, service" as CarRoutes
+    component "AccountRoutes\naccounts, login, logout" as AccountRoutes
+    component "OrganizationRoutes\nOrganizationReportRoutes" as OrgRoutes
+    component "ReservationRoutes\nreserve, cancel, list,\navailability" as ReservationRoutes
+    component "TripRoutes\ntrips, history, stats,\nleaderboard" as TripRoutes
+    component "RatingRoutes" as RatingRoutes
+    component "ImageRoutes" as ImageRoutes
   }
 
-  package "Repositories" {
-    interface CarRepository
-    component InMemoryCarRepository
-    component UserRepository
-    component TokenRepository
+  package "Pure logic" {
+    component "Car, ICECar, BEVCar, FCEVCar\nEnergyPrices, filterCars,\ncompare, quote, canManage" as CarLogic
+    component "Daypart, FreeSlot" as ReservationLogic
+    component "Trip scoring and bonus points" as TripLogic
+    component "LoginLimiter\n(in memory)" as Limiter
   }
 
-  package "Domain" {
-    component "Car, ICECar, BEVCar, FCEVCar\nUser, Location, enums" as DomainClasses
+  package "Repositories (Exposed)" {
+    component "CarRepository\n(PostgresCarRepository)" as Cars
+    component UserRepository as Users
+    component TokenRepository as Tokens
+    component OrganizationRepository as Orgs
+    component ReservationRepository as Reservations
+    component TripRepository as Trips
+    component RatingRepository as Ratings
+    component ImageRepository as Images
   }
 }
 
-database "Database (#10)" as Db #line.dashed
+database "PostgreSQL\n(HikariCP, tables created at start)" as Db
+folder "uploads/\n(photo files)" as Files
 
 Client --> Json : HTTP + JSON
-Json --> CarRoutes
-Json --> Auth
-Auth --> AccountRoutes : principal User
-Auth ..> TokenRepository : userId(token)
-TokenRepository ..> Db : tokens (hash, expiry)
-Auth ..> UserRepository : find(id)
+Json --> Errors
+Errors --> Auth : routes that need a login
+Auth ..> Tokens : userId(token)
+Auth ..> Users : find(id)
 
-CarRoutes --> CarRepository
-CarRepository - InMemoryCarRepository
-AccountRoutes --> UserRepository
-AccountRoutes --> TokenRepository
+Errors --> CarRoutes
+Errors --> AccountRoutes
+Errors --> OrgRoutes
+Errors --> ReservationRoutes
+Errors --> TripRoutes
+Errors --> RatingRoutes
+Errors --> ImageRoutes
 
-InMemoryCarRepository ..> DomainClasses
-UserRepository ..> DomainClasses
-InMemoryCarRepository .[#gray,dashed].> Db : replaced by
+CarRoutes --> Cars
+CarRoutes --> CarLogic
+CarRoutes ..> Orgs : canManage
+CarRoutes ..> Reservations : free cars
+CarRoutes ..> Ratings : averageRating
+AccountRoutes --> Users
+AccountRoutes --> Tokens
+AccountRoutes --> Limiter
+OrgRoutes --> Orgs
+OrgRoutes ..> Cars
+OrgRoutes ..> Trips
+ReservationRoutes --> Reservations
+ReservationRoutes --> ReservationLogic
+ReservationRoutes ..> Cars
+TripRoutes --> Trips
+TripRoutes --> TripLogic
+TripRoutes ..> Reservations
+RatingRoutes --> Ratings
+RatingRoutes ..> Reservations
+ImageRoutes --> Images
+ImageRoutes ..> Cars
+
+Cars ..> Db
+Users ..> Db
+Tokens ..> Db : hash and expiry only
+Orgs ..> Db
+Reservations ..> Db
+Trips ..> Db
+Ratings ..> Db
+Images ..> Db : url and file name
+Images ..> Files
 
 @enduml
