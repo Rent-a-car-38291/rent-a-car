@@ -7,17 +7,17 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
-// A car is rented for one daypart of a date. Times are local time and only shown to the app, the server doesn't use them.
+/** A car is rented for one daypart of a date. Times are local time and only shown to the app, the server doesn't use them. */
 enum class Daypart(val from: LocalTime, val until: LocalTime) {
     MORNING(LocalTime.of(6, 0), LocalTime.of(12, 0)),
     AFTERNOON(LocalTime.of(12, 0), LocalTime.of(18, 0)),
     EVENING(LocalTime.of(18, 0), LocalTime.MAX),
 }
 
-// A daypart has started from its `from` time on; a started reservation can't be cancelled. `now` is local time.
+/** A daypart has started from its `from` time on; a started reservation can't be cancelled. `now` is local time. */
 fun hasStarted(date: LocalDate, daypart: Daypart, now: LocalDateTime): Boolean = !now.isBefore(date.atTime(daypart.from))
 
-// RESERVED -> COMPLETED when the trip is recorded, RESERVED -> CANCELLED when the renter cancels. Both end states stay as they are.
+/** RESERVED -> COMPLETED when the trip is recorded, RESERVED -> CANCELLED when the renter cancels. Both end states stay as they are. */
 enum class ReservationStatus {
     RESERVED, COMPLETED, CANCELLED;
 

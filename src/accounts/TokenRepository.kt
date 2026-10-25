@@ -33,7 +33,7 @@ internal object Tokens : Table("tokens") {
     override val primaryKey = PrimaryKey(hash)
 }
 
-// An expired token is refused like an unknown one. Expired rows are purged whenever a token is issued.
+/** Login tokens. An expired token is refused like an unknown one. Expired rows are purged whenever a token is issued. */
 class TokenRepository(dataSource: DataSource, private val clock: Clock = Clock.systemUTC()) {
     private val db = Database.connect(dataSource)
 
@@ -42,7 +42,10 @@ class TokenRepository(dataSource: DataSource, private val clock: Clock = Clock.s
         transaction(db) { SchemaUtils.create(Tokens) }
     }
 
-    // A random UUID comes from SecureRandom, so it can't be guessed. The token itself is only returned here, once.
+    /**
+     * Creates a token for the user and returns it; this is the only time it is visible, because only its SHA-256 is stored.
+     * A random UUID comes from SecureRandom, so it can't be guessed.
+     */
     fun issue(userId: Int): String = UUID.randomUUID().toString().also { token ->
         val now = OffsetDateTime.now(clock)
         transaction(db) {

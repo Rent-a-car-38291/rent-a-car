@@ -103,11 +103,13 @@ class TripRepository(dataSource: DataSource) {
         if (e.sqlState == FOREIGN_KEY_VIOLATION) null else throw e
     }
 
-    // Saves the trip and adds the points to the renter in one transaction, so there are never points without a trip.
-    // Returns the trip and the renter's new total, or null when the reservation already has a trip.
-    // With endedAt the trip must have been started: its duration runs from the start to endedAt. Without it the trip must not have been started.
-    // null also means one of those two was not the case, or that the reservation is cancelled. The reservation becomes COMPLETED in the same transaction.
-    // shortcut: a reservation deleted just before the insert also gives null, so the route answers 409 instead of 404.
+    /**
+     * Saves the trip, completes the reservation, raises the car's mileage (capped at MAX_MILEAGE) and adds the points to the renter in one transaction,
+     * so there are never points without a trip. Returns the trip and the renter's new total, or null when the reservation already has a trip.
+     * With endedAt the trip must have been started: its duration runs from the start to endedAt. Without it the trip must not have been started.
+     * null also means one of those two was not the case, or that the reservation is cancelled.
+     * shortcut: a reservation deleted just before the insert also gives null, so the route answers 409 instead of 404.
+     */
     fun record(reservationId: Int, userId: Int, distanceKm: Int, score: Int, points: Int, endedAt: OffsetDateTime? = null): Pair<Trip, Int>? = try {
         transaction(db) {
             if (!lockReserved(reservationId)) return@transaction null
