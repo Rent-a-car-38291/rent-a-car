@@ -59,7 +59,7 @@ internal fun Database.createReservations() {
     }
 }
 
-// NOT_ALLOWED: the reservation is completed or already cancelled, or its trip was started.
+/** NOT_ALLOWED: the reservation is completed or already cancelled, or its trip was started. */
 enum class CancelResult { CANCELLED, GONE, NOT_ALLOWED }
 
 class ReservationRepository(dataSource: DataSource) {
@@ -68,8 +68,10 @@ class ReservationRepository(dataSource: DataSource) {
 
     fun find(id: Int): Reservation? = transaction(db) { Reservations.selectAll().where { Reservations.id eq id }.singleOrNull()?.toReservation() }
 
-    // null when the daypart is taken: the unique index decides, so two requests at once can't both win.
-    // shortcut: a car or user deleted just before the insert also gives null, so the route answers 409 instead of 404 or 401.
+    /**
+     * Null when the daypart is taken: the unique index on active reservations decides, so two requests at once can't both win.
+     * shortcut: a car or user deleted just before the insert also gives null, so the route answers 409 instead of 404 or 401.
+     */
     fun reserve(carId: Int, userId: Int, date: LocalDate, daypart: Daypart): Reservation? = try {
         transaction(db) {
             Reservations.insert {
@@ -83,8 +85,10 @@ class ReservationRepository(dataSource: DataSource) {
         if (e.sqlState == UNIQUE_VIOLATION || e.sqlState == FOREIGN_KEY_VIOLATION) null else throw e
     }
 
-    // The row is kept with status CANCELLED. Starting and ending a trip lock the same row, so a trip that is being started or saved
-    // for this reservation is seen by the checks below, and a cancelled reservation can't get a trip afterwards.
+    /**
+     * Sets the status to CANCELLED and keeps the row. Starting and ending a trip lock the same row, so a trip that is being started or saved
+     * for this reservation is seen by the checks below, and a cancelled reservation can't get a trip afterwards.
+     */
     fun cancel(id: Int): CancelResult = transaction(db) {
         val status = Reservations.select(Reservations.status).where { Reservations.id eq id }.forUpdate().singleOrNull()
             ?.let { ReservationStatus.valueOf(it[Reservations.status]) }

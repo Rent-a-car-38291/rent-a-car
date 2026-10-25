@@ -109,6 +109,7 @@ internal fun Database.createCars() {
     }
 }
 
+/** CarRepository on Postgres with Exposed. Creates the table when it is missing and fills an empty one with SEED_CARS. */
 class PostgresCarRepository(dataSource: DataSource) : CarRepository {
     private val db = Database.connect(dataSource)
 
@@ -129,8 +130,10 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
         is FCEVCar -> TypeColumns("FCEV", null, car.tankCapacityKg, car.consumptionKgPer100Km)
     }
 
-    // null when the car doesn't exist (anymore). The owner, type, id and status of a car never change here,
-    // so an update can't undo a change made meanwhile.
+    /**
+     * Null when the car doesn't exist (anymore). The owner, type, id and status of a car never change here,
+     * so an update can't undo a change made meanwhile. Throws LicensePlateTakenException when another car has the plate.
+     */
     override fun updateCar(car: Car): Car? {
         val columns = typeColumns(car)
         return try {
@@ -195,7 +198,7 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
         }.resultedValues!!.single().toCar()
     }
 
-    // The unique index on license_plate decides, so two requests at once can't both win.
+    /** The unique index on license_plate decides, so two requests at once can't both win; the loser gets LicensePlateTakenException. */
     override fun addCar(car: Car): Car = try {
         transaction(db) { insertCar(car) }
     } catch (e: ExposedSQLException) {
@@ -235,7 +238,7 @@ class PostgresCarRepository(dataSource: DataSource) : CarRepository {
 
     override fun findCar(id: Int): Car? = transaction(db) { Cars.selectAll().where { Cars.id eq id }.singleOrNull()?.toCar() }
 
-    // The new last service is the mileage in the same statement, so a trip ending at the same time can't be missed. False when the car doesn't exist (anymore).
+    /** The new last service is the mileage in the same statement, so a trip ending at the same time can't be missed. False when the car doesn't exist (anymore). */
     override fun markServiced(carId: Int): Boolean =
         transaction(db) { Cars.update({ Cars.id eq carId }) { it[lastServiceKm] = mileage } > 0 }
 
