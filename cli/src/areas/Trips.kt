@@ -21,7 +21,7 @@ private val tripHints = mapOf(
 val tripsMenu = Menu("Trips", items = listOf(
     MenuItem("Start my trip") { ctx ->
         val id = ctx.pickReservation()
-        ctx.call("POST", "/reservations/$id/trip/start", hints = tripHints)?.jsonObject?.let { ctx.io.say("Trip started at ${it.str("startedAt")}. Drive safely, then end it here.") }
+        ctx.call("POST", "/reservations/$id/trip/start", hints = tripHints)?.jsonObject?.let { ctx.io.say("Trip started at ${localTime(it.str("startedAt"))}. Drive safely, then end it here.") }
     },
     MenuItem("End my trip") { ctx ->
         val id = ctx.pickReservation()

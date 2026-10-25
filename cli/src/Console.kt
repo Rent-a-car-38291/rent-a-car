@@ -107,8 +107,15 @@ class Console(private val input: BufferedReader, val out: PrintStream) {
     }
 }
 
+private val SERVER_ZONE = java.time.ZoneId.of("Europe/Amsterdam")
+
 /** The server decides what "today" is in this zone, so the client must too. */
-fun today(): LocalDate = LocalDate.now(java.time.ZoneId.of("Europe/Amsterdam"))
+fun today(): LocalDate = LocalDate.now(SERVER_ZONE)
+
+/** A moment from the server (UTC, like 2026-10-25T15:21:04.8Z) as the local time in the server's zone, like 16:21; unreadable text stays as it is. */
+fun localTime(instant: String): String = runCatching {
+    java.time.format.DateTimeFormatter.ofPattern("HH:mm").format(java.time.Instant.parse(instant).atZone(SERVER_ZONE))
+}.getOrDefault(instant)
 
 fun parseInt(raw: String, min: Int, max: Int): Pair<Int?, String?> {
     val n = raw.toIntOrNull() ?: return null to "Please enter a whole number."
