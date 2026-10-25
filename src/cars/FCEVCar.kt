@@ -2,6 +2,7 @@ package com.example.cars
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/** A hydrogen car. Capacity is the tank in kg, consumption is kg of hydrogen per 100 km, priced per kg. */
 @Serializable
 @SerialName("FCEV")
 class FCEVCar (

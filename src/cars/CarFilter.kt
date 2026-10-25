@@ -18,7 +18,7 @@ private fun distanceKm(a: Location, lat: Double, lon: Double): Double {
     return 2 * EARTH_RADIUS_KM * asin(sqrt(h))
 }
 
-// Km you can drive on a full tank or battery; a car that uses nothing per 100 km has no limit.
+/** Km you can drive on a full tank or battery; a car that uses nothing per 100 km has no limit. */
 val Car.rangeKm: Double get() {
     val (capacity, consumption) = when (this) {
         is BEVCar -> batteryCapacityKwh to consumptionKwhPer100Km
@@ -28,6 +28,7 @@ val Car.rangeKm: Double get() {
     return if (consumption == 0.0) Double.POSITIVE_INFINITY else capacity * 100 / consumption // multiply first: 57 / 100 * 100 is 56.99999999999999
 }
 
+/** The values `sort` accepts, each the number a car is ordered by; costPerKm uses EnergyPrices.STANDARD. */
 private val sortKeys: Map<String, (Car) -> Double> = mapOf(
     "rate" to { it.rate },
     "range" to { it.rangeKm },
@@ -36,9 +37,11 @@ private val sortKeys: Map<String, (Car) -> Double> = mapOf(
 
 private inline fun <reified E : Enum<E>> exact(value: String?): E? = enumValues<E>().find { it.name == value }
 
-// Filters by the type, bodyStyle, transmission, fuelType, minRange, maxRate, lat, lon and maxDistanceKm query parameters
-// and sorts by `sort` (rate, range or costPerKm, a leading - for descending); null when one is invalid.
-// With a location the result is nearest first and `sort` is only validated.
+/**
+ * Filters by the type, bodyStyle, transmission, fuelType, minRange, maxRate, lat, lon and maxDistanceKm query parameters
+ * and sorts by `sort` (rate, range or costPerKm, a leading - for descending); null when one is invalid.
+ * With a location the result is nearest first and `sort` is only validated.
+ */
 fun filterCars(cars: List<Car>, query: Parameters): List<Car>? {
     val type = query["type"]?.let { exact<CarType>(it) ?: return null }
     val bodyStyle = query["bodyStyle"]?.let { exact<BodyStyle>(it) ?: return null }
