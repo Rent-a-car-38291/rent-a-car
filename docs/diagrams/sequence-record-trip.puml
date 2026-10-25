@@ -33,7 +33,7 @@ else
       Route -> Route : score = calculateScore(...)\npoints = bonusPoints(distanceKm, score)
       Route -> Repo : record(id, user.id, distanceKm, score, points)
       Repo -> Db : lock the reservation, INSERT trip (one transaction with the\nUPDATE reservations SET status = COMPLETED,\nUPDATE cars SET mileage += distanceKm and\nUPDATE users SET bonus_points += points)
-      alt reservation already has a trip,\nor it is cancelled
+      alt reservation already has a trip, it is cancelled,\nor its trip was started with /trip/start
         Db --> Repo : conflict, nothing inserted
         Repo --> Route : null
         Route --> Client : 409 Conflict

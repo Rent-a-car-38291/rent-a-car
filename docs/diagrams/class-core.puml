@@ -27,7 +27,7 @@ class FCEVCar {
   + tankCapacityKg : Double
   + costPerKm(prices) : Double
 }
-class Location <<data>> {
+class Location {
   + latitude : Double
   + longitude : Double
 }
