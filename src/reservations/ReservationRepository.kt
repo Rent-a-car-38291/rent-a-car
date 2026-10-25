@@ -3,6 +3,7 @@ package com.example.reservations
 import com.example.accounts.Users
 import com.example.cars.Cars
 import com.example.cars.createCars
+import com.example.trips.TripStarts
 import com.example.trips.Trips
 import com.example.trips.createTrips
 import org.jetbrains.exposed.v1.core.ReferenceOption
@@ -72,12 +73,12 @@ class ReservationRepository(dataSource: DataSource) {
         if (e.sqlState == UNIQUE_VIOLATION || e.sqlState == FOREIGN_KEY_VIOLATION) null else throw e
     }
 
-    // The row lock waits for a trip that is being saved for this reservation (its foreign key check locks the row too),
-    // so the trip check below sees it and a cancel can never delete a trip through the cascade.
+    // The row lock waits for a trip that is being saved or started for this reservation (its foreign key check locks the row too),
+    // so the check below sees it and a cancel can never delete a trip or its start through the cascade.
     fun cancel(id: Int): CancelResult = transaction(db) {
         if (Reservations.selectAll().where { Reservations.id eq id }.forUpdate().empty()) {
             CancelResult.GONE
-        } else if (!Trips.selectAll().where { Trips.reservationId eq id }.empty()) {
+        } else if (!Trips.selectAll().where { Trips.reservationId eq id }.empty() || !TripStarts.selectAll().where { TripStarts.reservationId eq id }.empty()) {
             CancelResult.HAS_TRIP
         } else {
             Reservations.deleteWhere { Reservations.id eq id }
