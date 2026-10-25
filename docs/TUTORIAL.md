@@ -104,7 +104,7 @@ docker compose up -d        # daarna de server opnieuw starten
 - **Enter** neemt de standaardwaarde tussen de `[ ]`, of slaat een optioneel veld over (`Enter to skip`).
 - **Auto's kies je uit een lijst**: je typt het nummer van de regel. Het nummer van de regel is niet altijd het id van de auto: de regel zegt `#21 Tesla Model Y`. Bij meer dan 20 auto's staat onderaan `More cars...`.
 - **Lange lijsten** worden per pagina getoond: `Showing 20 of 22.` en `Show the next page? (y/N)`.
-- **Id's in deze tutorial** (`#14`, `reservation #7`) kunnen bij jou anders zijn: mislukte pogingen (bijvoorbeeld een kenteken dat al bestaat) gebruiken ook een nummer. De client toont altijd het id dat je nodig hebt.
+- **Id's in deze tutorial** (`#14`, `#21`, `reservation #7`) kunnen bij jou anders zijn: mislukte pogingen (bijvoorbeeld een kenteken dat al bestaat) en verwijderde auto's gebruiken ook een nummer, dus bij jou is het nummer vaak lager of anders. De client toont altijd het id dat je nodig hebt; neem dat over.
 - **Het account-id**: de server heeft geen "wie ben ik". Na *Register* kent de client je id. Na *Log in* vraagt hij het één keer, bij de eerste actie die het nodig heeft (`Your account id (shown when you registered)`). Onthoud dus het id dat je bij het registreren ziet.
 
 ### De menu's op een rij
@@ -150,7 +150,7 @@ Hieronder schrijf ik een keuze als `Cars › Offer my car` (menu, dan item).
 | Fuel | `1` | **alleen bij ICE**: 1 Petrol, 2 Diesel, 3 LPG |
 | Tank or battery size | `78` | kWh (BEV), liters (ICE) of kg (FCEV) |
 | Consumption per 100 km | `17.5` | in dezelfde eenheid |
-| Purchase price / Insurance / Road tax / Maintenance | `45000`, `900`, `0`, `600` | per jaar, voor de TCO; Enter slaat een bedrag over (0) |
+| Purchase price / Insurance / Road tax / Maintenance | `45000`, `900`, `0`, `600` | voor de TCO: de aankoopprijs is eenmalig (de server verdeelt hem over 10 jaar), de rest is per jaar; Enter slaat een bedrag over (0) |
 
 ---
 
@@ -236,7 +236,7 @@ Ga terug (`0`) naar het hoofdmenu en kies `2` (Costs).
   currency    EUR
 ```
 
-Dat is `120 × 0,0507 + 55` (energiekosten plus huurtarief).
+Dat is `120 × 0,05075 = 6,09` energiekosten plus het huurtarief van 55. (`EUR 0.0507 per km` hierboven is 0,05075 afgerond op vier decimalen.)
 
 **Compare car types** (afstand `100`):
 
@@ -565,7 +565,7 @@ Trip started at 16:35. Drive safely, then end it here.
 (De tijd is Nederlandse tijd.) Start je nog een keer:
 
 ```
-! Not possible now: the reservation has to be on today or earlier, and a trip can be started and ended once.
+! A trip can only be started on the day of the reservation (Dutch date), and only once.
 ```
 
 **Kies:** `Trips › End my trip`, reservering `#1`. Distance `120`, Hard accelerations `2`, Hard brakes `1`:
@@ -578,7 +578,7 @@ Trip started at 16:35. Drive safely, then end it here.
   bonusPoints           105
 ```
 
-De server rekent de score uit: 100 punten, min 5 per harde actie per 100 km (3 acties op 120 km geeft 88). De bonuspunten zijn afstand × score ÷ 100, naar beneden afgerond (120 × 0,88 = 105). Nog een keer beëindigen: `! Start the trip first, and a trip can only be ended once.`
+De server rekent de score uit: 100 punten, min 5 per harde actie per 100 km (3 acties op 120 km geeft 87,5, afgerond op 88). De bonuspunten zijn afstand × score ÷ 100, naar beneden afgerond (120 × 0,88 = 105). Nog een keer beëindigen: `! Start the trip first, and a trip can only be ended once.`
 
 ### D8 ✅ Een rit in één keer opslaan
 
@@ -789,19 +789,19 @@ Log in als Anna (organisaties kent de client niet bij inloggen: je typt het id `
 |---|---|
 | `Change a member's role`: organisatie `1`, account `1` (jezelf), rol `2` (MEMBER) | `! The last admin cannot be demoted.` |
 | `Remove a member, or leave`: organisatie `1`, account `1` | `! The last admin cannot leave.` |
-| `Account › Delete my account`, `y` | `! You are the last admin of an organization. Make someone else admin first.` |
+| `Account › Delete my account`, `y`, daarna het account-id `1` | `! You are the last admin of an organization. Make someone else admin first.` |
 
 Maak Ben beheerder: `Change a member's role`, organisatie `1`, account `2`, rol `1` (ADMIN):
 
 ```
-Account 2 is now ADMIN
+Account 2 is now ADMIN.
 ```
 
 Maak een nieuwe uitnodiging voor Carla (`Invite someone`, organisatie `1`) en bewaar de code. Log uit.
 
 ### F4 ✅ Carla: buitenstaander, daarna lid
 
-Registreer Carla (`carla@example.com`, `supersecret`, id 3). Als buitenstaander:
+Registreer `Carla Bakker` (`carla@example.com`, `supersecret`; id 3). Als buitenstaander:
 
 | Keuze | Melding |
 |---|---|
@@ -862,7 +862,7 @@ De zesde keer, nu mét het juiste wachtwoord:
 ! Too many failed login attempts for that email. Try again in about 15 minutes.
 ```
 
-De server stuurt `429 Too Many Requests` met een `Retry-After`-header (900 seconden). Een geslaagde login zet de teller terug op nul. De teller staat in het geheugen van de server: een herstart van de server maakt de blokkade ongedaan, zo kun je Dirk weer gebruiken.
+De server stuurt `429 Too Many Requests` met een `Retry-After`-header (900 seconden als je de pogingen snel doet; typ je ze langzaam, dan zie je 14 of 13 minuten, want de 15 minuten lopen vanaf de eerste poging). Een geslaagde login zet de teller terug op nul. De teller staat in het geheugen van de server: een herstart van de server maakt de blokkade ongedaan, zo kun je Dirk weer gebruiken.
 
 ### G3 ✅ Een inlog overleeft een herstart van de server
 
@@ -892,7 +892,7 @@ Je staat terug op het startscherm.
 
 ### G5 ✅ De server is niet bereikbaar
 
-Start de client met een adres waar niets draait: `./kotlin run -m cli -- http://localhost:9999` (of `RENT_A_CAR_URL=http://localhost:9999 ./kotlin run -m cli`). Kies `3`, `1`, `1` en drie keer Enter:
+Start de client met een adres waar niets draait: `./kotlin run -m cli -- http://localhost:9999` (of `RENT_A_CAR_URL=http://localhost:9999 ./kotlin run -m cli`). Kies `3`, `1`, `1` en druk negen keer Enter (de filtervragen):
 
 ```
 ! Cannot reach the server at http://localhost:9999. Is it running?
@@ -953,7 +953,7 @@ Met `y` zie je Carla Bakker met 60 punten.
 
 ## Deel I: zonder de console (curl en Swagger)
 
-De console-app dekt alles wat de API biedt, behalve dat er geen lijst van de leden van een organisatie bestaat en dat de console het fleetrapport als tabel toont. Voor de rest zijn dit handige alternatieven.
+De console-app dekt alles wat de API biedt, behalve het CSV-formaat van het fleetrapport en het ophalen van een foto; de API heeft geen lijst van de leden van een organisatie. Dit zijn handige alternatieven.
 
 ### Swagger UI ✅
 
@@ -994,14 +994,14 @@ curl -s -X POST localhost:8080/cars/<id van een auto van jou>/images -H "Authori
 
 ### Veel auto's tegelijk, om "More cars..." te zien ✅
 
-De lijsten tonen 20 auto's per pagina. Met zeven extra auto's (22 in totaal) zie je `Showing 20 of 22.` en de optie `More cars...`:
+De lijsten tonen 20 auto's per pagina. Met zeven extra auto's zie je `Showing 20 of 21.` als je deel I na deel H doet (13 voorbeeldauto's plus de organisatieauto plus zeven) en de optie `More cars...`:
 
 ```bash
 for i in 1 2 3 4 5 6 7; do
   curl -s -o /dev/null -X POST localhost:8080/cars -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
     -d "{\"type\":\"BEV\",\"brand\":\"Demo $i\",\"licensePlate\":\"DEMO-0$i\",\"mileage\":$i,\"rate\":20,\"location\":{\"latitude\":52.0,\"longitude\":5.0},\"doors\":5,\"bodyStyle\":\"Hatchback\",\"modelYear\":2024,\"power\":100,\"transmission\":\"Automatic\",\"color\":\"Blue\",\"capacity\":50,\"consumption\":15}"
 done
-curl -s -i 'localhost:8080/cars?limit=1' | grep -i x-total-count    # X-Total-Count: 22
+curl -s -i 'localhost:8080/cars?limit=1' | grep -i x-total-count    # X-Total-Count: 21
 ```
 
 ### Het foutformaat ✅
@@ -1028,10 +1028,10 @@ De volledige lijst van endpoints staat in de [README](../README.md#api) en in `r
 | `ERROR: There are several matching application modules in the project. Please specify one with the '--module' option.` | Je liet `-m` weg. Gebruik `-m rent-a-car` voor de server en `-m cli` voor de client. `./kotlin show modules` toont de namen; de servermodule heet naar de map waarin je clonet. |
 | `Cannot reach the server at ...` in de client | De server draait niet, of op een ander adres. Start de server in terminal 1 en controleer `curl localhost:8080/cars`. |
 | De eerste `./kotlin ...` duurt lang | Normaal: de toolchain en de JDK worden de eerste keer gedownload. |
-| Elke melding is `! Your login has expired ...` | Je token is ingetrokken (bijvoorbeeld door een wachtwoordwijziging elders). Je staat dan al op het startscherm: log opnieuw in. |
+| `! Your login has expired or was ended elsewhere. Log in again.` | Je token is ingetrokken (bijvoorbeeld door een wachtwoordwijziging elders) of verlopen. De client brengt je terug naar het startscherm: log opnieuw in. |
 | `Too many failed login attempts` | Wacht de genoemde tijd, of herstart de server (de teller staat in het geheugen). |
 | Een reservering voor vandaag annuleren geeft 409 | Dat klopt als het dagdeel al begonnen is. Gebruik een datum van morgen, of begrijp dat een reservering met een rit nooit geannuleerd kan worden. |
-| Een rit starten geeft 409 | Een rit kan alleen bij een reservering van **vandaag** (Nederlandse datum) of eerder, en één keer. |
+| Een rit starten geeft 409 | Starten kan alleen op de dag van de reservering zelf (Nederlandse datum) en één keer. Een rit achteraf opslaan (`Record a finished trip in one go`) kan voor vandaag of eerder. |
 | Gisteren of vandaag lijkt te verschillen rond middernacht | De server gebruikt de Nederlandse datum. Neem bij *Date* gewoon de standaard met Enter. |
 | De foto wordt niet geaccepteerd | Alleen echte JPEG of PNG tot 5 MB, maximaal 10 per auto. De client controleert dat vooraf en zegt wat er mis is. |
 
