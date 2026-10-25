@@ -187,4 +187,20 @@ class MenuTest {
         assertEquals("100.0", api.queries.single()["distanceKm"])
         assertTrue(Regex("ICE\\s+3\\s+13.0\\s+13.8").containsMatchIn(output), output)
     }
+
+    @Test
+    fun `a car can be marked as serviced and a refusal shows a friendly message`() {
+        val api = FakeApi(login, "GET /cars" to cars, "PUT /cars/1/service" to status(204), "POST /logout" to status(204))
+
+        // log in, Cars (1), mark as serviced (7), the first car, back out of every menu
+        val output = runScript(api, "2", "sam@example.com", "secret123", "1", "7", "1", "0", "0")
+
+        assertTrue("PUT /cars/1/service" in api.calls)
+        assertTrue("marked as serviced" in output)
+
+        val refused = FakeApi(login, "GET /cars" to cars, "PUT /cars/1/service" to status(403), "POST /logout" to status(204))
+        val refusedOutput = runScript(refused, "2", "sam@example.com", "secret123", "1", "7", "1", "0", "0")
+        assertFalse("marked as serviced" in refusedOutput)
+        assertTrue("PUT /cars/1/service" in refused.calls)
+    }
 }

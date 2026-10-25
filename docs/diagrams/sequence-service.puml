@@ -1,0 +1,48 @@
+@startuml
+title PUT /cars/{id}/service and the mileage of trips
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "CarRoutes.kt" as Route
+participant "CarRepository" as Repo
+participant "TripRepository" as Trips
+
+Client -> Auth : PUT /cars/{id}/service
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt id is not a number
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Repo : findCar(id)
+    Repo --> Route : Car?
+    alt unknown id
+      Route --> Client : 404 Not Found
+    else canManage(user, car) is false
+      Route --> Client : 403 Forbidden
+    else
+      Route -> Repo : markServiced(id)\nUPDATE cars SET last_service_km = mileage
+      alt the car was deleted meanwhile
+        Repo --> Route : false
+        Route --> Client : 404 Not Found
+      else
+        Repo --> Route : true
+        Route --> Client : 204 No Content
+      end
+    end
+  end
+end
+
+== A recorded trip raises the mileage ==
+
+Client -> Trips : POST /reservations/{id}/trip (see sequence-record-trip)
+Trips -> Trips : in the same transaction:\nUPDATE cars SET mileage = mileage + distanceKm
+
+== GET /cars/{id} ==
+
+Client -> Route : GET /cars/{id}
+Route --> Client : 200 OK\n{..., mileage, lastServiceKm, serviceDue: mileage - lastServiceKm > 15000}
+
+@enduml

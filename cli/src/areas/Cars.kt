@@ -59,7 +59,10 @@ val carsMenu = Menu("Cars", needsLogin = false, items = listOf(
         val current = ctx.call("GET", "/cars/$id")?.jsonObject ?: return@MenuItem
         ctx.io.say("Press Enter to keep the current value.")
         val body = carForm(ctx.io, current)
-        ctx.call("PUT", "/cars/$id", body = body, hints = mapOf(409 to "Another car already has this license plate."))?.let {
+        ctx.call("PUT", "/cars/$id", body = body, hints = mapOf(
+            400 to "The server did not accept the values. The mileage cannot be lower than the mileage at the last service.",
+            409 to "Another car already has this license plate.",
+        ))?.let {
             ctx.io.say("Car #$id updated.")
         }
     },
@@ -67,6 +70,10 @@ val carsMenu = Menu("Cars", needsLogin = false, items = listOf(
         val id = ctx.pickCar() ?: return@MenuItem
         if (!ctx.io.confirm("Delete car #$id for good?")) return@MenuItem
         ctx.call("DELETE", "/cars/$id")?.let { ctx.io.say("Car #$id deleted.") }
+    },
+    MenuItem("Mark a car as serviced (service done today)") { ctx ->
+        val id = ctx.pickCar() ?: return@MenuItem
+        ctx.call("PUT", "/cars/$id/service")?.let { ctx.io.say("Car #$id is marked as serviced at its current mileage.") }
     },
 ))
 

@@ -35,6 +35,7 @@ package com.example.cars <<Folder>> {
     + brand : String
     + licensePlate : String
     + mileage : Int
+    + lastServiceKm : Int
     + status : CarStatus
     + rate : Double
     + location : Location
