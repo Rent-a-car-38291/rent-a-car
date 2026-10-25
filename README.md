@@ -80,6 +80,8 @@ The defaults match `docker-compose.yml` and need no setup for local development.
 
 ## Console client
 
+A step-by-step tutorial that covers every feature with the server and the console client running is in [`docs/TUTORIAL.md`](docs/TUTORIAL.md) (in Dutch).
+
 `cli/` is a small client that talks to the running server over HTTP, so the whole application can be demoed without a frontend. It is a separate Amper module next to the server (the server is the root module, `project.yaml` adds the client): that keeps the client's code out of the server, needs no new dependency (it uses the JDK's HTTP client and kotlinx.serialization, which the project already has), and lets `./kotlin test` and `./kotlin build` cover both. The cost is that `./kotlin run` now needs `-m <module>`.
 
 ```bash
