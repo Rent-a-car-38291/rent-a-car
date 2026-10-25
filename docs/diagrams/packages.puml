@@ -1,0 +1,64 @@
+@startuml
+' Packages of src/ and the imports between them, taken from the import statements of the code.
+skinparam componentStyle uml2
+skinparam nodesep 60
+skinparam ranksep 70
+hide empty members
+set separator none
+
+package "org.jetbrains.amper.ktor" as Root {
+  class "Application.kt\nmodule(): builds the repositories\nand calls every configureX" as App
+}
+
+package "com.example" as Shared {
+  class "Errors.kt, Paging.kt,\nSerialization.kt, Routing.kt" as SharedFiles
+}
+
+package "com.example.accounts" as Accounts {
+  class "AccountRoutes, Security\nUser, UserRepository\nTokenRepository, LoginLimiter" as AccountsC
+}
+package "com.example.cars" as Cars {
+  class "Car (sealed): ICECar, BEVCar, FCEVCar\nCarRepository <<interface>>\nPostgresCarRepository, CarRoutes\nCarFilter, Quote, Compare" as CarsC
+}
+package "com.example.reservations" as Reservations {
+  class "ReservationRoutes\nReservationRepository\nReservation, Daypart, FreeSlot" as ReservationsC
+}
+package "com.example.trips" as Trips {
+  class "TripRoutes, TripRepository\nTrip (score), DrivingStats\nLeaderboard, CarUsage" as TripsC
+}
+package "com.example.ratings" as Ratings {
+  class "RatingRoutes\nRatingRepository, Rating" as RatingsC
+}
+package "com.example.organizations" as Organizations {
+  class "OrganizationRoutes\nOrganizationRepository\nReport" as OrganizationsC
+}
+package "com.example.images" as Images {
+  class "ImageRoutes\nImageRepository, Image" as ImagesC
+}
+package "com.example.database" as Database {
+  class "connectDatabase()\n(HikariCP data source)" as DbC
+}
+
+
+Cars <..> Images
+Cars <..> Organizations
+Cars <..> Reservations
+Cars <..> Ratings
+Cars ..> Accounts
+Accounts <..> Organizations
+Reservations <..> Trips
+Organizations <..> Trips
+Reservations ..> Accounts
+Trips ..> Accounts
+Trips ..> Cars
+Ratings ..> Reservations
+Ratings ..> Trips
+Images ..> Accounts
+Images ..> Organizations
+
+note bottom of Root
+  Application.kt imports every package and wires them together (arrows left out).
+  Every feature package also uses com.example (ErrorResponse, paging, request parsing).
+  An arrow with two heads means both packages import each other.
+end note
+@enduml

@@ -1,0 +1,50 @@
+@startuml
+' The architecturally relevant use cases: the ones that decide the design (cars of three types, availability per daypart, trips and bonus points, organizations).
+' use-cases.puml has every use case.
+left to right direction
+skinparam nodesep 30
+skinparam ranksep 80
+
+actor Visitor
+actor "Renter" as Renter
+actor "Owner" as Owner
+actor "Organization\nmember" as Member
+actor "Organization\nadmin" as Admin
+Visitor <|-- Renter
+Visitor <|-- Owner
+Visitor <|-- Member
+Member <|-- Admin
+
+rectangle "Rent-a-car" {
+  usecase "Register and log in" as Reg
+  usecase "Search and filter cars" as Search
+  usecase "See cost per km,\nquote and comparison" as Costs
+  usecase "View availability" as Avail
+  usecase "Reserve a car\nfor a daypart" as Reserve
+  usecase "Cancel a reservation" as Cancel
+  usecase "Record a trip and\nearn bonus points" as Trip
+  usecase "Rate a car" as Rate
+  usecase "Offer, update and\nremove a car" as Offer
+  usecase "Add a photo" as Photo
+  usecase "View TCO" as Tco
+  usecase "Create an organization" as OrgCreate
+  usecase "Invite members and\nchange roles" as Org
+  usecase "View organization report" as Report
+}
+
+Visitor --> Reg
+Visitor --> Search
+Visitor --> Costs
+Visitor --> Avail
+Renter --> Reserve
+Renter --> Cancel
+Renter --> Trip
+Renter --> Rate
+Owner --> Offer
+Owner --> Photo
+Owner --> Tco
+Owner --> OrgCreate
+Admin --> Org
+Member --> Report
+Reserve .> Avail : <<include>>
+@enduml

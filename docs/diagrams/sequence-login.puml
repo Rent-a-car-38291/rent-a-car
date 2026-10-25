@@ -1,6 +1,8 @@
 @startuml
 title POST /login
 autonumber
+skinparam maxMessageSize 170
+skinparam wrapWidth 200
 
 actor Client
 participant "AccountRoutes.kt" as Route
