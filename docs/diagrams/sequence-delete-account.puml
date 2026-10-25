@@ -11,11 +11,13 @@ database PostgreSQL
 
 Client -> Auth : DELETE /accounts/{id}\nAuthorization: Bearer <token>
 Auth -> TokenRepository : userId(token)
+TokenRepository -> PostgreSQL : SELECT user_id FROM tokens\nWHERE token_hash = sha256(token)\nAND expires_at > now()
+PostgreSQL --> TokenRepository : userId?
 TokenRepository --> Auth : userId?
 Auth -> UserRepository : find(userId)
 UserRepository -> PostgreSQL : SELECT ... WHERE id = ?
 UserRepository --> Auth : User?
-break no token, unknown token or user already deleted
+break no token, unknown or expired token or user already deleted
   Auth --> Client : 401 Unauthorized
 end
 Auth -> Route : principal = User
@@ -36,6 +38,7 @@ else own account
   Route -> UserRepository : delete(id)
   UserRepository -> PostgreSQL : DELETE FROM users WHERE id = ?
   Route -> TokenRepository : revokeAll(id)
+TokenRepository -> PostgreSQL : DELETE FROM tokens WHERE user_id = ?
   Route --> Client : 204 No Content
 end
 

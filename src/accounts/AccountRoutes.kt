@@ -17,7 +17,7 @@ private fun isValid(name: String, email: String) = name.isNotEmpty() && EMAIL_PA
 
 private fun ApplicationCall.bearerToken() = (request.parseAuthorizationHeader() as? HttpAuthHeader.Single)?.blob
 
-fun Application.configureAccounts(users: UserRepository, organizations: OrganizationRepository) {
+fun Application.configureAccounts(users: UserRepository, organizations: OrganizationRepository, tokens: TokenRepository) {
     routing {
         post("/accounts") {
             val request = call.receive<RegisterRequest>() // Ktor answers unreadable bodies with 400 or 415
@@ -42,13 +42,13 @@ fun Application.configureAccounts(users: UserRepository, organizations: Organiza
                 call.respond(HttpStatusCode.Unauthorized)
                 return@post
             }
-            call.respond(mapOf("token" to TokenRepository.issue(user.id)))
+            call.respond(mapOf("token" to tokens.issue(user.id)))
         }
 
         authenticate {
             post("/logout") {
                 // Only the token of this request: the user's other logins keep working.
-                call.bearerToken()?.let(TokenRepository::revoke)
+                call.bearerToken()?.let(tokens::revoke)
                 call.respond(HttpStatusCode.NoContent)
             }
 
@@ -87,7 +87,7 @@ fun Application.configureAccounts(users: UserRepository, organizations: Organiza
                             return@put
                         }
                         // shortcut: a login that checked the old password just before the update can still get a token after this, a password version in the token would close it.
-                        TokenRepository.revokeAll(id, except = call.bearerToken())
+                        tokens.revokeAll(id, except = call.bearerToken())
                         call.respond(HttpStatusCode.NoContent)
                     }
                 }
@@ -101,7 +101,7 @@ fun Application.configureAccounts(users: UserRepository, organizations: Organiza
                     organizations.isLastAdmin(id) -> HttpStatusCode.Conflict // an organization always keeps an admin
                     else -> {
                         users.delete(id)
-                        TokenRepository.revokeAll(id)
+                        tokens.revokeAll(id)
                         HttpStatusCode.NoContent
                     }
                 }

@@ -3,6 +3,7 @@ package com.example.cars
 import com.example.accounts.UserRepository
 import com.example.accounts.configureAccounts
 import com.example.accounts.configureSecurity
+import com.example.accounts.TokenRepository
 import com.example.configureSerialization
 import com.example.database.TestDatabase
 import com.example.database.useTestDatabase
@@ -61,8 +62,8 @@ class PutCarRoutesTest {
         application {
             configureSerialization()
             val users = UserRepository(TestDatabase.dataSource)
-            configureSecurity(users)
-            configureAccounts(users, OrganizationRepository(TestDatabase.dataSource))
+            configureSecurity(users, TokenRepository(TestDatabase.dataSource))
+            configureAccounts(users, OrganizationRepository(TestDatabase.dataSource), TokenRepository(TestDatabase.dataSource))
             configureCars(repository, OrganizationRepository(TestDatabase.dataSource))
         }
         val (ownerId, token) = client.signUp("jan@example.com")

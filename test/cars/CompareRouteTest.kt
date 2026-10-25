@@ -2,6 +2,7 @@ package com.example.cars
 
 import com.example.accounts.UserRepository
 import com.example.accounts.configureSecurity
+import com.example.accounts.TokenRepository
 import com.example.configureSerialization
 import com.example.database.TestDatabase
 import com.example.database.useTestDatabase
@@ -24,7 +25,7 @@ class CompareRouteTest {
         useTestDatabase()
         application {
             configureSerialization()
-            configureSecurity(UserRepository(TestDatabase.dataSource))
+            configureSecurity(UserRepository(TestDatabase.dataSource), TokenRepository(TestDatabase.dataSource))
             configureCars(repository, OrganizationRepository(TestDatabase.dataSource))
         }
         block()
