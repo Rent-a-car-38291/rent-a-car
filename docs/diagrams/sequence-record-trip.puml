@@ -1,6 +1,8 @@
 @startuml
 title POST /reservations/{id}/trip
 autonumber
+skinparam maxMessageSize 170
+skinparam wrapWidth 200
 
 actor Client
 participant "Ktor\n(bearer authentication)" as Auth
@@ -30,7 +32,7 @@ else
     else
       Route -> Route : score = calculateScore(...)\npoints = bonusPoints(distanceKm, score)
       Route -> Repo : record(id, user.id, distanceKm, score, points)
-      Repo -> Db : lock the reservation, INSERT trip (one transaction with the\nUPDATE reservations SET status = COMPLETED and\nUPDATE users SET bonus_points += points)
+      Repo -> Db : lock the reservation, INSERT trip (one transaction with the\nUPDATE reservations SET status = COMPLETED,\nUPDATE cars SET mileage += distanceKm and\nUPDATE users SET bonus_points += points)
       alt reservation already has a trip,\nor it is cancelled
         Db --> Repo : conflict, nothing inserted
         Repo --> Route : null
