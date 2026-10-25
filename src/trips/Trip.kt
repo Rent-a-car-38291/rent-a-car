@@ -25,7 +25,7 @@ data class TripResponse(val trip: Trip, val pointsAwarded: Int, val bonusPoints:
 
 /**
  * 100 for a calm drive, 5 less for every hard acceleration or brake per 100 km, never below 0.
- * A trip of 0 km proves nothing, so it scores 0.
+ * A trip of 0 km proves nothing, so it scores 0. The result is rounded to the nearest whole number.
  */
 fun calculateScore(distanceKm: Int, hardAccelerations: Int, hardBrakes: Int): Int {
     if (distanceKm == 0) return 0

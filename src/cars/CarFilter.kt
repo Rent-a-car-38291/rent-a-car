@@ -39,7 +39,7 @@ private inline fun <reified E : Enum<E>> exact(value: String?): E? = enumValues<
 
 /**
  * Filters by the type, bodyStyle, transmission, fuelType, minRange, maxRate, lat, lon and maxDistanceKm query parameters
- * and sorts by `sort` (rate, range or costPerKm, a leading - for descending); null when one is invalid.
+ * and sorts by `sort` (rate, range or costPerKm, a leading - for descending); null when one is invalid, also when only one of lat and lon is given or maxDistanceKm has no location.
  * With a location the result is nearest first and `sort` is only validated.
  */
 fun filterCars(cars: List<Car>, query: Parameters): List<Car>? {

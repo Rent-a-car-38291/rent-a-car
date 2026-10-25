@@ -26,7 +26,7 @@ class LoginLimiter(
 
     /**
      * Checks the lock and counts this attempt in one step, so parallel requests can't all pass the check before any of them
-     * is counted. null means go ahead and check the password; the attempt stays counted until reset() on a correct password.
+     * is counted. null means go ahead and check the password; the attempt stays counted until reset() on a correct password or until the window passes.
      */
     @Synchronized
     fun tryAcquire(email: String): Long? {

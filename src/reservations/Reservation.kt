@@ -7,7 +7,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
-/** A car is rented for one daypart of a date. Times are local time and only shown to the app, the server doesn't use them. */
+/** A car is rented for one daypart of a date. Times are local time; the server only uses `from` (see hasStarted), `until` is only shown to the app. */
 enum class Daypart(val from: LocalTime, val until: LocalTime) {
     MORNING(LocalTime.of(6, 0), LocalTime.of(12, 0)),
     AFTERNOON(LocalTime.of(12, 0), LocalTime.of(18, 0)),
