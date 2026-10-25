@@ -1,0 +1,884 @@
+# Rent my car: the REST API as user flows (IntelliJ HTTP Client).
+#
+# Start the server first (README: Getting started), pick the environment `dev` in the top right
+# of the editor (it comes from http-client.env.json) and use "Run all requests in file", or run
+# the requests one by one with the green arrow. Each block builds on the one before it: the token,
+# the ids and the invite code are passed on with client.global.set, so nothing has to be copied.
+# Every request checks its status code (and a key field where that is cheap) and shows green or red.
+#
+# It expects the sample fleet that the server puts into an empty database (13 cars, car 2 is the
+# Tesla Model 3), so start from a clean database. Run the blocks in order: each block uses what the
+# one before it saved.
+#
+# The file can run again on the same database: every run uses a new run id for the emails and the
+# license plates, and a new car, so nothing it creates collides with an earlier run.
+# Not tried here: cancelling a daypart that has just started (it depends on the time of day).
+
+### Blok 1: Bezoeker (zonder inloggen)
+
+# The cars: 200 and the number of matching cars in the header X-Total-Count
+< {%
+    // Run id for the emails and license plates, and today/tomorrow in Dutch time: the server decides
+    // "today" in Europe/Amsterdam (UTC+1, UTC+2 from the last Sunday of March to the last Sunday of October).
+    var now = new Date();
+    var y = now.getUTCFullYear();
+    function lastSunday(month) {
+        var d = new Date(Date.UTC(y, month + 1, 0, 1, 0, 0));
+        d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+        return d;
+    }
+    var offset = (now >= lastSunday(2) && now < lastSunday(9)) ? 2 : 1;
+    function iso(ms) {
+        var d = new Date(ms + offset * 3600000);
+        function p(n) { return n < 10 ? "0" + n : "" + n; }
+        return d.getUTCFullYear() + "-" + p(d.getUTCMonth() + 1) + "-" + p(d.getUTCDate());
+    }
+    client.global.clearAll(); // the IDE keeps globals between runs: start from nothing
+    client.global.set("runId", String(now.getTime()));
+    client.global.set("today", iso(now.getTime()));
+    client.global.set("tomorrow", iso(now.getTime() + 24 * 3600000));
+%}
+GET {{baseUrl}}/cars?limit=5
+
+> {%
+    client.test("200 OK with a page of cars", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.length === 5, "Expected 5 cars but got " + response.body.length);
+    });
+    client.test("X-Total-Count holds the total", function () {
+        client.assert(parseInt(response.headers.valueOf("X-Total-Count")) >= 13, "Expected at least 13 cars");
+    });
+    client.test("every car has a type", function () {
+        response.body.forEach(function (car) {
+            client.assert(["ICE", "BEV", "FCEV"].indexOf(car.type) >= 0, "Unknown type " + car.type);
+        });
+    });
+%}
+
+###
+
+# Filter by type and rate, most expensive first (a minus before the sort field reverses it)
+GET {{baseUrl}}/cars?type=BEV&maxRate=60&sort=-rate
+
+> {%
+    client.test("only electric cars up to 60, most expensive first", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.length > 0, "Expected some cars");
+        for (var i = 0; i < response.body.length; i++) {
+            client.assert(response.body[i].type === "BEV", "Not a BEV");
+            client.assert(response.body[i].rate <= 60, "Rate above 60");
+            if (i > 0) client.assert(response.body[i - 1].rate >= response.body[i].rate, "Not sorted descending");
+        }
+    });
+%}
+
+###
+
+# Nearest first, within 50 km of Amsterdam (the first car is the nearest)
+GET {{baseUrl}}/cars?lat=52.37&lon=4.90&maxDistanceKm=50
+
+> {%
+    client.test("200 OK, the Tesla Model 3 in Amsterdam comes first", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.length > 0, "Expected at least one car");
+        client.assert(response.body[0].id === 2, "Expected car 2 (Amsterdam) first, got " + response.body[0].id);
+    });
+%}
+
+###
+
+# Only the cars that are free tomorrow afternoon (not reserved, not in maintenance)
+GET {{baseUrl}}/cars?date={{tomorrow}}&daypart=AFTERNOON
+
+> {%
+    client.test("200 OK, the Ford Focus in maintenance (car 7) is left out", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        response.body.forEach(function (car) {
+            client.assert(car.id !== 7 && car.status !== "Maintenance", "A car in maintenance is not free");
+        });
+        client.assert(response.body.length >= 12, "Expected the other cars to be free");
+    });
+%}
+
+###
+
+# Energy cost of one km: the seeded Tesla Model 3 (car 2) uses 14.5 kWh per 100 km at 0.35 per kWh
+GET {{baseUrl}}/cars/2/cost-per-km
+
+> {%
+    client.test("0.0507 EUR per km", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.costPerKm === 0.0507, "Expected 0.0507 but got " + response.body.costPerKm);
+        client.assert(response.body.currency === "EUR", "Expected EUR");
+    });
+%}
+
+###
+
+# A quote before reserving: energy for 120 km plus the rental rate of 55
+GET {{baseUrl}}/cars/2/quote?distanceKm=120
+
+> {%
+    client.test("energy 6.09 plus rate 55.00 gives 61.09", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.energyCost === 6.09, "Energy cost " + response.body.energyCost);
+        client.assert(response.body.rentalRate === 55, "Rate " + response.body.rentalRate);
+        client.assert(response.body.total === 61.09, "Total " + response.body.total);
+    });
+%}
+
+###
+
+# Cost and CO2 per car type for 100 km: electric and hydrogen count as 0 kg at the tailpipe
+GET {{baseUrl}}/cars/compare?distanceKm=100
+
+> {%
+    client.test("a row per type, electric emits nothing", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        var types = response.body.types.map(function (t) { return t.type; });
+        client.assert(types.indexOf("BEV") >= 0 && types.indexOf("ICE") >= 0, "BEV and ICE expected, got " + types);
+        response.body.types.forEach(function (t) {
+            if (t.type === "BEV") client.assert(t.co2Kg === 0, "BEV CO2 should be 0");
+        });
+    });
+%}
+
+###
+
+# The leaderboard is public and shows no email addresses (it is empty on a fresh database)
+GET {{baseUrl}}/leaderboard
+
+> {%
+    client.test("200 OK, a list without email addresses", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        response.body.forEach(function (row) {
+            client.assert(row.email === undefined, "The leaderboard must not show an email");
+        });
+    });
+%}
+
+### Blok 2: Account en auto (Anna)
+
+# Anna registers: 201, and the password never comes back
+< {%
+    client.global.set("annaEmail", "anna" + client.global.get("runId") + "@example.com");
+%}
+POST {{baseUrl}}/accounts
+Content-Type: application/json
+
+{
+  "name": "Anna Jansen",
+  "email": "{{annaEmail}}",
+  "password": "supersecret"
+}
+
+> {%
+    client.test("201 Created, no password in the answer", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+        client.assert(response.body.password === undefined && response.body.passwordHash === undefined, "No password expected");
+    });
+    client.global.set("annaId", String(response.body.id));
+%}
+
+###
+
+# Anna logs in and gets a token, which the next requests send as a bearer token
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "{{annaEmail}}",
+  "password": "supersecret"
+}
+
+> {%
+    client.test("200 OK with a token", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.token && response.body.token.length > 10, "Expected a token");
+    });
+    client.global.set("annaToken", response.body.token);
+%}
+
+###
+
+# Anna offers an electric car with the costs of owning it (purchase 45000, insurance 900, road tax 0, maintenance 600)
+POST {{baseUrl}}/cars
+Authorization: Bearer {{annaToken}}
+Content-Type: application/json
+
+{
+  "type": "BEV",
+  "brand": "Polestar 2",
+  "licensePlate": "AN-{{runId}}",
+  "mileage": 12000,
+  "rate": 49.5,
+  "location": { "latitude": 51.59, "longitude": 4.78 },
+  "doors": 5,
+  "bodyStyle": "Hatchback",
+  "modelYear": 2024,
+  "power": 100,
+  "transmission": "Automatic",
+  "color": "Grey",
+  "capacity": 78,
+  "consumption": 17.5,
+  "purchasePrice": 45000,
+  "insurancePerYear": 900,
+  "roadTaxPerYear": 0,
+  "maintenancePerYear": 600
+}
+
+> {%
+    client.test("201 Created, Anna owns the car", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+        client.assert(response.body.type === "BEV", "Expected a BEV");
+        client.assert(String(response.body.ownerId) === client.global.get("annaId"), "Anna should be the owner");
+    });
+    client.global.set("carId", String(response.body.id));
+%}
+
+###
+
+# The same license plate again: 409, the unique index in the database decides
+POST {{baseUrl}}/cars
+Authorization: Bearer {{annaToken}}
+Content-Type: application/json
+
+{
+  "type": "ICE",
+  "brand": "Copy",
+  "licensePlate": "AN-{{runId}}",
+  "mileage": 1,
+  "rate": 1,
+  "location": { "latitude": 51.59, "longitude": 4.78 },
+  "doors": 5,
+  "bodyStyle": "Hatchback",
+  "modelYear": 2024,
+  "power": 100,
+  "transmission": "Manual",
+  "color": "Red",
+  "fuelType": "Petrol",
+  "capacity": 40,
+  "consumption": 5
+}
+
+> {%
+    client.test("409 Conflict, one body for every error", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+        client.assert(response.body.error === "conflict", "Expected error code conflict, got " + response.body.error);
+    });
+%}
+
+###
+
+# Total cost of ownership per year at 15000 km: 4500 depreciation + 900 + 0 + 600 + 918.75 energy
+GET {{baseUrl}}/cars/{{carId}}/tco
+Authorization: Bearer {{annaToken}}
+
+> {%
+    client.test("6918.75 EUR per year", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.tcoPerYear === 6918.75, "Expected 6918.75 but got " + response.body.tcoPerYear);
+    });
+%}
+
+###
+
+# Mark the car as serviced at its current mileage: 204, no body
+PUT {{baseUrl}}/cars/{{carId}}/service
+Authorization: Bearer {{annaToken}}
+
+> {%
+    client.test("204 No Content", function () {
+        client.assert(response.status === 204, "Expected 204 but got " + response.status);
+    });
+%}
+
+###
+
+# A photo (multipart): the type is read from the file itself, not from its name
+POST {{baseUrl}}/cars/{{carId}}/images
+Authorization: Bearer {{annaToken}}
+Content-Type: multipart/form-data; boundary=DemoBoundary
+
+--DemoBoundary
+Content-Disposition: form-data; name="file"; filename="tiny.png"
+Content-Type: image/png
+
+< ./tiny.png
+--DemoBoundary--
+
+> {%
+    client.test("201 Created with the url of the photo", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+        client.assert(response.body.url.indexOf("/images/") === 0, "Expected an /images/ url, got " + response.body.url);
+    });
+%}
+
+### Blok 3: Huren en rijden (Ben)
+
+# Ben registers
+< {%
+    client.global.set("benEmail", "ben" + client.global.get("runId") + "@example.com");
+%}
+POST {{baseUrl}}/accounts
+Content-Type: application/json
+
+{
+  "name": "Ben de Vries",
+  "email": "{{benEmail}}",
+  "password": "supersecret"
+}
+
+> {%
+    client.test("201 Created", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    client.global.set("benId", String(response.body.id));
+%}
+
+###
+
+# Ben logs in: the token variable switches to his token
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "{{benEmail}}",
+  "password": "supersecret"
+}
+
+> {%
+    client.test("200 OK with a token", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+    client.global.set("benToken", response.body.token);
+%}
+
+###
+
+# Anna's car is free today: all three dayparts
+GET {{baseUrl}}/cars/{{carId}}/availability?date={{today}}
+
+> {%
+    client.test("morning, afternoon and evening are free", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.freeDayparts.length === 3, "Expected 3 free dayparts");
+    });
+%}
+
+###
+
+# Ben reserves today's morning (a daypart of today can be reserved even when it has started)
+POST {{baseUrl}}/cars/{{carId}}/reservations
+Authorization: Bearer {{benToken}}
+Content-Type: application/json
+
+{
+  "date": "{{today}}",
+  "daypart": "MORNING"
+}
+
+> {%
+    client.test("201 Created, status RESERVED", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+        client.assert(response.body.status === "RESERVED", "Expected RESERVED");
+    });
+    client.global.set("reservationId", String(response.body.id));
+%}
+
+###
+
+# The same daypart again: 409, two people cannot rent the same car at the same time
+POST {{baseUrl}}/cars/{{carId}}/reservations
+Authorization: Bearer {{benToken}}
+Content-Type: application/json
+
+{
+  "date": "{{today}}",
+  "daypart": "MORNING"
+}
+
+> {%
+    client.test("409 Conflict", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+    });
+%}
+
+###
+
+# Tomorrow's afternoon
+POST {{baseUrl}}/cars/{{carId}}/reservations
+Authorization: Bearer {{benToken}}
+Content-Type: application/json
+
+{
+  "date": "{{tomorrow}}",
+  "daypart": "AFTERNOON"
+}
+
+> {%
+    client.test("201 Created", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    client.global.set("tomorrowReservationId", String(response.body.id));
+%}
+
+###
+
+# Cancel it: 204. The reservation is kept as CANCELLED and the daypart is free again
+DELETE {{baseUrl}}/reservations/{{tomorrowReservationId}}
+Authorization: Bearer {{benToken}}
+
+> {%
+    client.test("204 No Content", function () {
+        client.assert(response.status === 204, "Expected 204 but got " + response.status);
+    });
+%}
+
+###
+
+# Start the trip: 200, the server takes the start time
+POST {{baseUrl}}/reservations/{{reservationId}}/trip/start
+Authorization: Bearer {{benToken}}
+
+> {%
+    client.test("200 OK with a start time", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.startedAt, "Expected startedAt");
+    });
+%}
+
+###
+
+# End the trip: 120 km, 2 hard accelerations, 1 hard brake. The server calculates the score
+# (100 minus 5 per hard action per 100 km, so 87.5, rounded to 88) and the points (120 x 88 / 100, rounded down)
+POST {{baseUrl}}/reservations/{{reservationId}}/trip/end
+Authorization: Bearer {{benToken}}
+Content-Type: application/json
+
+{
+  "distanceKm": 120,
+  "hardAccelerations": 2,
+  "hardBrakes": 1
+}
+
+> {%
+    client.test("201 Created, score 88 and 105 bonus points", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+        client.assert(response.body.trip.score === 88, "Score " + response.body.trip.score);
+        client.assert(response.body.pointsAwarded === 105, "Points " + response.body.pointsAwarded);
+        client.assert(response.body.bonusPoints === 105, "Total " + response.body.bonusPoints);
+    });
+%}
+
+###
+
+# A reservation with a trip can no longer be cancelled
+DELETE {{baseUrl}}/reservations/{{reservationId}}
+Authorization: Bearer {{benToken}}
+
+> {%
+    client.test("409 Conflict", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+    });
+%}
+
+###
+
+# Rate the car: once per reservation, after a finished trip
+POST {{baseUrl}}/reservations/{{reservationId}}/rating
+Authorization: Bearer {{benToken}}
+Content-Type: application/json
+
+{
+  "stars": 5,
+  "comment": "Smooth and clean"
+}
+
+> {%
+    client.test("201 Created", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+        client.assert(response.body.stars === 5, "Expected 5 stars");
+    });
+%}
+
+###
+
+# Ben's reservations: the finished one is COMPLETED, the cancelled one is kept as CANCELLED
+GET {{baseUrl}}/reservations
+Authorization: Bearer {{benToken}}
+
+> {%
+    client.test("a COMPLETED and a CANCELLED reservation", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        var statuses = response.body.map(function (r) { return r.status; });
+        client.assert(statuses.indexOf("COMPLETED") >= 0, "Expected COMPLETED in " + statuses);
+        client.assert(statuses.indexOf("CANCELLED") >= 0, "Expected CANCELLED in " + statuses);
+    });
+%}
+
+###
+
+# Ben's trip history, newest first
+GET {{baseUrl}}/trips
+Authorization: Bearer {{benToken}}
+
+> {%
+    client.test("one trip of 120 km with score 88", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.length === 1, "Expected one trip");
+        client.assert(response.body[0].distanceKm === 120 && response.body[0].score === 88, "Wrong trip");
+    });
+%}
+
+###
+
+# Ben's driving totals, calculated from his finished trips
+GET {{baseUrl}}/accounts/{{benId}}/stats
+Authorization: Bearer {{benToken}}
+
+> {%
+    client.test("1 trip, 120 km, average score 88, 105 points", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.tripCount === 1, "tripCount " + response.body.tripCount);
+        client.assert(response.body.totalKm === 120, "totalKm " + response.body.totalKm);
+        client.assert(response.body.averageScore === 88, "averageScore " + response.body.averageScore);
+        client.assert(response.body.bestDaypart === "MORNING", "bestDaypart " + response.body.bestDaypart);
+        client.assert(response.body.bonusPoints === 105, "bonusPoints " + response.body.bonusPoints);
+    });
+%}
+
+###
+
+# The leaderboard is public: Ben has points now
+GET {{baseUrl}}/leaderboard?limit=100
+
+> {%
+    client.test("200 OK, nobody listed without points", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.length > 0, "Expected at least one driver");
+        response.body.forEach(function (row) {
+            client.assert(row.bonusPoints > 0, "Only drivers with points are listed");
+        });
+    });
+%}
+
+###
+
+# The car now shows the average rating from Ben
+GET {{baseUrl}}/cars/{{carId}}/ratings
+
+> {%
+    client.test("average 5.0 from one rating", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.ratingCount === 1 && response.body.averageRating === 5, "Expected one rating of 5");
+    });
+%}
+
+### Blok 4: Organisatie
+
+# Anna creates an organization (a rental company) and becomes its admin
+POST {{baseUrl}}/organizations
+Authorization: Bearer {{annaToken}}
+Content-Type: application/json
+
+{
+  "name": "Anna Autoverhuur {{runId}}"
+}
+
+> {%
+    client.test("201 Created", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    client.global.set("orgId", String(response.body.id));
+%}
+
+###
+
+# An invite code: it works once and expires after 7 days
+POST {{baseUrl}}/organizations/{{orgId}}/invites
+Authorization: Bearer {{annaToken}}
+
+> {%
+    client.test("201 Created with a code", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+        client.assert(response.body.code, "Expected a code");
+    });
+    client.global.set("inviteCode", response.body.code);
+%}
+
+###
+
+# Ben joins with the code and becomes a member
+POST {{baseUrl}}/invites/{{inviteCode}}/accept
+Authorization: Bearer {{benToken}}
+
+> {%
+    client.test("204 No Content", function () {
+        client.assert(response.status === 204, "Expected 204 but got " + response.status);
+    });
+%}
+
+###
+
+# The same code again: it works only once
+POST {{baseUrl}}/invites/{{inviteCode}}/accept
+Authorization: Bearer {{benToken}}
+
+> {%
+    client.test("404 Not Found for a used code", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+    });
+%}
+
+###
+
+# An organization car has no owner: it belongs to the company
+POST {{baseUrl}}/cars
+Authorization: Bearer {{annaToken}}
+Content-Type: application/json
+
+{
+  "type": "BEV",
+  "brand": "Tesla Model Y",
+  "licensePlate": "ORG-{{runId}}",
+  "mileage": 3000,
+  "rate": 65,
+  "location": { "latitude": 51.59, "longitude": 4.78 },
+  "doors": 5,
+  "bodyStyle": "SUV",
+  "modelYear": 2024,
+  "power": 150,
+  "transmission": "Automatic",
+  "color": "Black",
+  "capacity": 75,
+  "consumption": 16,
+  "purchasePrice": 48000,
+  "insurancePerYear": 1200,
+  "roadTaxPerYear": 0,
+  "maintenancePerYear": 700,
+  "organizationId": {{orgId}}
+}
+
+> {%
+    client.test("201 Created without an owner", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+        client.assert(response.body.ownerId === null || response.body.ownerId === undefined, "An organization car has no owner");
+        client.assert(String(response.body.organizationId) === client.global.get("orgId"), "Wrong organization");
+    });
+    client.global.set("orgCarId", String(response.body.id));
+%}
+
+###
+
+# The fleet report for every member: one row per organization car (TCO at 15000 km: 7540.00)
+GET {{baseUrl}}/organizations/{{orgId}}/report
+Authorization: Bearer {{benToken}}
+
+> {%
+    client.test("200 OK, one row for the Tesla", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.length === 1, "Expected one car");
+        client.assert(response.body[0].tcoPerYear === 7540, "tcoPerYear " + response.body[0].tcoPerYear);
+    });
+%}
+
+###
+
+# The same report as CSV, for a spreadsheet
+GET {{baseUrl}}/organizations/{{orgId}}/report?format=csv
+Authorization: Bearer {{benToken}}
+
+> {%
+    client.test("200 OK, text/csv with a header line", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.contentType.mimeType === "text/csv", "Expected text/csv, got " + response.contentType.mimeType);
+        client.assert(String(response.body).indexOf("carId,") === 0, "Expected a header line");
+    });
+%}
+
+###
+
+# A member may update an organization car, but only an admin may delete it: Ben gets 403
+DELETE {{baseUrl}}/cars/{{orgCarId}}
+Authorization: Bearer {{benToken}}
+
+> {%
+    client.test("403 Forbidden for a plain member", function () {
+        client.assert(response.status === 403, "Expected 403 but got " + response.status);
+    });
+%}
+
+###
+
+# An organization always keeps an admin: the last admin cannot demote themselves
+PUT {{baseUrl}}/organizations/{{orgId}}/members/{{annaId}}
+Authorization: Bearer {{annaToken}}
+Content-Type: application/json
+
+{
+  "role": "MEMBER"
+}
+
+> {%
+    client.test("409 Conflict for the last admin", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+    });
+%}
+
+### Blok 5: Fouten en beveiliging
+
+# No token: 401, and every error has the same shape (a code and a text)
+GET {{baseUrl}}/reservations
+
+> {%
+    client.test("401 Unauthorized with an error body", function () {
+        client.assert(response.status === 401, "Expected 401 but got " + response.status);
+        client.assert(response.body.error === "unauthorized", "Expected unauthorized, got " + response.body.error);
+        client.assert(response.body.message, "Expected a message");
+    });
+%}
+
+###
+
+# Someone else's car: Ben may not change Anna's car
+PUT {{baseUrl}}/cars/{{carId}}
+Authorization: Bearer {{benToken}}
+Content-Type: application/json
+
+{
+  "type": "BEV",
+  "brand": "Hijacked",
+  "licensePlate": "AN-{{runId}}",
+  "mileage": 1,
+  "rate": 1,
+  "location": { "latitude": 51.59, "longitude": 4.78 },
+  "doors": 5,
+  "bodyStyle": "Hatchback",
+  "modelYear": 2024,
+  "power": 100,
+  "transmission": "Automatic",
+  "color": "Grey",
+  "capacity": 78,
+  "consumption": 17.5
+}
+
+> {%
+    client.test("403 Forbidden", function () {
+        client.assert(response.status === 403, "Expected 403 but got " + response.status);
+        client.assert(response.body.error === "forbidden", "Expected forbidden, got " + response.body.error);
+    });
+%}
+
+###
+
+# An unknown id
+GET {{baseUrl}}/cars/999999999
+Authorization: Bearer {{benToken}}
+
+> {%
+    client.test("404 Not Found", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+        client.assert(response.body.error === "not_found", "Expected not_found, got " + response.body.error);
+    });
+%}
+
+###
+
+# Invalid input: an unknown car type in the filter
+GET {{baseUrl}}/cars?type=xyz
+
+> {%
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected bad_request, got " + response.body.error);
+    });
+%}
+
+###
+
+# Login is rate limited per email: five wrong passwords in a row, then even the right one is refused.
+# A throwaway account, so the demo accounts stay usable.
+< {%
+    client.global.set("rateEmail", "rate" + client.global.get("runId") + "@example.com");
+%}
+POST {{baseUrl}}/accounts
+Content-Type: application/json
+
+{
+  "name": "Dirk Smit",
+  "email": "{{rateEmail}}",
+  "password": "supersecret"
+}
+
+> {%
+    client.test("201 Created", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+%}
+
+###
+
+# Wrong password, attempt 1 of 5
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{ "email": "{{rateEmail}}", "password": "wrong-password" }
+
+> {% client.test("401 Unauthorized", function () { client.assert(response.status === 401, "Expected 401 but got " + response.status); }); %}
+
+###
+
+# Wrong password, attempt 2 of 5
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{ "email": "{{rateEmail}}", "password": "wrong-password" }
+
+> {% client.test("401 Unauthorized", function () { client.assert(response.status === 401, "Expected 401 but got " + response.status); }); %}
+
+###
+
+# Wrong password, attempt 3 of 5
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{ "email": "{{rateEmail}}", "password": "wrong-password" }
+
+> {% client.test("401 Unauthorized", function () { client.assert(response.status === 401, "Expected 401 but got " + response.status); }); %}
+
+###
+
+# Wrong password, attempt 4 of 5
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{ "email": "{{rateEmail}}", "password": "wrong-password" }
+
+> {% client.test("401 Unauthorized", function () { client.assert(response.status === 401, "Expected 401 but got " + response.status); }); %}
+
+###
+
+# Wrong password, attempt 5 of 5
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{ "email": "{{rateEmail}}", "password": "wrong-password" }
+
+> {% client.test("401 Unauthorized", function () { client.assert(response.status === 401, "Expected 401 but got " + response.status); }); %}
+
+###
+
+# The sixth try, now with the right password: 429 with a Retry-After header (seconds)
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{ "email": "{{rateEmail}}", "password": "supersecret" }
+
+> {%
+    client.test("429 Too Many Requests with Retry-After", function () {
+        client.assert(response.status === 429, "Expected 429 but got " + response.status);
+        var wait = parseInt(response.headers.valueOf("Retry-After"));
+        client.assert(wait > 0 && wait <= 900, "Expected Retry-After between 1 and 900 seconds, got " + wait);
+    });
+%}

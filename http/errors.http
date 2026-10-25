@@ -1,0 +1,474 @@
+# Rent my car: more error cases (IntelliJ HTTP Client). Optional, next to demo.http.
+#
+# Every request shows an error answer on purpose, and checks it: the status code and the one error
+# body every error has (a code in `error` and a text in `message`). The file sets up its own users
+# and runs on its own, with the environment `dev`. Run it with "Run all requests in file".
+
+### Setup: two users and a car
+
+< {%
+    client.global.clearAll(); // the IDE keeps globals between runs: start from nothing
+    var run = String(new Date().getTime());
+    client.global.set("errRun", run);
+    client.global.set("errAnnaEmail", "erranna" + run + "@example.com");
+    client.global.set("errBenEmail", "errben" + run + "@example.com");
+%}
+POST {{baseUrl}}/accounts
+Content-Type: application/json
+
+{ "name": "Anna", "email": "{{errAnnaEmail}}", "password": "supersecret" }
+
+> {%
+    client.test("201 Created", function () { client.assert(response.status === 201, "Expected 201 but got " + response.status); });
+    client.global.set("errAnnaId", String(response.body.id));
+%}
+
+###
+
+POST {{baseUrl}}/accounts
+Content-Type: application/json
+
+{ "name": "Ben", "email": "{{errBenEmail}}", "password": "supersecret" }
+
+> {%
+    client.test("201 Created", function () { client.assert(response.status === 201, "Expected 201 but got " + response.status); });
+    client.global.set("errBenId", String(response.body.id));
+%}
+
+###
+
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{ "email": "{{errAnnaEmail}}", "password": "supersecret" }
+
+> {%
+    client.test("200 OK", function () { client.assert(response.status === 200, "Expected 200 but got " + response.status); });
+    client.global.set("errAnnaToken", response.body.token);
+%}
+
+###
+
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{ "email": "{{errBenEmail}}", "password": "supersecret" }
+
+> {%
+    client.test("200 OK", function () { client.assert(response.status === 200, "Expected 200 but got " + response.status); });
+    client.global.set("errBenToken", response.body.token);
+%}
+
+###
+
+POST {{baseUrl}}/cars
+Authorization: Bearer {{errAnnaToken}}
+Content-Type: application/json
+
+{
+  "type": "ICE",
+  "brand": "Opel Corsa",
+  "licensePlate": "ERR-{{errRun}}",
+  "mileage": 80000,
+  "rate": 22,
+  "location": { "latitude": 51.59, "longitude": 4.78 },
+  "doors": 5,
+  "bodyStyle": "Hatchback",
+  "modelYear": 2020,
+  "power": 70,
+  "transmission": "Manual",
+  "color": "Red",
+  "fuelType": "Petrol",
+  "capacity": 44,
+  "consumption": 5.6
+}
+
+> {%
+    client.test("201 Created", function () { client.assert(response.status === 201, "Expected 201 but got " + response.status); });
+    client.global.set("errCarId", String(response.body.id));
+%}
+
+### Accounts and login
+
+# A password that is too short: 400
+POST {{baseUrl}}/accounts
+Content-Type: application/json
+
+{ "name": "Short", "email": "short{{errRun}}@example.com", "password": "abc" }
+
+> {%
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected bad_request, got " + response.body.error);
+    });
+%}
+
+###
+
+# An email address that is taken, in other letters: 409 (the check ignores capitals)
+< {%
+    client.global.set("errAnnaEmailUpper", client.global.get("errAnnaEmail").toUpperCase());
+%}
+POST {{baseUrl}}/accounts
+Content-Type: application/json
+
+{ "name": "Copy", "email": "{{errAnnaEmailUpper}}", "password": "supersecret" }
+
+> {%
+    client.test("409 Conflict", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+        client.assert(response.body.error === "conflict", "Expected error code conflict, got " + response.body.error);
+    });
+%}
+
+###
+
+# Wrong password: 401
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{ "email": "{{errAnnaEmail}}", "password": "not-the-password" }
+
+> {%
+    client.test("401 Unauthorized", function () {
+        client.assert(response.status === 401, "Expected 401 but got " + response.status);
+        client.assert(response.body.error === "unauthorized", "Expected unauthorized, got " + response.body.error);
+    });
+%}
+
+###
+
+# A token that does not exist: 401
+GET {{baseUrl}}/reservations
+Authorization: Bearer this-is-not-a-token
+
+> {%
+    client.test("401 Unauthorized", function () {
+        client.assert(response.status === 401, "Expected 401 but got " + response.status);
+        client.assert(response.body.error === "unauthorized", "Expected error code unauthorized, got " + response.body.error);
+    });
+%}
+
+###
+
+# Another person's account: Ben may not read Anna's driving totals
+GET {{baseUrl}}/accounts/{{errAnnaId}}/stats
+Authorization: Bearer {{errBenToken}}
+
+> {%
+    client.test("403 Forbidden", function () {
+        client.assert(response.status === 403, "Expected 403 but got " + response.status);
+        client.assert(response.body.error === "forbidden", "Expected error code forbidden, got " + response.body.error);
+    });
+%}
+
+### Cars
+
+# A car you do not own: Ben may not mark it as serviced
+PUT {{baseUrl}}/cars/{{errCarId}}/service
+Authorization: Bearer {{errBenToken}}
+
+> {%
+    client.test("403 Forbidden", function () {
+        client.assert(response.status === 403, "Expected 403 but got " + response.status);
+        client.assert(response.body.error === "forbidden", "Expected error code forbidden, got " + response.body.error);
+    });
+%}
+
+###
+
+# The total cost of ownership is for the owner only
+GET {{baseUrl}}/cars/{{errCarId}}/tco
+Authorization: Bearer {{errBenToken}}
+
+> {%
+    client.test("403 Forbidden", function () {
+        client.assert(response.status === 403, "Expected 403 but got " + response.status);
+        client.assert(response.body.error === "forbidden", "Expected error code forbidden, got " + response.body.error);
+    });
+%}
+
+###
+
+# A negative mileage: 400
+POST {{baseUrl}}/cars
+Authorization: Bearer {{errAnnaToken}}
+Content-Type: application/json
+
+{
+  "type": "BEV",
+  "brand": "Broken",
+  "licensePlate": "NEG-{{errRun}}",
+  "mileage": -5,
+  "rate": 10,
+  "location": { "latitude": 51.59, "longitude": 4.78 },
+  "doors": 5,
+  "bodyStyle": "Hatchback",
+  "modelYear": 2020,
+  "power": 70,
+  "transmission": "Manual",
+  "color": "Red",
+  "capacity": 40,
+  "consumption": 15
+}
+
+> {%
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected error code bad_request, got " + response.body.error);
+    });
+%}
+
+###
+
+# A distance outside 1 to 10000 km: 400
+GET {{baseUrl}}/cars/{{errCarId}}/quote?distanceKm=0
+
+> {%
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected error code bad_request, got " + response.body.error);
+    });
+%}
+
+###
+
+# A page size outside 1 to 100: 400
+GET {{baseUrl}}/cars?limit=1000
+
+> {%
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected error code bad_request, got " + response.body.error);
+    });
+%}
+
+###
+
+# A file that is not a picture: 400. The type is read from the content, so a text file named .png is refused too
+POST {{baseUrl}}/cars/{{errCarId}}/images
+Authorization: Bearer {{errAnnaToken}}
+Content-Type: multipart/form-data; boundary=ErrBoundary
+
+--ErrBoundary
+Content-Disposition: form-data; name="file"; filename="notes.png"
+Content-Type: image/png
+
+this is only text
+--ErrBoundary--
+
+> {%
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected error code bad_request, got " + response.body.error);
+    });
+%}
+
+###
+
+# A route that does not exist: 404 with the same error body
+GET {{baseUrl}}/no-such-route
+
+> {%
+    client.test("404 Not Found with the error body", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+        client.assert(response.body.error === "not_found", "Expected not_found, got " + response.body.error);
+    });
+%}
+
+### Reservations, trips and ratings
+
+# A date in the past: 400
+POST {{baseUrl}}/cars/{{errCarId}}/reservations
+Authorization: Bearer {{errBenToken}}
+Content-Type: application/json
+
+{ "date": "2020-01-01", "daypart": "MORNING" }
+
+> {%
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected error code bad_request, got " + response.body.error);
+    });
+%}
+
+###
+
+# A daypart that does not exist: 400
+POST {{baseUrl}}/cars/{{errCarId}}/reservations
+Authorization: Bearer {{errBenToken}}
+Content-Type: application/json
+
+{ "date": "2099-01-01", "daypart": "NOON" }
+
+> {%
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected error code bad_request, got " + response.body.error);
+    });
+%}
+
+###
+
+# Ben reserves a day far ahead (for the next requests)
+POST {{baseUrl}}/cars/{{errCarId}}/reservations
+Authorization: Bearer {{errBenToken}}
+Content-Type: application/json
+
+{ "date": "2099-01-01", "daypart": "EVENING" }
+
+> {%
+    client.test("201 Created", function () { client.assert(response.status === 201, "Expected 201 but got " + response.status); });
+    client.global.set("errReservationId", String(response.body.id));
+%}
+
+###
+
+# Someone else's reservation: Anna may not cancel Ben's
+DELETE {{baseUrl}}/reservations/{{errReservationId}}
+Authorization: Bearer {{errAnnaToken}}
+
+> {%
+    client.test("403 Forbidden", function () {
+        client.assert(response.status === 403, "Expected 403 but got " + response.status);
+        client.assert(response.body.error === "forbidden", "Expected error code forbidden, got " + response.body.error);
+    });
+%}
+
+###
+
+# A trip cannot start before the day of the reservation: 409
+POST {{baseUrl}}/reservations/{{errReservationId}}/trip/start
+Authorization: Bearer {{errBenToken}}
+
+> {%
+    client.test("409 Conflict", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+        client.assert(response.body.error === "conflict", "Expected error code conflict, got " + response.body.error);
+    });
+%}
+
+###
+
+# A trip for a reservation of the future (it has to be today or earlier): 409
+POST {{baseUrl}}/reservations/{{errReservationId}}/trip
+Authorization: Bearer {{errBenToken}}
+Content-Type: application/json
+
+{ "distanceKm": 50, "hardAccelerations": 0, "hardBrakes": 0 }
+
+> {%
+    client.test("409 Conflict", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+        client.assert(response.body.error === "conflict", "Expected error code conflict, got " + response.body.error);
+    });
+%}
+
+###
+
+# Missing fields in a trip: 400
+POST {{baseUrl}}/reservations/{{errReservationId}}/trip
+Authorization: Bearer {{errBenToken}}
+Content-Type: application/json
+
+{ "distanceKm": 50 }
+
+> {%
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected error code bad_request, got " + response.body.error);
+    });
+%}
+
+###
+
+# A rating needs a finished trip: 409
+POST {{baseUrl}}/reservations/{{errReservationId}}/rating
+Authorization: Bearer {{errBenToken}}
+Content-Type: application/json
+
+{ "stars": 4, "comment": "Not driven yet" }
+
+> {%
+    client.test("409 Conflict", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+        client.assert(response.body.error === "conflict", "Expected error code conflict, got " + response.body.error);
+    });
+%}
+
+###
+
+# An unknown reservation: 404
+DELETE {{baseUrl}}/reservations/999999999
+Authorization: Bearer {{errBenToken}}
+
+> {%
+    client.test("404 Not Found", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+        client.assert(response.body.error === "not_found", "Expected error code not_found, got " + response.body.error);
+    });
+%}
+
+### Organizations
+
+# An unknown organization: 404 for the report (the caller is logged in)
+GET {{baseUrl}}/organizations/999999999/report
+Authorization: Bearer {{errBenToken}}
+
+> {%
+    client.test("404 Not Found", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+        client.assert(response.body.error === "not_found", "Expected error code not_found, got " + response.body.error);
+    });
+%}
+
+###
+
+# An invite code that does not exist: 404
+POST {{baseUrl}}/invites/not-a-real-code/accept
+Authorization: Bearer {{errBenToken}}
+
+> {%
+    client.test("404 Not Found", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+        client.assert(response.body.error === "not_found", "Expected error code not_found, got " + response.body.error);
+    });
+%}
+
+###
+
+# Ben creates an organization, and then Anna (an outsider) may not read its report: 403
+POST {{baseUrl}}/organizations
+Authorization: Bearer {{errBenToken}}
+Content-Type: application/json
+
+{ "name": "Ben Rent {{errRun}}" }
+
+> {%
+    client.test("201 Created", function () { client.assert(response.status === 201, "Expected 201 but got " + response.status); });
+    client.global.set("errOrgId", String(response.body.id));
+%}
+
+###
+
+GET {{baseUrl}}/organizations/{{errOrgId}}/report
+Authorization: Bearer {{errAnnaToken}}
+
+> {%
+    client.test("403 Forbidden for an outsider", function () {
+        client.assert(response.status === 403, "Expected 403 but got " + response.status);
+        client.assert(response.body.error === "forbidden", "Expected error code forbidden, got " + response.body.error);
+    });
+%}
+
+###
+
+# Ben is the last admin: he cannot delete his account
+DELETE {{baseUrl}}/accounts/{{errBenId}}
+Authorization: Bearer {{errBenToken}}
+
+> {%
+    client.test("409 Conflict", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+    });
+%}
