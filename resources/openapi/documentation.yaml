@@ -808,6 +808,37 @@ paths:
           description: Not an admin of this organization
         "404":
           description: Unknown organization
+  /organizations/{id}/report:
+    get:
+      tags: [Organizations]
+      summary: Usage and TCO per car of the organization
+      description: One row per organization car, in car order. reservations leaves out cancelled ones, trips and totalKm count finished trips, averageScore has one decimal and is null without trips, tcoPerYear is the TCO at 15000 km a year in EUR. Every member may read it.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - { name: format, in: query, description: "json (default) or csv, the same rows with a header line", schema: { type: string, enum: [json, csv] } }
+      responses:
+        "200":
+          description: The report
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CarReportRow"
+            text/csv:
+              schema:
+                type: string
+                example: "carId,brand,licensePlate,reservations,trips,totalKm,averageScore,tcoPerYear\r\n4,Tesla,EV-1,3,2,40,80.5,850.50\r\n"
+        "400":
+          description: Non-numeric id or an unknown format
+        "401":
+          description: Missing or invalid token
+        "403":
+          description: Not a member of this organization
+        "404":
+          description: Unknown organization
   /invites/{code}/accept:
     post:
       tags: [Organizations]
@@ -1135,6 +1166,18 @@ components:
         userId: { type: integer, example: 2 }
         organizationId: { type: integer, example: 1 }
         role: { type: string, enum: [ADMIN, MEMBER] }
+    CarReportRow:
+      type: object
+      required: [carId, brand, licensePlate, reservations, trips, totalKm, averageScore, tcoPerYear]
+      properties:
+        carId: { type: integer, example: 4 }
+        brand: { type: string, example: Tesla }
+        licensePlate: { type: string, example: EV-1 }
+        reservations: { type: integer, example: 3, description: Not cancelled }
+        trips: { type: integer, example: 2, description: Finished trips }
+        totalKm: { type: integer, format: int64, example: 40 }
+        averageScore: { type: number, nullable: true, example: 80.5 }
+        tcoPerYear: { type: number, example: 850.5, description: At 15000 km a year, in EUR }
     ReserveRequest:
       type: object
       required: [date, daypart]

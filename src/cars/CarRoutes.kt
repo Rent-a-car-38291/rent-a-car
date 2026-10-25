@@ -20,7 +20,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
 
-private fun Double.roundTo(decimals: Int) = BigDecimal.valueOf(this).setScale(decimals, RoundingMode.HALF_UP).toDouble()
+internal fun Double.roundTo(decimals: Int) = BigDecimal.valueOf(this).setScale(decimals, RoundingMode.HALF_UP).toDouble()
 
 // A car as JSON with extra fields next to its own.
 // Like Ktor's JSON, which sends fields that have their default value (0 prices, a last service equal to the mileage) too.
