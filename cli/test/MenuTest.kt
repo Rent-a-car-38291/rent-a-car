@@ -239,4 +239,27 @@ class MenuTest {
 
         assertTrue("Try again in about 14 minutes." in output, output)
     }
+
+    @Test
+    fun `car details say there are no ratings yet instead of an empty table`() {
+        val api = FakeApi(login, "GET /cars" to cars, "GET /cars/1" to json("""{"id":1,"type":"ICE","brand":"Peugeot","images":[]}"""),
+            "GET /cars/1/ratings" to json("""{"averageRating":null,"ratingCount":0,"ratings":[]}"""), "POST /logout" to status(204))
+
+        // log in, Cars (1), Car details (2), the first car, back out of every menu
+        val output = runScript(api, "2", "sam@example.com", "secret123", "1", "2", "1", "0", "0")
+
+        assertTrue("rating: no ratings yet" in output, output)
+        assertFalse("nothing to show" in output)
+    }
+
+    @Test
+    fun `car details show the average and the comments when there are ratings`() {
+        val api = FakeApi(login, "GET /cars" to cars, "GET /cars/1" to json("""{"id":1,"type":"ICE","brand":"Peugeot","images":[]}"""),
+            "GET /cars/1/ratings" to json("""{"averageRating":4.5,"ratingCount":2,"ratings":[{"stars":5,"comment":"Great"},{"stars":4,"comment":null}]}"""), "POST /logout" to status(204))
+
+        val output = runScript(api, "2", "sam@example.com", "secret123", "1", "2", "1", "0", "0")
+
+        assertTrue("rating: 4.5 from 2 rating(s)" in output, output)
+        assertTrue("Great" in output)
+    }
 }

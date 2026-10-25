@@ -45,8 +45,13 @@ val carsMenu = Menu("Cars", needsLogin = false, items = listOf(
             ctx.io.say("  photos: " + ((car["images"] as? JsonArray)?.joinToString(", ") { it.jsonPrimitive.content }?.ifEmpty { null } ?: "none"))
         }
         ctx.call("GET", "/cars/$id/ratings")?.jsonObject?.let { r ->
-            ctx.io.say("  rating: ${r.str("averageRating")} from ${r.str("ratingCount")} rating(s)")
-            (r["ratings"] as? JsonArray)?.let { ctx.io.table(it, listOf("stars", "comment")) }
+            val ratings = r["ratings"] as? JsonArray
+            if (ratings.isNullOrEmpty()) {
+                ctx.io.say("  rating: no ratings yet")
+            } else {
+                ctx.io.say("  rating: ${r.str("averageRating")} from ${r.str("ratingCount")} rating(s)")
+                ctx.io.table(ratings, listOf("stars", "comment"))
+            }
         }
     },
     MenuItem("Is a car free? (availability on a date)", needsLogin = false) { ctx ->
