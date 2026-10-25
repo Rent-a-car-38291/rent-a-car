@@ -105,11 +105,19 @@ class ReservationRepository(dataSource: DataSource) {
             .When(Reservations.daypart eq Daypart.AFTERNOON.name, intLiteral(Daypart.AFTERNOON.ordinal))
             .Else(intLiteral(Daypart.MORNING.ordinal))
         Reservations.selectAll()
-            .where { (Reservations.userId eq userId) and (filter.status?.let { Reservations.status eq it.name } ?: Op.TRUE) }
+            .where { listCondition(userId, filter) }
             .orderBy(Reservations.date to SortOrder.DESC, daypartRank to SortOrder.DESC, Reservations.id to SortOrder.DESC)
             .limit(filter.limit).offset(filter.offset.toLong())
             .map { it.toReservation() }
     }
+
+    // The number of reservations behind a list, ignoring the paging.
+    fun count(userId: Int, filter: ReservationFilter): Int = transaction(db) {
+        Reservations.selectAll().where { listCondition(userId, filter) }.count().toInt()
+    }
+
+    private fun listCondition(userId: Int, filter: ReservationFilter): Op<Boolean> =
+        (Reservations.userId eq userId) and (filter.status?.let { Reservations.status eq it.name } ?: Op.TRUE)
 
     // One query for all cars, so searching free cars doesn't ask per car.
     fun reservedCarIds(date: LocalDate, daypart: Daypart): Set<Int> = transaction(db) {

@@ -1,5 +1,7 @@
 package com.example.trips
 
+import com.example.DEFAULT_LIMIT
+import com.example.MAX_LIMIT
 import io.ktor.http.parametersOf
 import java.time.LocalDate
 import kotlin.test.*
@@ -10,7 +12,7 @@ class TripFilterTest {
     @Test
     fun NoParametersGiveTheDefaults() {
         val filter = parse().getOrThrow()
-        assertEquals(TripFilter(null, null, DEFAULT_TRIP_LIMIT, 0), filter)
+        assertEquals(TripFilter(null, null, DEFAULT_LIMIT, 0), filter)
     }
 
     @Test
@@ -22,9 +24,9 @@ class TripFilterTest {
     @Test
     fun TheLimitStaysBetween1AndTheMaximum() {
         assertTrue(parse("limit" to "1").isSuccess)
-        assertTrue(parse("limit" to MAX_TRIP_LIMIT.toString()).isSuccess)
+        assertTrue(parse("limit" to MAX_LIMIT.toString()).isSuccess)
         assertTrue(parse("limit" to "0").isFailure)
-        assertTrue(parse("limit" to (MAX_TRIP_LIMIT + 1).toString()).isFailure)
+        assertTrue(parse("limit" to (MAX_LIMIT + 1).toString()).isFailure)
     }
 
     @Test

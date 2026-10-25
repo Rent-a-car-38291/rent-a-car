@@ -22,8 +22,9 @@ val reservationsMenu = Menu("Reservations", items = listOf(
         val io = ctx.io
         io.say("Leave the status empty to see all of them.")
         val status = io.optionalText("Status (RESERVED, COMPLETED or CANCELLED)")?.uppercase()
-        ctx.call("GET", "/reservations", mapOf("status" to status), hints = mapOf(400 to "The status must be RESERVED, COMPLETED or CANCELLED."))
-            ?.let { io.table(it.jsonArray, listOf("id", "carId", "date", "daypart", "status")) }
+        ctx.callPages("/reservations", mapOf("status" to status), hints = mapOf(400 to "The status must be RESERVED, COMPLETED or CANCELLED.")) {
+            io.table(it, listOf("id", "carId", "date", "daypart", "status"))
+        }
     },
     MenuItem("Cancel a reservation") { ctx ->
         val id = ctx.pickReservation()

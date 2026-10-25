@@ -1,5 +1,6 @@
 package com.example.trips
 
+import com.example.Paging
 import com.example.accounts.Users
 import com.example.cars.Cars
 import com.example.cars.MAX_MILEAGE
@@ -147,12 +148,7 @@ class TripRepository(dataSource: DataSource) {
             .When(Reservations.daypart eq Daypart.AFTERNOON.name, intLiteral(Daypart.AFTERNOON.ordinal))
             .Else(intLiteral(Daypart.MORNING.ordinal))
         (Trips innerJoin Reservations).selectAll()
-            .where {
-                (userId?.let { Reservations.userId eq it } ?: Op.TRUE) and
-                    (carId?.let { Reservations.carId eq it } ?: Op.TRUE) and
-                    (filter.from?.let { Reservations.date greaterEq it } ?: Op.TRUE) and
-                    (filter.to?.let { Reservations.date lessEq it } ?: Op.TRUE)
-            }
+            .where { historyCondition(userId, carId, filter) }
             .orderBy(Reservations.date to SortOrder.DESC, daypartRank to SortOrder.DESC, Trips.id to SortOrder.DESC)
             .limit(filter.limit).offset(filter.offset.toLong())
             .map {
@@ -161,6 +157,17 @@ class TripRepository(dataSource: DataSource) {
                     it[Trips.startedAt]?.toInstant()?.toString(), it[Trips.durationMinutes])
             }
     }
+
+    // The number of trips behind a history, ignoring the paging.
+    fun historyCount(userId: Int?, carId: Int?, filter: TripFilter): Int = transaction(db) {
+        (Trips innerJoin Reservations).selectAll().where { historyCondition(userId, carId, filter) }.count().toInt()
+    }
+
+    private fun historyCondition(userId: Int?, carId: Int?, filter: TripFilter): Op<Boolean> =
+        (userId?.let { Reservations.userId eq it } ?: Op.TRUE) and
+            (carId?.let { Reservations.carId eq it } ?: Op.TRUE) and
+            (filter.from?.let { Reservations.date greaterEq it } ?: Op.TRUE) and
+            (filter.to?.let { Reservations.date lessEq it } ?: Op.TRUE)
 
     // null for an unknown user. The trips are added up per daypart in one query, so only finished trips count
     // (a started trip is not in the trips table until it ends).
@@ -191,11 +198,13 @@ class TripRepository(dataSource: DataSource) {
     }
 
     // The most points first, equal points by name and then id so the order is stable. A user without points is not listed,
-    // which also leaves out the reserved sample fleet user. One query with the limit in the database.
-    fun leaderboard(limit: Int): List<LeaderboardEntry> = transaction(db) {
+    // which also leaves out the reserved sample fleet user. One query with the page in the database.
+    fun leaderboard(paging: Paging): List<LeaderboardEntry> = transaction(db) {
         Users.select(Users.name, Users.bonusPoints).where { Users.bonusPoints greater 0 }
             .orderBy(Users.bonusPoints to SortOrder.DESC, Users.name to SortOrder.ASC, Users.id to SortOrder.ASC)
-            .limit(limit)
+            .limit(paging.limit).offset(paging.offset.toLong())
             .map { LeaderboardEntry(it[Users.name], it[Users.bonusPoints]) }
     }
+
+    fun leaderboardSize(): Int = transaction(db) { Users.selectAll().where { Users.bonusPoints greater 0 }.count().toInt() }
 }

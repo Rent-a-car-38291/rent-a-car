@@ -67,7 +67,7 @@ The connection defaults match `docker-compose.yml`. Override them with the envir
 RENT_A_CAR_URL=http://localhost:9000 ./kotlin run -m cli   # another server (or pass the url as the first argument)
 ```
 
-Start screen: register, log in, browse as a visitor (the car list, availability, costs and the leaderboard need no login) or quit. After login the main menu has the areas **Cars** (search, details with photos and ratings, availability, offer, update and delete your car), **Costs** (cost per km, quote, compare car types, TCO), **Reservations** (reserve, list yours with their status, cancel), **Trips** (start, end, record in one go, history, rate), **Insights** (leaderboard, your stats), **Account** (update, password, delete) and **Organizations** (create, invite, join, roles, leave, organization cars, fleet report). Type `back` at any prompt to cancel the action; `0` goes one menu up. Cars are picked from a numbered list, dates are `YYYY-MM-DD` and dayparts are picked from a list.
+Start screen: register, log in, browse as a visitor (the car list, availability, costs and the leaderboard need no login) or quit. After login the main menu has the areas **Cars** (search, details with photos and ratings, availability, offer, update and delete your car), **Costs** (cost per km, quote, compare car types, TCO), **Reservations** (reserve, list yours with their status, cancel), **Trips** (start, end, record in one go, history, rate), **Insights** (leaderboard, your stats), **Account** (update, password, delete) and **Organizations** (create, invite, join, roles, leave, organization cars, fleet report). Type `back` at any prompt to cancel the action; `0` goes one menu up. Cars are picked from a numbered list, dates are `YYYY-MM-DD` and dayparts are picked from a list. Long lists (cars, reservations, trips, the leaderboard) are shown page by page: the client says how many of the total it showed and asks for the next page. A failed call shows the message of the server's error body.
 
 The token is only kept in memory and the passwords are echoed while typing (`shortcut:` plain stdin). The API has no "who am I", no list of your organizations and no list of members, so the client shows the account id when you register (it asks for it once if you only log in) and keeps the reservations and organizations you made during the run for its pickers; others can be typed by id (**Reservations > My reservations** shows the ids). Photo upload and listing members are not in the client.
 
@@ -184,6 +184,27 @@ curl -X POST localhost:8080/login -H 'Content-Type: application/json' \
      -d '{"email":"sam@example.com","password":"correct horse"}'
 # {"token":"..."}
 ```
+
+## Errors and paging
+
+Every error response (`400`, `401`, `403`, `404`, `405`, `409`, `413`, `415`, `429`, `500`) has the same body, also the errors that Ktor answers itself, such as an unknown route or an unreadable body:
+
+```json
+{ "error": "not_found", "message": "Car with ID 5 not found" }
+```
+
+`error` is a code that does not change (the status in lower case with underscores), `message` is a text for people. A `401` carries `WWW-Authenticate: Bearer` and a `429` keeps its `Retry-After` header. An unexpected failure is a `500` that never shows the details; they are only in the server log. Only a `406` (the client does not accept JSON) cannot have this body. See [`sequence-errors`](docs/diagrams/sequence-errors.png).
+
+Lists are paged with `limit` (1 to 100, default 20) and `offset` (default 0), and `400` for any other value. The body is the page, a plain list; the size of the whole list is in the `X-Total-Count` header, so a client can page through everything:
+
+```bash
+curl -i 'localhost:8080/cars?limit=5&offset=10'
+# X-Total-Count: 13
+```
+
+This holds for `GET /cars` (after the filters), `GET /reservations`, `GET /trips`, `GET /cars/{id}/trips` and `GET /leaderboard`, which shows 10 drivers by default.
+
+To page in code, parse the parameters with `parsePaging` (`src/Paging.kt`), set the header with `call.setTotalCount(total)` and answer with the page. A route answers an error with `call.respond(HttpStatusCode.NotFound)` or, for a message about this request, `call.respondError(HttpStatusCode.NotFound, "...")` (`src/Errors.kt`): never build the error body by hand.
 
 ## Project layout
 

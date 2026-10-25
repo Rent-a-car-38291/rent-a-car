@@ -9,9 +9,15 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
 
-/** What the server answered: the status and the parsed JSON body (null when it had none). */
-class ApiResponse(val status: Int, val body: JsonElement?) {
+/**
+ * What the server answered: the status, the parsed JSON body (null when it had none) and, for a page of a list, the size
+ * of the whole list from the X-Total-Count header.
+ */
+class ApiResponse(val status: Int, val body: JsonElement?, val total: Int? = null) {
     val ok get() = status in 200..299
+
+    /** The `message` of the server's error body `{"error": "...", "message": "..."}`, null when there is none. */
+    val errorText: String? get() = (body as? JsonObject)?.get("message")?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
 }
 
 /** The only door to the server. Menus use this interface, so tests can swap in a fake. */
@@ -48,15 +54,18 @@ class HttpApi(private val baseUrl: String) : Api {
             val text = response.body()
             // Error bodies are not always JSON; a body that does not parse is treated as no body.
             val json = if (text.isBlank()) null else runCatching { Json.parseToJsonElement(text) }.getOrNull()
-            return ApiResponse(response.statusCode(), json)
+            return ApiResponse(response.statusCode(), json, response.headers().firstValue("X-Total-Count").orElse(null)?.toIntOrNull())
         } catch (e: IOException) {
             throw ServerUnreachable("Cannot reach the server at $baseUrl (${e.message ?: e::class.simpleName}). Is it running?")
         }
     }
 }
 
-/** One friendly sentence per status code; an action can pass a more specific hint for a code. */
-fun errorMessage(status: Int, hints: Map<Int, String> = emptyMap()): String = hints[status] ?: when (status) {
+/**
+ * What to tell the user about a failed call: the action's hint for the status code, else the server's own message
+ * (every error has one), else one friendly sentence per status code for answers that are not from our server.
+ */
+fun errorMessage(status: Int, hints: Map<Int, String> = emptyMap(), serverMessage: String? = null): String = hints[status] ?: serverMessage ?: when (status) {
     400 -> "The server did not accept that input. Check the values and try again."
     401 -> "You are not logged in, or your login has expired. Log in again."
     403 -> "You are not allowed to do that."
