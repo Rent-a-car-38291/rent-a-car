@@ -1,0 +1,69 @@
+@startuml
+title POST /reservations/{id}/rating, GET /cars/{id}/ratings
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "RatingRoutes.kt" as Route
+participant "CarRoutes.kt" as CarRoute
+participant "ReservationRepository" as Reservations
+participant "RatingRepository" as Repo
+database "ratings, trips,\nreservations" as Db
+
+== POST /reservations/{id}/rating ==
+Client -> Auth : POST /reservations/{id}/rating\n{stars, comment?}
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  Route -> Reservations : find(id)
+  alt id is not a number
+    Route --> Client : 400 Bad Request
+  else unknown reservation
+    Route --> Client : 404 Not Found
+  else reservation of someone else
+    Route --> Client : 403 Forbidden
+  else
+    alt stars not 1 to 5, or comment above 500 characters
+      Route --> Client : 400 Bad Request
+    else
+      Route -> Repo : rate(reservation, stars, comment)
+      Repo -> Db : SELECT trip of the reservation
+      alt no finished trip
+        Repo --> Route : NoTrip
+        Route --> Client : 409 Conflict
+      else
+        Repo -> Db : INSERT rating (unique reservation_id)
+        alt already rated
+          Repo --> Route : AlreadyRated
+          Route --> Client : 409 Conflict
+        else
+          Repo --> Route : Rated(rating)
+          Route --> Client : 201 Created\n{id, reservationId, carId, stars, comment}
+        end
+      end
+    end
+  end
+end
+
+== GET /cars/{id}/ratings ==
+Client -> Route : GET /cars/{id}/ratings
+alt id is not a number
+  Route --> Client : 400 Bad Request
+else unknown car
+  Route --> Client : 404 Not Found
+else
+  Route -> Repo : forCar(id)
+  Repo -> Db : SELECT ratings JOIN reservations\nWHERE car_id, newest first
+  Db --> Repo : ratings
+  Route -> Route : averageRating(sum, count)
+  Route --> Client : 200 OK\n{carId, averageRating, ratingCount, ratings}
+end
+
+== GET /cars and GET /cars/{id} ==
+Client -> CarRoute : GET /cars
+CarRoute -> Repo : averages()
+Repo -> Db : SELECT car_id, COUNT, SUM(stars)\nGROUP BY car_id (one query for all cars)
+CarRoute --> Client : 200 OK\n[{..., averageRating}, ...]
+
+@enduml

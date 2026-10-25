@@ -22,6 +22,7 @@ rectangle "Rent-a-car" {
   usecase "Filter cars by type,\nrate and distance" as UC_Filter
   usecase "Search cars free on\na date and daypart" as UC_FreeSearch
   usecase "View car details" as UC_Details
+  usecase "View ratings of a car" as UC_Ratings
 
   usecase "Log out" as UC_Logout
   usecase "Update account" as UC_UpdateAccount
@@ -34,6 +35,7 @@ rectangle "Rent-a-car" {
   usecase "View availability" as UC_Availability
   usecase "Cancel reservation" as UC_Cancel
   usecase "Record trip and\nearn bonus points" as UC_Trip
+  usecase "Rate a car" as UC_Rate
   usecase "Start and end a trip" as UC_StartEnd
   usecase "View trip history" as UC_TripHistory
   usecase "View driving stats" as UC_Stats
@@ -71,6 +73,9 @@ UC_DeleteAccount .> UC_RemoveOwnCars : <<include>>
 Renter --> UC_Reserve
 Renter --> UC_Cancel
 Renter --> UC_Trip
+Renter --> UC_Rate
+UC_Rate .> UC_Trip : <<include>>
+Visitor --> UC_Ratings
 Renter --> UC_StartEnd
 UC_StartEnd .> UC_Trip : <<extend>>
 Renter --> UC_TripHistory
