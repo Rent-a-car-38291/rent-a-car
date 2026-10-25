@@ -274,4 +274,27 @@ class MenuTest {
         assertEquals(1, Regex("Your account id").findAll(output).count())
         assertEquals(listOf("POST /login", "PUT /accounts/7", "PUT /accounts/7/password", "POST /logout"), api.calls)
     }
+
+    @Test
+    fun `a wrong current password does not make the client forget an account id it got from registering`() {
+        val api = FakeApi("POST /accounts" to ApiResponse(201, kotlinx.serialization.json.Json.parseToJsonElement("""{"id":7,"name":"Sam","email":"sam@example.com"}""")), login,
+            "PUT /accounts/7/password" to status(403), "POST /logout" to status(204))
+
+        // register (1), Account (6) > change password (2) twice: wrong both times, and the id is asked for neither
+        val output = runScript(api, "1", "Sam", "sam@example.com", "secret123", "6", "2", "wrong", "new-secret1", "2", "wrong", "new-secret1", "0", "0")
+
+        assertEquals(0, Regex("Your account id \\(shown").findAll(output).count(), output)
+        assertEquals(2, api.calls.count { it == "PUT /accounts/7/password" })
+    }
+
+    @Test
+    fun `a typed account id is forgotten after a 403 because it may be a typo`() {
+        val api = FakeApi(login, "PUT /accounts/7/password" to status(403), "PUT /accounts/8/password" to status(204), "POST /logout" to status(204))
+
+        // log in, Account (6) > change password (2): id 7 is refused with 403, so the second try asks for the id again and gets 8
+        val output = runScript(api, "2", "sam@example.com", "secret123", "6", "2", "7", "wrong", "new-secret1", "2", "8", "right", "new-secret1", "0", "0")
+
+        assertEquals(2, Regex("Your account id \\(shown").findAll(output).count(), output)
+        assertTrue("PUT /accounts/8/password" in api.calls)
+    }
 }

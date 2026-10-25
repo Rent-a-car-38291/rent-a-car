@@ -35,6 +35,7 @@ val startMenu = Menu("Rent-a-car", needsLogin = false, items = listOf(
         ctx.io.say("Registered! Your account id is ${account.str("id")}.")
         if (logIn(ctx, email, password)) {
             ctx.session.accountId = account.str("id").toInt()
+            ctx.session.accountIdVerified = true
             useAccount(ctx)
         }
     },
