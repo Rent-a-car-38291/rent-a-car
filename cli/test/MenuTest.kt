@@ -297,4 +297,36 @@ class MenuTest {
         assertEquals(2, Regex("Your account id \\(shown").findAll(output).count(), output)
         assertTrue("PUT /accounts/8/password" in api.calls)
     }
+
+    @Test
+    fun `logging out with a token the server no longer knows says nothing about an expired login`() {
+        val api = FakeApi(login, "POST /logout" to status(401))
+
+        val output = runScript(api, "2", "sam@example.com", "secret123", "0", "0")
+
+        assertTrue("Logged out." in output, output)
+        assertFalse("expired" in output, output)
+    }
+
+    @Test
+    fun `starting a trip on another day explains that it has to be the day of the reservation`() {
+        val api = FakeApi(login, "POST /reservations/5/trip/start" to status(409), "POST /logout" to status(204))
+
+        // log in, Trips (4) > Start my trip (1), the reservation id typed because this run made none
+        val output = runScript(api, "2", "sam@example.com", "secret123", "4", "1", "5", "0", "0")
+
+        assertTrue("only be started on the day of the reservation" in output, output)
+        assertFalse("today or earlier" in output)
+    }
+
+    @Test
+    fun `an expired login while not logged in does not log anyone out`() {
+        val api = FakeApi("GET /cars" to status(401))
+
+        // a visitor whose request is refused sees the normal message and stays in the visitor menus
+        val output = runScript(api, "3", "1", "1", "", "", "", "", "", "", "", "", "", "0", "0", "0")
+
+        assertFalse("expired or was ended" in output, output)
+        assertTrue("Goodbye!" in output)
+    }
 }

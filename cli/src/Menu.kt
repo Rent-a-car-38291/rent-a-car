@@ -50,6 +50,7 @@ class Context(val api: Api, val io: Console, val session: Session = Session()) {
             io.say("! ${e.message}")
             return null
         }
+        if (response.status == 401 && path == "/logout") return response // already logged out on the server: nothing to tell
         if (response.status == 401 && session.loggedIn) {
             // The token was revoked or has expired: go back to the start screen instead of repeating the error on every action.
             logout()
