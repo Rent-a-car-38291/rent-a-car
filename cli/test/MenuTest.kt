@@ -262,4 +262,16 @@ class MenuTest {
         assertTrue("rating: 4.5 from 2 rating(s)" in output, output)
         assertTrue("Great" in output)
     }
+
+    @Test
+    fun `the account id is asked before the other questions of an account action`() {
+        val api = FakeApi(login, "PUT /accounts/7" to status(200), "PUT /accounts/7/password" to status(204), "POST /logout" to status(204))
+
+        // log in (the id is not known), Account (6): update (1) asks the id first, then name and email; change password (2) does not ask the id again
+        val output = runScript(api, "2", "sam@example.com", "secret123", "6", "1", "7", "Sam", "sam@example.com", "2", "old-secret", "new-secret1", "0", "0")
+
+        assertTrue(output.indexOf("Your account id") < output.indexOf("New name:"), output)
+        assertEquals(1, Regex("Your account id").findAll(output).count())
+        assertEquals(listOf("POST /login", "PUT /accounts/7", "PUT /accounts/7/password", "POST /logout"), api.calls)
+    }
 }
