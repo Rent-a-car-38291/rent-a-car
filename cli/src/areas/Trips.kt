@@ -18,10 +18,13 @@ private val tripHints = mapOf(
     409 to "Not possible now: the reservation has to be on today or earlier, and a trip can be started and ended once.",
 )
 
+// A trip can only be started on the day of the reservation itself, unlike recording a finished trip.
+private val startHints = tripHints + (409 to "A trip can only be started on the day of the reservation (Dutch date), and only once.")
+
 val tripsMenu = Menu("Trips", items = listOf(
     MenuItem("Start my trip") { ctx ->
         val id = ctx.pickReservation()
-        ctx.call("POST", "/reservations/$id/trip/start", hints = tripHints)?.jsonObject?.let { ctx.io.say("Trip started at ${localTime(it.str("startedAt"))}. Drive safely, then end it here.") }
+        ctx.call("POST", "/reservations/$id/trip/start", hints = startHints)?.jsonObject?.let { ctx.io.say("Trip started at ${localTime(it.str("startedAt"))}. Drive safely, then end it here.") }
     },
     MenuItem("End my trip") { ctx ->
         val id = ctx.pickReservation()
