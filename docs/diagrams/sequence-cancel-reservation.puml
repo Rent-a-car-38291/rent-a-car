@@ -6,7 +6,7 @@ actor Client
 participant "Ktor\n(bearer authentication)" as Auth
 participant "ReservationRoutes.kt" as Route
 participant "ReservationRepository" as Repo
-database "reservations\ntrips" as Db
+database "reservations\ntrip_starts" as Db
 
 Client -> Auth : DELETE /reservations/{id}
 alt missing or invalid token
@@ -26,15 +26,15 @@ else
       Route --> Client : 409 Conflict
     else
       Route -> Repo : cancel(id)
-      Repo -> Db : SELECT reservation FOR UPDATE,\nthen look for a trip or a started trip (one transaction)
+      Repo -> Db : SELECT status FROM reservations FOR UPDATE,\nthen look for a started trip (one transaction)
       alt reservation is gone
         Repo --> Route : GONE
         Route --> Client : 404 Not Found
-      else reservation has a trip or a started trip
-        Repo --> Route : HAS_TRIP
+      else status is COMPLETED or CANCELLED,\nor the trip was started
+        Repo --> Route : NOT_ALLOWED
         Route --> Client : 409 Conflict
       else
-        Repo -> Db : DELETE reservation
+        Repo -> Db : UPDATE status = CANCELLED\n(the row is kept)
         Repo --> Route : CANCELLED
         Route --> Client : 204 No Content\n(the daypart is free again)
       end

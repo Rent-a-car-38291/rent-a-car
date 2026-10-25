@@ -7,7 +7,7 @@ class Session {
     var loggedIn = false
     // The server has no "who am I", so the id comes from registering (or is asked once).
     var accountId: Int? = null
-    // The server cannot list your reservations or organizations, so the ones made in this run are kept for the pickers.
+    // shortcut: the pickers use the reservations and organizations made in this run (the server cannot list organizations), list them from the server when that matters.
     val reservations = mutableListOf<JsonObject>()
     val organizations = mutableListOf<JsonObject>()
 }

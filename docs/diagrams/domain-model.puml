@@ -37,6 +37,12 @@ enum Daypart {
   EVENING : 18:00-24:00
 }
 
+enum ReservationStatus {
+  RESERVED
+  COMPLETED
+  CANCELLED
+}
+
 enum Role {
   Admin
   Member
@@ -121,6 +127,7 @@ class Reservation {
   + id : Int
   + date : LocalDate
   + daypart : Daypart
+  + status : ReservationStatus
   + recordTrip(distanceKm : Int, hardAccelerations : Int, hardBrakes : Int) : Trip
 }
 
@@ -175,7 +182,7 @@ User "0..*" -- "0..*" Organization
 (User, Organization) .. Membership
 Invite "0..*" --> "1" Organization
 
-note "One reservation per car, date and daypart" as N1
+note "One active reservation per car, date and daypart.\nRESERVED -> COMPLETED (trip) or CANCELLED" as N1
 N1 .. Reservation
 note "A car has an owner or an organization, never both.\nOrganizations and invites are extra (#35–#38)" as N2
 N2 .. Organization
