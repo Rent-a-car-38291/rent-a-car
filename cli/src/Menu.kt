@@ -57,7 +57,7 @@ class Context(val api: Api, val io: Console, val session: Session = Session()) {
         if (!response.ok) {
             // A 403 on an account route usually means a mistyped account id: ask again next time.
             if (response.status == 403 && path.startsWith("/accounts/")) session.accountId = null
-            io.say("! ${errorMessage(response.status, hints, response.errorText)}")
+            io.say("! ${errorMessage(response.status, hints, response.errorText, response.retryAfter)}")
             return null
         }
         return response

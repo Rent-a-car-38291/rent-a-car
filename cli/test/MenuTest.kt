@@ -230,4 +230,13 @@ class MenuTest {
         assertFalse("POST /logout" in api.calls, "there is no token left to revoke")
         assertEquals(2, Regex("== Rent-a-car ==").findAll(output).count(), "the start menu is shown again")
     }
+
+    @Test
+    fun `a locked login tells how long to wait`() {
+        val api = FakeApi("POST /login" to ApiResponse(429, null, retryAfter = 840))
+
+        val output = runScript(api, "2", "sam@example.com", "secret123", "0")
+
+        assertTrue("Try again in about 14 minutes." in output, output)
+    }
 }

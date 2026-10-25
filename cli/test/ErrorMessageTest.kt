@@ -46,4 +46,12 @@ class ErrorMessageTest {
     fun `an address without a scheme is reported instead of crashing`() {
         assertFailsWith<ServerUnreachable> { HttpApi("localhost:8080").call("GET", "/cars") }
     }
+
+    @Test
+    fun `a 429 with a Retry-After says how many minutes to wait, rounded up`() {
+        assertEquals("Too many failed login attempts for that email. Try again in about 10 minutes.", errorMessage(429, serverMessage = "Too many requests, try again later.", retryAfterSeconds = 600))
+        assertTrue("about 2 minutes" in errorMessage(429, retryAfterSeconds = 61))
+        assertTrue("about 1 minute." in errorMessage(429, retryAfterSeconds = 5))
+        assertEquals("Too many requests, try again later.", errorMessage(429, serverMessage = "Too many requests, try again later."))
+    }
 }
