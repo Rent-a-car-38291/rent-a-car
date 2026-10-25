@@ -51,4 +51,11 @@ class ConsoleTest {
 
         assertTrue("nothing to show" in out.toString())
     }
+
+    @Test
+    fun `a moment from the server is shown as local time, in winter and summer`() {
+        assertEquals("12:30", localTime("2026-07-01T10:30:00Z"))
+        assertEquals("16:21", localTime("2026-10-25T15:21:04.834794Z"))
+        assertEquals("not a time", localTime("not a time"))
+    }
 }

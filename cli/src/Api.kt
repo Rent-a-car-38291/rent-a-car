@@ -12,9 +12,9 @@ import java.util.UUID
 
 /**
  * What the server answered: the status, the parsed JSON body (null when it had none) and, for a page of a list, the size
- * of the whole list from the X-Total-Count header.
+ * of the whole list from the X-Total-Count header and, for a 429, the seconds from the Retry-After header.
  */
-class ApiResponse(val status: Int, val body: JsonElement?, val total: Int? = null) {
+class ApiResponse(val status: Int, val body: JsonElement?, val total: Int? = null, val retryAfter: Int? = null) {
     val ok get() = status in 200..299
 
     /** The `message` of the server's error body `{"error": "...", "message": "..."}`, null when there is none. */
@@ -81,9 +81,9 @@ class HttpApi(private val baseUrl: String) : Api {
             val text = response.body()
             // Error bodies are not always JSON; a body that does not parse is treated as no body.
             val json = if (text.isBlank()) null else runCatching { Json.parseToJsonElement(text) }.getOrNull()
-            return ApiResponse(response.statusCode(), json, response.headers().firstValue("X-Total-Count").orElse(null)?.toIntOrNull())
+            return ApiResponse(response.statusCode(), json, response.headers().firstValue("X-Total-Count").orElse(null)?.toIntOrNull(), response.headers().firstValue("Retry-After").orElse(null)?.toIntOrNull())
         } catch (e: IOException) {
-            throw ServerUnreachable("Cannot reach the server at $baseUrl (${e.message ?: e::class.simpleName}). Is it running?")
+            throw ServerUnreachable("Cannot reach the server at $baseUrl. Is it running?")
         }
     }
 }
@@ -92,7 +92,8 @@ class HttpApi(private val baseUrl: String) : Api {
  * What to tell the user about a failed call: the action's hint for the status code, else the server's own message
  * (every error has one), else one friendly sentence per status code for answers that are not from our server.
  */
-fun errorMessage(status: Int, hints: Map<Int, String> = emptyMap(), serverMessage: String? = null): String = hints[status] ?: serverMessage ?: when (status) {
+fun errorMessage(status: Int, hints: Map<Int, String> = emptyMap(), serverMessage: String? = null, retryAfterSeconds: Int? = null): String =
+    hints[status] ?: retryText(status, retryAfterSeconds) ?: serverMessage ?: when (status) {
     400 -> "The server did not accept that input. Check the values and try again."
     401 -> "You are not logged in, or your login has expired. Log in again."
     403 -> "You are not allowed to do that."
@@ -102,4 +103,11 @@ fun errorMessage(status: Int, hints: Map<Int, String> = emptyMap(), serverMessag
     429 -> "Too many failed login attempts for that email. Wait a few minutes and try again."
     in 500..599 -> "The server had a problem (HTTP $status). Try again later."
     else -> "Unexpected answer from the server (HTTP $status)."
+}
+
+// A 429 that says how long to wait: tell the user in whole minutes, rounded up.
+private fun retryText(status: Int, seconds: Int?): String? {
+    if (status != 429 || seconds == null) return null
+    val minutes = maxOf(1, (seconds + 59) / 60)
+    return "Too many failed login attempts for that email. Try again in about $minutes minute${if (minutes == 1) "" else "s"}."
 }

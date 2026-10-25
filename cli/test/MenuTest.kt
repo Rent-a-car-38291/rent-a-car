@@ -216,4 +216,117 @@ class MenuTest {
         assertFalse("marked as serviced" in refusedOutput)
         assertTrue("PUT /cars/1/service" in refused.calls)
     }
+    @Test
+    fun `a revoked token sends the user back to the start screen instead of repeating the error`() {
+        val api = FakeApi(login, "GET /reservations" to status(401), "POST /logout" to status(204))
+        val session = Session()
+
+        // log in, Reservations (3), My reservations (2) with no status: the server says 401, then the start screen asks again and 0 quits
+        val output = runScript(api, "2", "sam@example.com", "secret123", "3", "2", "", "0", session = session)
+
+        assertTrue("Log in again" in output, output)
+        assertFalse(session.loggedIn)
+        assertNull(api.token)
+        assertFalse("POST /logout" in api.calls, "there is no token left to revoke")
+        assertEquals(2, Regex("== Rent-a-car ==").findAll(output).count(), "the start menu is shown again")
+    }
+
+    @Test
+    fun `a locked login tells how long to wait`() {
+        val api = FakeApi("POST /login" to ApiResponse(429, null, retryAfter = 840))
+
+        val output = runScript(api, "2", "sam@example.com", "secret123", "0")
+
+        assertTrue("Try again in about 14 minutes." in output, output)
+    }
+
+    @Test
+    fun `car details say there are no ratings yet instead of an empty table`() {
+        val api = FakeApi(login, "GET /cars" to cars, "GET /cars/1" to json("""{"id":1,"type":"ICE","brand":"Peugeot","images":[]}"""),
+            "GET /cars/1/ratings" to json("""{"averageRating":null,"ratingCount":0,"ratings":[]}"""), "POST /logout" to status(204))
+
+        // log in, Cars (1), Car details (2), the first car, back out of every menu
+        val output = runScript(api, "2", "sam@example.com", "secret123", "1", "2", "1", "0", "0")
+
+        assertTrue("rating: no ratings yet" in output, output)
+        assertFalse("nothing to show" in output)
+    }
+
+    @Test
+    fun `car details show the average and the comments when there are ratings`() {
+        val api = FakeApi(login, "GET /cars" to cars, "GET /cars/1" to json("""{"id":1,"type":"ICE","brand":"Peugeot","images":[]}"""),
+            "GET /cars/1/ratings" to json("""{"averageRating":4.5,"ratingCount":2,"ratings":[{"stars":5,"comment":"Great"},{"stars":4,"comment":null}]}"""), "POST /logout" to status(204))
+
+        val output = runScript(api, "2", "sam@example.com", "secret123", "1", "2", "1", "0", "0")
+
+        assertTrue("rating: 4.5 from 2 rating(s)" in output, output)
+        assertTrue("Great" in output)
+    }
+
+    @Test
+    fun `the account id is asked before the other questions of an account action`() {
+        val api = FakeApi(login, "PUT /accounts/7" to status(200), "PUT /accounts/7/password" to status(204), "POST /logout" to status(204))
+
+        // log in (the id is not known), Account (6): update (1) asks the id first, then name and email; change password (2) does not ask the id again
+        val output = runScript(api, "2", "sam@example.com", "secret123", "6", "1", "7", "Sam", "sam@example.com", "2", "old-secret", "new-secret1", "0", "0")
+
+        assertTrue(output.indexOf("Your account id") < output.indexOf("New name:"), output)
+        assertEquals(1, Regex("Your account id").findAll(output).count())
+        assertEquals(listOf("POST /login", "PUT /accounts/7", "PUT /accounts/7/password", "POST /logout"), api.calls)
+    }
+
+    @Test
+    fun `a wrong current password does not make the client forget an account id it got from registering`() {
+        val api = FakeApi("POST /accounts" to ApiResponse(201, kotlinx.serialization.json.Json.parseToJsonElement("""{"id":7,"name":"Sam","email":"sam@example.com"}""")), login,
+            "PUT /accounts/7/password" to status(403), "POST /logout" to status(204))
+
+        // register (1), Account (6) > change password (2) twice: wrong both times, and the id is asked for neither
+        val output = runScript(api, "1", "Sam", "sam@example.com", "secret123", "6", "2", "wrong", "new-secret1", "2", "wrong", "new-secret1", "0", "0")
+
+        assertEquals(0, Regex("Your account id \\(shown").findAll(output).count(), output)
+        assertEquals(2, api.calls.count { it == "PUT /accounts/7/password" })
+    }
+
+    @Test
+    fun `a typed account id is forgotten after a 403 because it may be a typo`() {
+        val api = FakeApi(login, "PUT /accounts/7/password" to status(403), "PUT /accounts/8/password" to status(204), "POST /logout" to status(204))
+
+        // log in, Account (6) > change password (2): id 7 is refused with 403, so the second try asks for the id again and gets 8
+        val output = runScript(api, "2", "sam@example.com", "secret123", "6", "2", "7", "wrong", "new-secret1", "2", "8", "right", "new-secret1", "0", "0")
+
+        assertEquals(2, Regex("Your account id \\(shown").findAll(output).count(), output)
+        assertTrue("PUT /accounts/8/password" in api.calls)
+    }
+
+    @Test
+    fun `logging out with a token the server no longer knows says nothing about an expired login`() {
+        val api = FakeApi(login, "POST /logout" to status(401))
+
+        val output = runScript(api, "2", "sam@example.com", "secret123", "0", "0")
+
+        assertTrue("Logged out." in output, output)
+        assertFalse("expired" in output, output)
+    }
+
+    @Test
+    fun `starting a trip on another day explains that it has to be the day of the reservation`() {
+        val api = FakeApi(login, "POST /reservations/5/trip/start" to status(409), "POST /logout" to status(204))
+
+        // log in, Trips (4) > Start my trip (1), the reservation id typed because this run made none
+        val output = runScript(api, "2", "sam@example.com", "secret123", "4", "1", "5", "0", "0")
+
+        assertTrue("only be started on the day of the reservation" in output, output)
+        assertFalse("today or earlier" in output)
+    }
+
+    @Test
+    fun `an expired login while not logged in does not log anyone out`() {
+        val api = FakeApi("GET /cars" to status(401))
+
+        // a visitor whose request is refused sees the normal message and stays in the visitor menus
+        val output = runScript(api, "3", "1", "1", "", "", "", "", "", "", "", "", "", "0", "0", "0")
+
+        assertFalse("expired or was ended" in output, output)
+        assertTrue("Goodbye!" in output)
+    }
 }

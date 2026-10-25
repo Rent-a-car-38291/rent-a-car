@@ -42,7 +42,7 @@ class PhotoUploadTest {
     @Test
     fun `every status code of the upload has a friendly message`() {
         val messages = mapOf(
-            400 to "Use a JPEG or PNG picture.", 401 to "not logged in", 403 to "You do not manage that car.",
+            400 to "Use a JPEG or PNG picture.", 401 to "Your login has expired", 403 to "You do not manage that car.",
             404 to "Not found.", 409 to "already has 10 photos", 413 to "5 MB at most",
         )
         for ((code, expected) in messages) {

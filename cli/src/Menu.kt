@@ -7,6 +7,8 @@ class Session {
     var loggedIn = false
     // The server has no "who am I", so the id comes from registering (or is asked once).
     var accountId: Int? = null
+    // True when the id came from registering in this run, so it cannot be a typo (a typed one can).
+    var accountIdVerified = false
     // shortcut: the pickers use the reservations and organizations made in this run (the server cannot list organizations), list them from the server when that matters.
     val reservations = mutableListOf<JsonObject>()
     val organizations = mutableListOf<JsonObject>()
@@ -48,10 +50,17 @@ class Context(val api: Api, val io: Console, val session: Session = Session()) {
             io.say("! ${e.message}")
             return null
         }
+        if (response.status == 401 && path == "/logout") return response // already logged out on the server: nothing to tell
+        if (response.status == 401 && session.loggedIn) {
+            // The token was revoked or has expired: go back to the start screen instead of repeating the error on every action.
+            logout()
+            io.say("! Your login has expired or was ended elsewhere. Log in again.")
+            return null
+        }
         if (!response.ok) {
             // A 403 on an account route usually means a mistyped account id: ask again next time.
-            if (response.status == 403 && path.startsWith("/accounts/")) session.accountId = null
-            io.say("! ${errorMessage(response.status, hints, response.errorText)}")
+            if (response.status == 403 && path.startsWith("/accounts/") && !session.accountIdVerified) session.accountId = null
+            io.say("! ${errorMessage(response.status, hints, response.errorText, response.retryAfter)}")
             return null
         }
         return response
@@ -82,6 +91,7 @@ class Context(val api: Api, val io: Console, val session: Session = Session()) {
         api.token = null
         session.loggedIn = false
         session.accountId = null
+        session.accountIdVerified = false
         session.reservations.clear()
         session.organizations.clear()
     }
