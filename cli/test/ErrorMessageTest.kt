@@ -54,4 +54,11 @@ class ErrorMessageTest {
         assertTrue("about 1 minute." in errorMessage(429, retryAfterSeconds = 5))
         assertEquals("Too many requests, try again later.", errorMessage(429, serverMessage = "Too many requests, try again later."))
     }
+
+    @Test
+    fun `a server that does not answer is reported in plain words`() {
+        val e = assertFailsWith<ServerUnreachable> { HttpApi("http://localhost:1").call("GET", "/cars") }
+
+        assertEquals("Cannot reach the server at http://localhost:1. Is it running?", e.message)
+    }
 }

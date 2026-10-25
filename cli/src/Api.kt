@@ -83,7 +83,7 @@ class HttpApi(private val baseUrl: String) : Api {
             val json = if (text.isBlank()) null else runCatching { Json.parseToJsonElement(text) }.getOrNull()
             return ApiResponse(response.statusCode(), json, response.headers().firstValue("X-Total-Count").orElse(null)?.toIntOrNull(), response.headers().firstValue("Retry-After").orElse(null)?.toIntOrNull())
         } catch (e: IOException) {
-            throw ServerUnreachable("Cannot reach the server at $baseUrl (${e.message ?: e::class.simpleName}). Is it running?")
+            throw ServerUnreachable("Cannot reach the server at $baseUrl. Is it running?")
         }
     }
 }
