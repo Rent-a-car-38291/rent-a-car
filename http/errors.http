@@ -7,6 +7,7 @@
 ### Setup: two users and a car
 
 < {%
+    client.global.clearAll(); // the IDE keeps globals between runs: start from nothing
     var run = String(new Date().getTime());
     client.global.set("errRun", run);
     client.global.set("errAnnaEmail", "erranna" + run + "@example.com");
@@ -105,13 +106,19 @@ Content-Type: application/json
 ###
 
 # An email address that is taken, in other letters: 409 (the check ignores capitals)
+< {%
+    client.global.set("errAnnaEmailUpper", client.global.get("errAnnaEmail").toUpperCase());
+%}
 POST {{baseUrl}}/accounts
 Content-Type: application/json
 
-{ "name": "Copy", "email": "{{errAnnaEmail}}", "password": "supersecret" }
+{ "name": "Copy", "email": "{{errAnnaEmailUpper}}", "password": "supersecret" }
 
 > {%
-    client.test("409 Conflict", function () { client.assert(response.status === 409, "Expected 409 but got " + response.status); });
+    client.test("409 Conflict", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+        client.assert(response.body.error === "conflict", "Expected error code conflict, got " + response.body.error);
+    });
 %}
 
 ###
@@ -136,7 +143,10 @@ GET {{baseUrl}}/reservations
 Authorization: Bearer this-is-not-a-token
 
 > {%
-    client.test("401 Unauthorized", function () { client.assert(response.status === 401, "Expected 401 but got " + response.status); });
+    client.test("401 Unauthorized", function () {
+        client.assert(response.status === 401, "Expected 401 but got " + response.status);
+        client.assert(response.body.error === "unauthorized", "Expected error code unauthorized, got " + response.body.error);
+    });
 %}
 
 ###
@@ -146,7 +156,10 @@ GET {{baseUrl}}/accounts/{{errAnnaId}}/stats
 Authorization: Bearer {{errBenToken}}
 
 > {%
-    client.test("403 Forbidden", function () { client.assert(response.status === 403, "Expected 403 but got " + response.status); });
+    client.test("403 Forbidden", function () {
+        client.assert(response.status === 403, "Expected 403 but got " + response.status);
+        client.assert(response.body.error === "forbidden", "Expected error code forbidden, got " + response.body.error);
+    });
 %}
 
 ### Cars
@@ -156,7 +169,10 @@ PUT {{baseUrl}}/cars/{{errCarId}}/service
 Authorization: Bearer {{errBenToken}}
 
 > {%
-    client.test("403 Forbidden", function () { client.assert(response.status === 403, "Expected 403 but got " + response.status); });
+    client.test("403 Forbidden", function () {
+        client.assert(response.status === 403, "Expected 403 but got " + response.status);
+        client.assert(response.body.error === "forbidden", "Expected error code forbidden, got " + response.body.error);
+    });
 %}
 
 ###
@@ -166,7 +182,10 @@ GET {{baseUrl}}/cars/{{errCarId}}/tco
 Authorization: Bearer {{errBenToken}}
 
 > {%
-    client.test("403 Forbidden", function () { client.assert(response.status === 403, "Expected 403 but got " + response.status); });
+    client.test("403 Forbidden", function () {
+        client.assert(response.status === 403, "Expected 403 but got " + response.status);
+        client.assert(response.body.error === "forbidden", "Expected error code forbidden, got " + response.body.error);
+    });
 %}
 
 ###
@@ -194,7 +213,10 @@ Content-Type: application/json
 }
 
 > {%
-    client.test("400 Bad Request", function () { client.assert(response.status === 400, "Expected 400 but got " + response.status); });
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected error code bad_request, got " + response.body.error);
+    });
 %}
 
 ###
@@ -203,7 +225,10 @@ Content-Type: application/json
 GET {{baseUrl}}/cars/{{errCarId}}/quote?distanceKm=0
 
 > {%
-    client.test("400 Bad Request", function () { client.assert(response.status === 400, "Expected 400 but got " + response.status); });
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected error code bad_request, got " + response.body.error);
+    });
 %}
 
 ###
@@ -212,7 +237,10 @@ GET {{baseUrl}}/cars/{{errCarId}}/quote?distanceKm=0
 GET {{baseUrl}}/cars?limit=1000
 
 > {%
-    client.test("400 Bad Request", function () { client.assert(response.status === 400, "Expected 400 but got " + response.status); });
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected error code bad_request, got " + response.body.error);
+    });
 %}
 
 ###
@@ -230,7 +258,10 @@ this is only text
 --ErrBoundary--
 
 > {%
-    client.test("400 Bad Request", function () { client.assert(response.status === 400, "Expected 400 but got " + response.status); });
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected error code bad_request, got " + response.body.error);
+    });
 %}
 
 ###
@@ -255,7 +286,10 @@ Content-Type: application/json
 { "date": "2020-01-01", "daypart": "MORNING" }
 
 > {%
-    client.test("400 Bad Request", function () { client.assert(response.status === 400, "Expected 400 but got " + response.status); });
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected error code bad_request, got " + response.body.error);
+    });
 %}
 
 ###
@@ -268,7 +302,10 @@ Content-Type: application/json
 { "date": "2099-01-01", "daypart": "NOON" }
 
 > {%
-    client.test("400 Bad Request", function () { client.assert(response.status === 400, "Expected 400 but got " + response.status); });
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected error code bad_request, got " + response.body.error);
+    });
 %}
 
 ###
@@ -292,7 +329,10 @@ DELETE {{baseUrl}}/reservations/{{errReservationId}}
 Authorization: Bearer {{errAnnaToken}}
 
 > {%
-    client.test("403 Forbidden", function () { client.assert(response.status === 403, "Expected 403 but got " + response.status); });
+    client.test("403 Forbidden", function () {
+        client.assert(response.status === 403, "Expected 403 but got " + response.status);
+        client.assert(response.body.error === "forbidden", "Expected error code forbidden, got " + response.body.error);
+    });
 %}
 
 ###
@@ -302,7 +342,10 @@ POST {{baseUrl}}/reservations/{{errReservationId}}/trip/start
 Authorization: Bearer {{errBenToken}}
 
 > {%
-    client.test("409 Conflict", function () { client.assert(response.status === 409, "Expected 409 but got " + response.status); });
+    client.test("409 Conflict", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+        client.assert(response.body.error === "conflict", "Expected error code conflict, got " + response.body.error);
+    });
 %}
 
 ###
@@ -315,7 +358,10 @@ Content-Type: application/json
 { "distanceKm": 50, "hardAccelerations": 0, "hardBrakes": 0 }
 
 > {%
-    client.test("409 Conflict", function () { client.assert(response.status === 409, "Expected 409 but got " + response.status); });
+    client.test("409 Conflict", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+        client.assert(response.body.error === "conflict", "Expected error code conflict, got " + response.body.error);
+    });
 %}
 
 ###
@@ -328,7 +374,10 @@ Content-Type: application/json
 { "distanceKm": 50 }
 
 > {%
-    client.test("400 Bad Request", function () { client.assert(response.status === 400, "Expected 400 but got " + response.status); });
+    client.test("400 Bad Request", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.error === "bad_request", "Expected error code bad_request, got " + response.body.error);
+    });
 %}
 
 ###
@@ -341,7 +390,10 @@ Content-Type: application/json
 { "stars": 4, "comment": "Not driven yet" }
 
 > {%
-    client.test("409 Conflict", function () { client.assert(response.status === 409, "Expected 409 but got " + response.status); });
+    client.test("409 Conflict", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+        client.assert(response.body.error === "conflict", "Expected error code conflict, got " + response.body.error);
+    });
 %}
 
 ###
@@ -351,7 +403,10 @@ DELETE {{baseUrl}}/reservations/999999999
 Authorization: Bearer {{errBenToken}}
 
 > {%
-    client.test("404 Not Found", function () { client.assert(response.status === 404, "Expected 404 but got " + response.status); });
+    client.test("404 Not Found", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+        client.assert(response.body.error === "not_found", "Expected error code not_found, got " + response.body.error);
+    });
 %}
 
 ### Organizations
@@ -361,7 +416,10 @@ GET {{baseUrl}}/organizations/999999999/report
 Authorization: Bearer {{errBenToken}}
 
 > {%
-    client.test("404 Not Found", function () { client.assert(response.status === 404, "Expected 404 but got " + response.status); });
+    client.test("404 Not Found", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+        client.assert(response.body.error === "not_found", "Expected error code not_found, got " + response.body.error);
+    });
 %}
 
 ###
@@ -371,7 +429,10 @@ POST {{baseUrl}}/invites/not-a-real-code/accept
 Authorization: Bearer {{errBenToken}}
 
 > {%
-    client.test("404 Not Found", function () { client.assert(response.status === 404, "Expected 404 but got " + response.status); });
+    client.test("404 Not Found", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+        client.assert(response.body.error === "not_found", "Expected error code not_found, got " + response.body.error);
+    });
 %}
 
 ###
@@ -394,7 +455,10 @@ GET {{baseUrl}}/organizations/{{errOrgId}}/report
 Authorization: Bearer {{errAnnaToken}}
 
 > {%
-    client.test("403 Forbidden for an outsider", function () { client.assert(response.status === 403, "Expected 403 but got " + response.status); });
+    client.test("403 Forbidden for an outsider", function () {
+        client.assert(response.status === 403, "Expected 403 but got " + response.status);
+        client.assert(response.body.error === "forbidden", "Expected error code forbidden, got " + response.body.error);
+    });
 %}
 
 ###
