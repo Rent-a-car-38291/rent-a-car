@@ -19,7 +19,7 @@ rectangle "Rent-a-car" {
   usecase "Register" as UC_Register
   usecase "Log in" as UC_Login
   usecase "View cars" as UC_ViewCars
-  usecase "Filter cars by type,\nrate and distance" as UC_Filter
+  usecase "Filter and sort cars" as UC_Filter
   usecase "Search cars free on\na date and daypart" as UC_FreeSearch
   usecase "View car details" as UC_Details
   usecase "Compare cost and CO2\nper car type" as UC_Compare
