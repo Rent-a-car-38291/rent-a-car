@@ -1,0 +1,108 @@
+@startuml
+' Tables as the Exposed objects declare them. Only the columns that matter for the relations and the rules are listed.
+hide circle
+skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 60
+
+entity users {
+  * id : integer <<PK>>
+  --
+  name : text
+  email : text <<unique, ignoring case>>
+  password_hash : text
+  bonus_points : integer
+}
+entity tokens {
+  * token_hash : text <<PK>>
+  --
+  user_id : integer <<FK>>
+  expires_at : timestamptz
+}
+entity organizations {
+  * id : integer <<PK>>
+  --
+  name : text
+}
+entity memberships {
+  * organization_id : integer <<PK, FK>>
+  * user_id : integer <<PK, FK>>
+  --
+  role : text (ADMIN, MEMBER)
+}
+entity invites {
+  * code : text <<PK>>
+  --
+  organization_id : integer <<FK>>
+  expires_at : timestamptz
+}
+entity cars {
+  * id : integer <<PK>>
+  --
+  owner_id : integer <<FK, nullable>>
+  organization_id : integer <<FK, nullable>>
+  type : text (BEV, ICE, FCEV)
+  brand, color, body_style, transmission
+  license_plate : text <<unique>>
+  mileage, last_service_km : integer
+  rate : numeric(8,2)
+  latitude, longitude : double
+  fuel_type : text <<only ICE>>
+  capacity, consumption : double
+  purchase_price, insurance_per_year,
+  road_tax_per_year, maintenance_per_year : numeric
+}
+entity images {
+  * id : integer <<PK>>
+  --
+  car_id : integer <<FK>>
+  file_name : text <<unique>>
+  url : text
+}
+entity reservations {
+  * id : integer <<PK>>
+  --
+  car_id : integer <<FK>>
+  user_id : integer <<FK>>
+  date : date
+  daypart : text (MORNING, AFTERNOON, EVENING)
+  status : text (RESERVED, COMPLETED, CANCELLED)
+}
+entity trips {
+  * id : integer <<PK>>
+  --
+  reservation_id : integer <<FK, unique>>
+  distance_km, score : integer
+  started_at, duration_minutes : nullable
+}
+entity trip_starts {
+  * reservation_id : integer <<PK, FK>>
+  --
+  started_at : timestamptz
+}
+entity ratings {
+  * id : integer <<PK>>
+  --
+  reservation_id : integer <<FK, unique>>
+  stars : integer (1-5)
+  comment : text <<nullable>>
+}
+
+users ||--o{ tokens
+users ||--o{ memberships
+organizations ||--o{ memberships
+organizations ||--o{ invites
+users |o--o{ cars : owner
+organizations |o--o{ cars
+cars ||--o{ images
+cars ||--o{ reservations
+users ||--o{ reservations : renter
+reservations ||--o| trips
+reservations ||--o| trip_starts
+reservations ||--o| ratings
+
+note bottom of cars
+  Exactly one of owner_id and organization_id is set.
+  Unique (car_id, date, daypart) while status <> CANCELLED.
+end note
+@enduml

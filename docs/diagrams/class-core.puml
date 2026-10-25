@@ -1,0 +1,110 @@
+@startuml
+' The main classes of src/ with the OO concepts that matter: a sealed base class with three subclasses, an interface with an implementation, composition and enums.
+' class-cars.puml and class-accounts.puml show every member.
+hide empty members
+skinparam nodesep 40
+skinparam ranksep 50
+
+abstract class Car <<sealed>> {
+  + id : Int
+  + brand : String
+  + licensePlate : String
+  + mileage : Int
+  + rate : Double
+  + tcoPerYear(kmPerYear, prices) : Double
+  + {abstract} costPerKm(prices) : Double
+}
+class ICECar {
+  + fuelType : FuelType
+  + tankCapacityLitres : Double
+  + costPerKm(prices) : Double
+}
+class BEVCar {
+  + batteryCapacityKwh : Double
+  + costPerKm(prices) : Double
+}
+class FCEVCar {
+  + tankCapacityKg : Double
+  + costPerKm(prices) : Double
+}
+class Location <<data>> {
+  + latitude : Double
+  + longitude : Double
+}
+enum CarStatus {
+  Available
+  Maintenance
+}
+interface CarRepository {
+  + allCars() : List<Car>
+  + findCar(id) : Car?
+  + addCar(car) : Car
+  + updateCar(car) : Car?
+  + deleteCarById(id) : Boolean
+}
+class PostgresCarRepository
+class User {
+  + id : Int
+  + name : String
+  + email : String
+  + bonusPoints : Int
+}
+class Organization <<data>> {
+  + id : Int
+  + name : String
+}
+class Membership <<data>> {
+  + role : Role
+}
+enum Role {
+  ADMIN
+  MEMBER
+}
+class Reservation <<data>> {
+  + id : Int
+  + date : String
+  + daypart : Daypart
+  + status : ReservationStatus
+}
+enum Daypart {
+  MORNING
+  AFTERNOON
+  EVENING
+}
+enum ReservationStatus {
+  RESERVED
+  COMPLETED
+  CANCELLED
+}
+class Trip <<data>> {
+  + distanceKm : Int
+  + score : Int
+}
+class Rating <<data>> {
+  + stars : Int
+  + comment : String?
+}
+class Image <<data>> {
+  + url : String
+}
+
+Car <|-- ICECar
+Car <|-- BEVCar
+Car <|-- FCEVCar
+Car *-- Location
+Car --> CarStatus
+Car "0..*" --> "0..1" User : owner
+Car "0..*" --> "0..1" Organization : owner
+Car "1" *-- "0..*" Image
+CarRepository <|.. PostgresCarRepository
+CarRepository ..> Car
+User "1" -- "0..*" Membership
+Organization "1" -- "0..*" Membership
+Membership --> Role
+Reservation "0..*" --> "1" Car
+Reservation "0..*" --> "1" User : renter
+Reservation --> Daypart
+Reservation --> ReservationStatus
+Trip "0..1" --> "1" Reservation
+Rating "0..1" --> "1" Reservation
+@enduml
