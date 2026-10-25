@@ -216,4 +216,18 @@ class MenuTest {
         assertFalse("marked as serviced" in refusedOutput)
         assertTrue("PUT /cars/1/service" in refused.calls)
     }
+    @Test
+    fun `a revoked token sends the user back to the start screen instead of repeating the error`() {
+        val api = FakeApi(login, "GET /reservations" to status(401), "POST /logout" to status(204))
+        val session = Session()
+
+        // log in, Reservations (3), My reservations (2) with no status: the server says 401, then the start screen asks again and 0 quits
+        val output = runScript(api, "2", "sam@example.com", "secret123", "3", "2", "", "0", session = session)
+
+        assertTrue("Log in again" in output, output)
+        assertFalse(session.loggedIn)
+        assertNull(api.token)
+        assertFalse("POST /logout" in api.calls, "there is no token left to revoke")
+        assertEquals(2, Regex("== Rent-a-car ==").findAll(output).count(), "the start menu is shown again")
+    }
 }

@@ -48,6 +48,12 @@ class Context(val api: Api, val io: Console, val session: Session = Session()) {
             io.say("! ${e.message}")
             return null
         }
+        if (response.status == 401 && session.loggedIn) {
+            // The token was revoked or has expired: go back to the start screen instead of repeating the error on every action.
+            logout()
+            io.say("! Your login has expired or was ended elsewhere. Log in again.")
+            return null
+        }
         if (!response.ok) {
             // A 403 on an account route usually means a mistyped account id: ask again next time.
             if (response.status == 403 && path.startsWith("/accounts/")) session.accountId = null
