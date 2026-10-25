@@ -14,6 +14,7 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.castTo
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.intLiteral
 import org.jetbrains.exposed.v1.core.lessEq
@@ -151,5 +152,14 @@ class TripRepository(dataSource: DataSource) {
             .groupBy(Reservations.daypart)
             .map { DaypartTotals(Daypart.valueOf(it[Reservations.daypart]), it[count].toInt(), it[km]!!.toLong(), it[scoreSum]!!.toLong()) }
         calculateStats(totals, bonus)
+    }
+
+    // The most points first, equal points by name and then id so the order is stable. A user without points is not listed,
+    // which also leaves out the reserved sample fleet user. One query with the limit in the database.
+    fun leaderboard(limit: Int): List<LeaderboardEntry> = transaction(db) {
+        Users.select(Users.name, Users.bonusPoints).where { Users.bonusPoints greater 0 }
+            .orderBy(Users.bonusPoints to SortOrder.DESC, Users.name to SortOrder.ASC, Users.id to SortOrder.ASC)
+            .limit(limit)
+            .map { LeaderboardEntry(it[Users.name], it[Users.bonusPoints]) }
     }
 }
