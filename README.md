@@ -141,7 +141,7 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 | `POST`   | `/reservations/{id}/rating` | Rate the car after your trip | `201`   | `400`, `401`, `403`, `404`, `409` |
 | `GET`    | `/cars/{id}/ratings`      | The ratings and average of a car | `200` | `400`, `404`                      |
 | `POST`   | `/accounts`               | Register an account            | `201`   | `400`, `409`                      |
-| `POST`   | `/login`                  | Get a token                    | `200`   | `401`                             |
+| `POST`   | `/login`                  | Get a token                    | `200`   | `401`, `429`                      |
 | `POST`   | `/logout`                 | Revoke the token you used      | `204`   | `401`                             |
 | `PUT`    | `/accounts/{id}`          | Update your own name and email | `200`   | `400`, `401`, `403`, `404`, `409` |
 | `PUT`    | `/accounts/{id}/password` | Change your own password       | `204`   | `400`, `401`, `403`, `404`        |
@@ -165,7 +165,7 @@ The app can also time the trip: `POST /reservations/{id}/trip/start` (on the day
 
 After a finished trip the renter can rate the car once with `POST /reservations/{id}/rating`: `stars` (1 to 5) and an optional `comment` (up to 500 characters, trimmed). `409` without a finished trip (a started trip that has not ended does not count) or when the reservation was already rated. `GET /cars/{id}/ratings` lists the ratings of a car, newest first, with `averageRating` (one decimal, `null` without ratings) and `ratingCount`; a rating shows no data of the renter. `GET /cars` and `GET /cars/{id}` also show the car's `averageRating`. Deleting a car or an account removes the ratings that belong to it.
 
-A password needs 8 to 128 characters, and the email address must be unused. Everything under `/accounts/{id}` and `/logout` needs a login and only works on your own account. Routes that need a login take the token from `POST /login` in an `Authorization: Bearer <token>` header; a token is valid for 7 days and then answers `401` like an unknown one. Each endpoint has a [sequence diagram](docs/diagrams) with every status code.
+A password needs 8 to 128 characters, and the email address must be unused. Everything under `/accounts/{id}` and `/logout` needs a login and only works on your own account. Routes that need a login take the token from `POST /login` in an `Authorization: Bearer <token>` header; a token is valid for 7 days and then answers `401` like an unknown one. After 5 failed logins for one email within 15 minutes, `POST /login` answers `429` with a `Retry-After` header (seconds), also for the correct password; a successful login resets the count, and an email that has no account is counted too. The counters live in memory, so a restart resets them. Each endpoint has a [sequence diagram](docs/diagrams) with every status code.
 
 ```bash
 curl -X POST localhost:8080/accounts -H 'Content-Type: application/json' \
