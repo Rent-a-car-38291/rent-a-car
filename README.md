@@ -47,7 +47,7 @@ curl http://localhost:8080/cars
 
 `./kotlin test` runs everything; a single class runs with `./kotlin test --include-classes=com.example.cars.CarFilterTest`.
 
-- **Unit tests** check one piece of logic and need no server or database: `CarFilterTest`, `AddCarRequestTest`, `CostPerKmTest`, `QuoteTest`, `TcoTest`, `TripScoreTest`, `TripDurationTest`, `DaypartTest`, `FreeSlotTest`. They run in milliseconds.
+- **Unit tests** check one piece of logic and need no server or database: `CarFilterTest`, `AddCarRequestTest`, `CostPerKmTest`, `QuoteTest`, `CompareTest`, `TcoTest`, `TripScoreTest`, `TripDurationTest`, `DaypartTest`, `FreeSlotTest`. They run in milliseconds.
 - **Integration tests** (the route and repository tests) start the application with `testApplication` and a real Postgres that the tests start themselves, and check status codes and what ends up in the database. `CarAccessTest` is a unit test of the access rules that uses that Postgres for the memberships.
 
 A rule gets a unit test for each edge value; a route gets an integration test for each status code it can answer.
@@ -68,6 +68,7 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 | `POST`   | `/cars`                   | Offer a car                    | `201`   | `400`, `401`, `403`, `409`        |
 | `PUT`    | `/cars/{id}`              | Update a car you may manage    | `200`   | `400`, `401`, `403`, `404`, `409` |
 | `DELETE` | `/cars/{id}`              | Delete a car you may delete    | `204`   | `400`, `401`, `403`, `404`        |
+| `GET`    | `/cars/compare`           | Compare cost and CO2 per car type | `200` | `400`                          |
 | `GET`    | `/cars/{id}/cost-per-km`  | Energy cost of one km          | `200`   | `400`, `404`                      |
 | `GET`    | `/cars/{id}/quote`        | Quote a trip before reserving  | `200`   | `400`, `404`                      |
 | `GET`    | `/cars/{id}`              | Get a car with its photo urls  | `200`   | `400`, `401`, `404`               |
