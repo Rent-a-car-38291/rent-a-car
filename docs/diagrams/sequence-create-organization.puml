@@ -1,0 +1,27 @@
+@startuml
+title POST /organizations
+autonumber
+
+actor Client
+participant "Ktor\n(bearer authentication)" as Auth
+participant "OrganizationRoutes.kt" as Route
+participant "OrganizationRepository" as Repo
+
+Client -> Auth : POST /organizations\n{ "name": "..." }
+alt missing or invalid token
+  Auth --> Client : 401 Unauthorized
+else
+  Auth -> Route : user
+  alt unreadable body
+    Route --> Client : 400 Bad Request
+  else name is empty after trimming
+    Route --> Client : 400 Bad Request
+  else
+    Route -> Repo : create(name, user.id)
+    note right of Repo : one transaction: the organization\nand its first ADMIN membership
+    Repo --> Route : Organization
+    Route --> Client : 201 Created\n{ "id", "name" }
+  end
+end
+
+@enduml

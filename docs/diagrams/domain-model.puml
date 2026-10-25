@@ -137,6 +137,8 @@ class Trip {
   + id : Int
   + distanceKm : Int
   + score : Int
+  + startedAt : Instant?
+  + durationMinutes : Int?
   + {static} calculateScore(distanceKm : Int, hardAccelerations : Int, hardBrakes : Int) : Int
   + bonusPoints() : Int
 }
