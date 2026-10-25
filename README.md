@@ -22,7 +22,7 @@ Built with [Ktor](https://ktor.io) and Kotlin, and the [Kotlin Toolchain](https:
 
 ## Getting started
 
-You need a JDK and Docker. The `./kotlin` wrapper downloads the toolchain on the first run, so there is nothing else to install. On Windows, use `kotlin.bat` instead of `./kotlin`.
+You need Docker, for the database. You do not need a JDK: the `./kotlin` wrapper downloads the toolchain and a matching JDK on the first run (this takes a minute or two), so there is nothing else to install. On Windows, use `kotlin.bat` instead of `./kotlin`.
 
 Start the database, then the server:
 
@@ -80,7 +80,7 @@ The defaults match `docker-compose.yml` and need no setup for local development.
 
 ## Console client
 
-`cli/` is a small client that talks to the running server over HTTP, so the whole application can be demoed without a frontend. It is a separate Amper module next to the server (`project.yaml` lists both): that keeps the client's code out of the server, needs no new dependency (it uses the JDK's HTTP client and kotlinx.serialization, which the project already has), and lets `./kotlin test` and `./kotlin build` cover both. The cost is that `./kotlin run` now needs `-m <module>`.
+`cli/` is a small client that talks to the running server over HTTP, so the whole application can be demoed without a frontend. It is a separate Amper module next to the server (the server is the root module, `project.yaml` adds the client): that keeps the client's code out of the server, needs no new dependency (it uses the JDK's HTTP client and kotlinx.serialization, which the project already has), and lets `./kotlin test` and `./kotlin build` cover both. The cost is that `./kotlin run` now needs `-m <module>`.
 
 ```bash
 ./kotlin run -m cli                                  # talks to http://localhost:8080
