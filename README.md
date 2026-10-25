@@ -133,6 +133,27 @@ With the server running, open [http://localhost:8080/swagger](http://localhost:8
 
 Swagger UI is only served in Ktor's development mode, which is on by default. Start the server with `KTOR_DEVELOPMENT=false` to turn it off.
 
+## HTTP demo (IntelliJ)
+
+[`http/`](http) has request files for the [IntelliJ HTTP Client](https://www.jetbrains.com/help/idea/http-client-in-product-code-editor.html) that walk through the REST API as user flows, one click per request. Every request checks its status code (and a key field where that is cheap), so a run shows green or red per request, and the whole file doubles as a repeatable test of the running server.
+
+| File | What it does |
+|------|--------------|
+| `demo.http` | The main demo, in five blocks: **Blok 1** a visitor (cars, filters, sorting, nearest, costs, quote, compare, leaderboard), **Blok 2** an account and a car (Anna: register, log in, offer a car, duplicate plate, TCO, service, photo), **Blok 3** renting and driving (Ben: reserve, double booking, cancel, start and end a trip, rating, stats), **Blok 4** an organization (invite, organization car, report as JSON and CSV, member and admin rules), **Blok 5** errors and security (401, 403, 404, 400 and the 429 after five wrong passwords) |
+| `errors.http` | More error cases next to the demo: validation, someone else's data, a date in the past, a trip too early, a rating without a trip, a file that is not a picture, an unknown route. It sets up its own users |
+| `http-client.env.json` | The environment `dev`: `baseUrl` is `http://localhost:8080` |
+| `tiny.png` | A 1x1 picture for the photo upload |
+
+Start the server (see [Getting started](#getting-started)), open `http/demo.http` in IntelliJ IDEA, choose the environment `dev` in the top right of the editor and use **Run all requests in file**, or run one request with the green arrow. The blocks build on each other: the token, the ids and the invite code are passed on with `client.global.set`, so nothing has to be copied. The file expects the sample fleet that the server puts into an empty database (13 cars, car 2 is the Tesla Model 3), so start from a clean database, and run the blocks in order (each one uses what the one before it saved; "Run all requests in file" does that). The file can run again on the same database, because every run uses a new run id for the emails and the license plates and offers a new car, but every run leaves its users, cars and trips behind, so the leaderboard fills up: start clean again for a tidy demo. It works at any time of day: "today" is calculated in Dutch time, like the server does.
+
+Without IntelliJ, the same files run with the [HTTP Client CLI](https://www.jetbrains.com/help/idea/http-client-cli.html) from Docker (`-D` makes `localhost` reach the server on your machine):
+
+```bash
+docker run --rm -v "$PWD/http:/workdir" jetbrains/intellij-http-client -D -v http-client.env.json -e dev --no-progress demo.http errors.http
+```
+
+`-v http-client.env.json` is the CLI's own option for the environment file (not Docker's `-v`), and the CLI needs it to find the environment `dev`. On Linux, Docker does not know `host.docker.internal` by itself: add `--add-host=host.docker.internal:host-gateway` before the image name. For another server, add `-V baseUrl=http://localhost:9090` (the address as the server runs on your machine).
+
 ## API
 
 Every endpoint, taken from [`documentation.yaml`](resources/openapi/documentation.yaml). `Login` says whether the `Authorization: Bearer <token>` header is needed; every endpoint can also answer `500` and the other codes of [Errors and paging](#errors-and-paging). The paragraphs below the table explain the rules per area.
@@ -252,6 +273,7 @@ src/
 resources/                application.yaml (settings), logback.xml, openapi/documentation.yaml and static/
 test/                     mirrors src/ (unit and route tests, test Postgres in database/)
 cli/                      the console client, its own module (src/areas/ has one file per menu)
+http/                     IntelliJ HTTP Client files: demo.http, errors.http, the environment and a test picture
 docs/diagrams/            PlantUML sources and exported PNGs
 .github/workflows/        the build: ./kotlin test and ./kotlin build on every push and pull request
 module.yaml, project.yaml the Amper build files: the server module and the list of modules
