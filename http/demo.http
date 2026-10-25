@@ -6,11 +6,15 @@
 # the ids and the invite code are passed on with client.global.set, so nothing has to be copied.
 # Every request checks its status code (and a key field where that is cheap) and shows green or red.
 #
+# It expects the sample fleet that the server puts into an empty database (13 cars, car 2 is the
+# Tesla Model 3), so start from a clean database. Run the blocks in order: each block uses what the
+# one before it saved.
+#
 # The file can run again on the same database: every run uses a new run id for the emails and the
 # license plates, and a new car, so nothing it creates collides with an earlier run.
 # Not tried here: cancelling a daypart that has just started (it depends on the time of day).
 
-### Blok 1: Bezoeker (no login needed)
+### Blok 1: Bezoeker (zonder inloggen)
 
 # The cars: 200 and the number of matching cars in the header X-Total-Count
 < {%
@@ -29,6 +33,7 @@
         function p(n) { return n < 10 ? "0" + n : "" + n; }
         return d.getUTCFullYear() + "-" + p(d.getUTCMonth() + 1) + "-" + p(d.getUTCDate());
     }
+    client.global.clearAll(); // the IDE keeps globals between runs: start from nothing
     client.global.set("runId", String(now.getTime()));
     client.global.set("today", iso(now.getTime()));
     client.global.set("tomorrow", iso(now.getTime() + 24 * 3600000));
@@ -73,9 +78,10 @@ GET {{baseUrl}}/cars?type=BEV&maxRate=60&sort=-rate
 GET {{baseUrl}}/cars?lat=52.37&lon=4.90&maxDistanceKm=50
 
 > {%
-    client.test("200 OK with cars near Amsterdam", function () {
+    client.test("200 OK, the Tesla Model 3 in Amsterdam comes first", function () {
         client.assert(response.status === 200, "Expected 200 but got " + response.status);
         client.assert(response.body.length > 0, "Expected at least one car");
+        client.assert(response.body[0].id === 2, "Expected car 2 (Amsterdam) first, got " + response.body[0].id);
     });
 %}
 
@@ -85,11 +91,12 @@ GET {{baseUrl}}/cars?lat=52.37&lon=4.90&maxDistanceKm=50
 GET {{baseUrl}}/cars?date={{tomorrow}}&daypart=AFTERNOON
 
 > {%
-    client.test("200 OK, and no car in maintenance", function () {
+    client.test("200 OK, the Ford Focus in maintenance (car 7) is left out", function () {
         client.assert(response.status === 200, "Expected 200 but got " + response.status);
         response.body.forEach(function (car) {
-            client.assert(car.status !== "Maintenance", "A car in maintenance is not free");
+            client.assert(car.id !== 7 && car.status !== "Maintenance", "A car in maintenance is not free");
         });
+        client.assert(response.body.length >= 12, "Expected the other cars to be free");
     });
 %}
 

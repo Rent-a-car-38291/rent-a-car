@@ -144,15 +144,15 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 | `http-client.env.json` | The environment `dev`: `baseUrl` is `http://localhost:8080` |
 | `tiny.png` | A 1x1 picture for the photo upload |
 
-Start the server (see [Getting started](#getting-started)), open `http/demo.http` in IntelliJ IDEA, choose the environment `dev` in the top right of the editor and use **Run all requests in file**, or run one request with the green arrow. The blocks build on each other: the token, the ids and the invite code are passed on with `client.global.set`, so nothing has to be copied. The file can run again on the same database, because every run uses a new run id for the emails and the license plates and offers a new car. It works at any time of day: "today" is calculated in Dutch time, like the server does.
+Start the server (see [Getting started](#getting-started)), open `http/demo.http` in IntelliJ IDEA, choose the environment `dev` in the top right of the editor and use **Run all requests in file**, or run one request with the green arrow. The blocks build on each other: the token, the ids and the invite code are passed on with `client.global.set`, so nothing has to be copied. The file expects the sample fleet that the server puts into an empty database (13 cars, car 2 is the Tesla Model 3), so start from a clean database, and run the blocks in order (each one uses what the one before it saved; "Run all requests in file" does that). The file can run again on the same database, because every run uses a new run id for the emails and the license plates and offers a new car, but every run leaves its users, cars and trips behind, so the leaderboard fills up: start clean again for a tidy demo. It works at any time of day: "today" is calculated in Dutch time, like the server does.
 
 Without IntelliJ, the same files run with the [HTTP Client CLI](https://www.jetbrains.com/help/idea/http-client-cli.html) from Docker (`-D` makes `localhost` reach the server on your machine):
 
 ```bash
-docker run --rm -v "$PWD/http:/workdir" jetbrains/intellij-http-client -D -v http-client.env.json -e dev --no-progress demo.http
+docker run --rm -v "$PWD/http:/workdir" jetbrains/intellij-http-client -D -v http-client.env.json -e dev --no-progress demo.http errors.http
 ```
 
-For another server, add `-V baseUrl=http://localhost:9090` (the address as the server runs on your machine).
+`-v http-client.env.json` is the CLI's own option for the environment file (not Docker's `-v`), and the CLI needs it to find the environment `dev`. On Linux, Docker does not know `host.docker.internal` by itself: add `--add-host=host.docker.internal:host-gateway` before the image name. For another server, add `-V baseUrl=http://localhost:9090` (the address as the server runs on your machine).
 
 ## API
 
