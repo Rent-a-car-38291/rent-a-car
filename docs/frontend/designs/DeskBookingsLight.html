@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desktop bookings, light</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Space+Grotesk:wght@400;500&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</head>
+<body>
+<div style="--bg:#F4F2EA;--surface:#FFFFFF;--fg:#0B0B0B;--muted:#5F5E5A;--line:#D8D5C8;--acid:#D4FF3A;--btn-bg:#0B0B0B;--btn-fg:#D4FF3A;--photo:#DEDBCF;--wave2:#FF8AC4;--wave3:#B9A9FF;--route:#0B0B0B;--num-fg:#0B0B0B;--num-bg:#D4FF3A;--danger:#B00020; min-height: 900px; box-sizing: border-box; background: var(--bg); color: var(--fg); font-family: 'Space Grotesk', sans-serif; display: flex; flex-wrap: wrap">
+<aside style="flex: 1 1 220px; box-sizing: border-box; padding: 28px 18px; border-right: 1.5px solid var(--fg); display: flex; flex-direction: column; gap: 28px">
+<span style="font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -1px; padding: 0 10px">rent a car</span>
+<nav aria-label="Main" style="display: flex; flex-direction: column; gap: 6px">
+<a href="DeskSearchLight.html" style="height: 46px; padding: 0 16px; border-radius: 99px; color: var(--fg); font: 500 15px 'Space Grotesk', sans-serif; display: flex; align-items: center; text-decoration: none">find</a>
+<a href="DeskBookingsLight.html" style="height: 46px; padding: 0 16px; border-radius: 99px; background: var(--btn-bg); color: var(--btn-fg); font: 500 15px 'Space Grotesk', sans-serif; display: flex; align-items: center; text-decoration: none">bookings</a>
+<a href="DeskCarsLight.html" style="height: 46px; padding: 0 16px; border-radius: 99px; color: var(--fg); font: 500 15px 'Space Grotesk', sans-serif; display: flex; align-items: center; text-decoration: none">my cars</a>
+<a href="#" style="height: 46px; padding: 0 16px; border-radius: 99px; color: var(--fg); font: 500 15px 'Space Grotesk', sans-serif; display: flex; align-items: center; text-decoration: none">insights</a>
+<a href="#" style="height: 46px; padding: 0 16px; border-radius: 99px; color: var(--fg); font: 500 15px 'Space Grotesk', sans-serif; display: flex; align-items: center; text-decoration: none">account</a>
+</nav>
+<div style="margin-top: auto; background: var(--acid); color: #0B0B0B; border: 1.5px solid var(--fg); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -1px">1,240</span><span style="font-family: 'Space Mono', monospace; font-size: 12px">bonus points</span></div>
+</aside>
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-wrap: wrap">
+<section aria-label="Your bookings" style="flex: 1 1 340px; box-sizing: border-box; padding: 28px 20px; border-right: 1.5px solid var(--line); display: flex; flex-direction: column; gap: 14px">
+<h1 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 40px; line-height: 1; letter-spacing: -2px">bookings</h1>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; border: 1.5px solid var(--fg); border-radius: 99px; padding: 4px">
+<button style="height: 44px; border-radius: 99px; border: 0; background: transparent; color: var(--fg); font: 500 14px 'Space Grotesk', sans-serif">upcoming</button>
+<button style="height: 44px; border-radius: 99px; border: 0; background: var(--btn-bg); color: var(--btn-fg); font: 500 14px 'Space Grotesk', sans-serif">done</button>
+<button style="height: 44px; border-radius: 99px; border: 0; background: transparent; color: var(--fg); font: 500 14px 'Space Grotesk', sans-serif">cancelled</button>
+</div>
+<button style="background: var(--acid); color: #0B0B0B; border: 1.5px solid var(--fg); border-radius: 20px; padding: 12px; display: flex; align-items: center; gap: 12px; text-align: left">
+<span style="width: 64px; height: 52px; border-radius: 10px; background: var(--photo); border: 1.5px solid #0B0B0B; box-sizing: border-box"></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font: 500 15px 'Unbounded', sans-serif; letter-spacing: -0.5px">tesla model 3</span><span style="font: 400 12px 'Space Mono', monospace">wed 11 nov · morning</span></span>
+<span style="font: 700 22px 'Unbounded', sans-serif; letter-spacing: -1px">92</span>
+</button>
+<button style="background: var(--surface); color: var(--fg); border: 1.5px solid var(--line); border-radius: 20px; padding: 12px; display: flex; align-items: center; gap: 12px; text-align: left">
+<span style="width: 64px; height: 52px; border-radius: 10px; background: var(--photo)"></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font: 500 15px 'Unbounded', sans-serif; letter-spacing: -0.5px">toyota mirai</span><span style="font: 400 12px 'Space Mono', monospace; color: var(--muted)">sat 7 nov · evening</span></span>
+<span style="font: 700 22px 'Unbounded', sans-serif; letter-spacing: -1px">85</span>
+</button>
+<button style="background: var(--surface); color: var(--fg); border: 1.5px solid var(--line); border-radius: 20px; padding: 12px; display: flex; align-items: center; gap: 12px; text-align: left">
+<span style="width: 64px; height: 52px; border-radius: 10px; background: var(--photo)"></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font: 500 15px 'Unbounded', sans-serif; letter-spacing: -0.5px">volkswagen golf</span><span style="font: 400 12px 'Space Mono', monospace; color: var(--muted)">mon 2 nov · afternoon</span></span>
+<span style="font: 700 22px 'Unbounded', sans-serif; letter-spacing: -1px">97</span>
+</button>
+<div style="margin-top: auto; border: 1.5px dashed var(--muted); border-radius: 16px; padding: 12px 14px; font-size: 14px; line-height: 1.4; color: var(--muted)">Trips are driven from the app on your phone. Here you can book, look back and rate.</div>
+</section>
+<main style="flex: 999 1 480px; min-width: 0; box-sizing: border-box; padding: 28px 28px 40px; display: flex; flex-direction: column; gap: 20px">
+<span style="font-family: 'Space Mono', monospace; font-size: 13px; color: var(--muted)">wed 11 nov · morning · tesla model 3</span>
+<div style="display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-end">
+<div style="display: flex; align-items: flex-end; gap: 12px">
+<span style="background: var(--num-bg); color: var(--num-fg); border-radius: 28px; padding: 8px 20px 0; font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 150px; line-height: 1; letter-spacing: -8px">92</span>
+<span style="font-family: 'Space Mono', monospace; font-size: 13px; color: var(--muted); padding-bottom: 18px">out of 100</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding-bottom: 12px"><h2 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 34px; line-height: 1; letter-spacing: -2px">calm drive</h2><span style="font-size: 17px">+84 points. You now have 1,240.</span></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px">
+<div style="background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted)">distance</span><span style="font-size: 20px; font-weight: 500">38 km</span></div>
+<div style="background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted)">time</span><span style="font-size: 20px; font-weight: 500">52 min</span></div>
+<div style="background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted)">hard accelerations</span><span style="font-size: 20px; font-weight: 500">1</span></div>
+<div style="background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted)">hard brakes</span><span style="font-size: 20px; font-weight: 500">0</span></div>
+</div>
+<div style="height: 300px; background: var(--photo); border: 1.5px solid var(--fg); border-radius: 24px; position: relative; overflow: hidden">
+<svg role="img" aria-label="Map of the route you drove" viewBox="0 0 780 300" preserveAspectRatio="none" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%"><path d="M50 250 C150 190 120 110 250 120 S420 240 500 150 S640 60 730 70" fill="none" stroke="#D4FF3A" stroke-width="16" stroke-linecap="round"/><path d="M50 250 C150 190 120 110 250 120 S420 240 500 150 S640 60 730 70" fill="none" stroke="var(--route)" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="250" r="9" fill="var(--route)"/><circle cx="730" cy="70" r="12" fill="var(--route)"/><circle cx="730" cy="70" r="5" fill="#D4FF3A"/></svg>
+<span style="position: absolute; left: 16px; top: 16px; background: var(--bg); border: 1.5px solid var(--fg); border-radius: 99px; padding: 6px 12px; font-family: 'Space Mono', monospace; font-size: 12px">your route</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; justify-content: space-between">
+<span style="font-size: 14px; color: var(--muted); line-height: 1.4; flex: 1 1 280px">100 for a calm drive, 5 less for every hard acceleration or brake per 100 km.</span>
+<a href="#" style="height: 54px; padding: 0 28px; border-radius: 99px; background: var(--btn-bg); color: var(--btn-fg); font: 500 16px 'Space Grotesk', sans-serif; display: flex; align-items: center; justify-content: center; text-decoration: none">rate this car</a>
+</div>
+</main>
+</div>
+</div>
+</body>
+</html>
