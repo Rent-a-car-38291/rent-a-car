@@ -79,8 +79,10 @@ class UserRepository(private val dataSource: DataSource) {
         }
     }
 
-    // An unknown email is verified against a dummy hash, so it costs as much time as a known one
-    // and the response time doesn't reveal which emails have an account.
+    /**
+     * The user when the password is right, else null. An unknown email is verified against a dummy hash, so it costs as much time as a known one
+     * and the response time doesn't reveal which emails have an account.
+     */
     fun authenticate(email: String, password: String): User? {
         val user = transaction(db) { Users.selectAll().where { Users.email.lowerCase() eq stringParam(email).lowerCase() }.singleOrNull()?.toUser() }
         val passwordMatches = verify(password, user?.passwordHash ?: dummyHash)

@@ -7,6 +7,10 @@ const val SERVICE_INTERVAL_KM = 15_000
 const val MAX_MILEAGE = 10_000_000 // a limit far below the Int range, so adding the km of trips can't overflow the column
 const val MAX_AMOUNT = 99_999_999.99 // the money columns are numeric(10, 2)
 
+/**
+ * A car that can be rented. The subclasses differ in the energy they use: each has a tank or battery `capacity` and a `consumption` per 100 km,
+ * in litres (ICECar), kWh (BEVCar) or kg of hydrogen (FCEVCar), which `costPerKm` turns into EUR.
+ */
 @Serializable
 sealed class Car {
     abstract val id: Int
@@ -34,16 +38,18 @@ sealed class Car {
     abstract val roadTaxPerYear: Double
     abstract val maintenancePerYear: Double
 
-    // Total cost of ownership per year in EUR: depreciation (the purchase price spread over DEPRECIATION_YEARS),
-    // insurance, road tax, maintenance and the energy for kmPerYear.
+    /**
+     * Total cost of ownership per year in EUR: depreciation (the purchase price spread over DEPRECIATION_YEARS),
+     * insurance, road tax, maintenance and the energy for kmPerYear.
+     */
     fun tcoPerYear(kmPerYear: Int, prices: EnergyPrices) =
         purchasePrice / DEPRECIATION_YEARS + insurancePerYear + roadTaxPerYear + maintenancePerYear + costPerKm(prices) * kmPerYear
 
-    // Energy cost of one km in EUR; consumption is per 100 km.
+    /** Energy cost of one km in EUR; the consumption is per 100 km and the price comes from `prices`. */
     abstract fun costPerKm(prices: EnergyPrices): Double
 }
 
-// A car needs service when it has driven more than SERVICE_INTERVAL_KM since the last one.
+/** A car needs service when it has driven more than SERVICE_INTERVAL_KM since the last one. */
 fun isServiceDue(mileage: Int, lastServiceKm: Int) = mileage - lastServiceKm > SERVICE_INTERVAL_KM
 
 val Car.serviceDue get() = isServiceDue(mileage, lastServiceKm)

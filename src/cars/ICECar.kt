@@ -2,6 +2,7 @@ package com.example.cars
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/** A car with a combustion engine. Capacity and consumption are in litres of its `fuelType`, priced per litre. */
 @Serializable
 @SerialName("ICE")
 class ICECar (

@@ -13,7 +13,7 @@ import io.ktor.util.AttributeKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 
-// The body of every error response: a short code that never changes and a text for people.
+/** The body of every error response: a short code that never changes and a text for people. */
 @Serializable
 data class ErrorResponse(val error: String, val message: String)
 
@@ -41,7 +41,7 @@ internal fun HttpStatusCode.defaultMessage() = when (value) {
 
 private val MessageKey = AttributeKey<String>("errorMessage")
 
-// For an error with a message about this request ("Car with ID 5 not found"); a bare respond(status) gets the default message.
+/** Responds with an error status and a message about this request ("Car with ID 5 not found"); a bare respond(status) gets the default message. */
 suspend fun ApplicationCall.respondError(status: HttpStatusCode, message: String) {
     attributes.put(MessageKey, message)
     respond(status)
@@ -55,8 +55,10 @@ private fun Throwable.status() = when (this) {
     else -> HttpStatusCode.InternalServerError
 }
 
-// Routes just respond with a status; this turns every error status into the same body, also the ones Ktor sends itself
-// (unreadable bodies, unknown routes, a missing token).
+/**
+ * Gives every error status the same ErrorResponse body, also the ones Ktor sends itself
+ * (unreadable bodies, unknown routes, a missing token), and turns an unhandled exception into a 400, 404, 413, 415 or 500.
+ */
 fun Application.configureErrors() {
     install(StatusPages) {
         status(*ERROR_STATUSES) { call, status ->

@@ -2,6 +2,7 @@ package com.example.cars
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/** An electric car. Capacity is the battery in kWh, consumption is kWh per 100 km, priced at the electricity price. */
 @Serializable
 @SerialName("BEV")
 class BEVCar (

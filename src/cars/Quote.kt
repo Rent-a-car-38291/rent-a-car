@@ -14,11 +14,15 @@ data class QuoteResponse(val carId: Int, val distanceKm: Double, val energyCost:
 // Plain decimals only: toDoubleOrNull alone also accepts "5d", "0x1p3" and surrounding spaces.
 private val DISTANCE_PATTERN = Regex("\\d+(\\.\\d+)?")
 
+/** The distance in km, or null when it is missing, not a plain decimal or outside MIN_QUOTE_KM..MAX_QUOTE_KM. */
 fun parseQuoteDistance(value: String?): Double? =
     value?.takeIf(DISTANCE_PATTERN::matches)?.toDoubleOrNull()?.takeIf { it in MIN_QUOTE_KM..MAX_QUOTE_KM }
 
-// The parts are rounded first and added after, so energyCost + rentalRate is exactly total.
-// rentalRate is the car's stored rate as is: the quote does not scale it by distance or duration.
+/**
+ * Price of driving distanceKm in EUR: the energy for the distance plus the car's rate.
+ * The parts are rounded first and added after, so energyCost + rentalRate is exactly total.
+ * The rate is the car's stored rate as is: the quote does not scale it by distance or duration.
+ */
 fun Car.quote(distanceKm: Double, prices: EnergyPrices): QuoteResponse {
     // costPerKm is a binary double (0.35 * 0.5 / 100 = 0.0017499999999999998): cut that noise before rounding to cents.
     val energyCost = BigDecimal.valueOf(costPerKm(prices)).setScale(10, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(distanceKm)).setScale(2, RoundingMode.HALF_UP)

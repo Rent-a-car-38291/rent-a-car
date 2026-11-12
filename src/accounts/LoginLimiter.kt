@@ -3,9 +3,11 @@ package com.example.accounts
 import java.time.Duration
 import java.time.Instant
 
-// Locks an email out of POST /login after too many login attempts without a success within a window. Kept in memory, per server.
-// Unknown emails count like known ones, so a lock doesn't reveal whether an account exists.
-// shortcut: an attacker can lock out a victim's email by failing on purpose, and a restart or a second server resets the counters; add a per-IP limit and a shared store when that matters.
+/**
+ * Locks an email out of POST /login after too many login attempts without a success within a window. Kept in memory, per server.
+ * Unknown emails count like known ones, so a lock doesn't reveal whether an account exists.
+ * shortcut: an attacker can lock out a victim's email by failing on purpose, and a restart or a second server resets the counters; add a per-IP limit and a shared store when that matters.
+ */
 class LoginLimiter(
     private val maxFailures: Int = 5,
     private val window: Duration = Duration.ofMinutes(15),
@@ -18,12 +20,14 @@ class LoginLimiter(
     // Same normalization as the login lookup, which ignores case. An address is never longer than 254 characters, so the cap only keeps junk keys small.
     private fun key(email: String) = email.trim().lowercase().take(254)
 
-    // Seconds until the email may try again, or null when it isn't locked. Does not count as an attempt.
+    /** Seconds until the email may try again, or null when it isn't locked. Does not count as an attempt. */
     @Synchronized
     fun lockedFor(email: String): Long? = waitFor(recent(key(email)))
 
-    // Checks the lock and counts this attempt in one step, so parallel requests can't all pass the check before any of them
-    // is counted. null means go ahead and check the password; the attempt stays counted until reset() on a correct password.
+    /**
+     * Checks the lock and counts this attempt in one step, so parallel requests can't all pass the check before any of them
+     * is counted. null means go ahead and check the password; the attempt stays counted until reset() on a correct password or until the window passes.
+     */
     @Synchronized
     fun tryAcquire(email: String): Long? {
         val key = key(email)
@@ -40,6 +44,7 @@ class LoginLimiter(
         return maxOf(1, (wait.toMillis() + 999) / 1000)
     }
 
+    /** Forgets the attempts of the email, after a correct password. */
     @Synchronized
     fun reset(email: String) {
         failures.remove(key(email))
