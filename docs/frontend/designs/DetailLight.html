@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Car detail, light</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Space+Grotesk:wght@400;500&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</head>
+<body>
+<div style="--bg:#F4F2EA;--surface:#FFFFFF;--fg:#0B0B0B;--muted:#5F5E5A;--line:#D8D5C8;--acid:#D4FF3A;--btn-bg:#0B0B0B;--btn-fg:#D4FF3A;--photo:#DEDBCF;--wave2:#FF8AC4;--wave3:#B9A9FF; width: 390px; height: 844px; box-sizing: border-box; background: var(--bg); color: var(--fg); font-family: 'Space Grotesk', sans-serif; display: flex; flex-direction: column; overflow: hidden">
+<div style="height: 280px; background: var(--photo); position: relative; display: flex; align-items: center; justify-content: center">
+<svg aria-hidden="true" viewBox="0 0 390 280" preserveAspectRatio="none" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%"><path d="M0 200 C49 160 98 240 146 200 S244 160 293 200 S390 240 390 200" fill="none" stroke="#D4FF3A" stroke-width="6"/><path d="M0 225 C49 185 98 265 146 225 S244 185 293 225 S390 265 390 225" fill="none" stroke="var(--wave2)" stroke-width="6"/><path d="M0 250 C49 210 98 290 146 250 S244 210 293 250 S390 290 390 250" fill="none" stroke="var(--wave3)" stroke-width="6"/></svg>
+<span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted); position: relative">[CAR PHOTO 1 OF 4]</span>
+<a href="SearchLight.html" aria-label="Back to car search" style="position: absolute; left: 16px; top: 20px; width: 44px; height: 44px; border-radius: 99px; background: var(--bg); border: 1.5px solid var(--fg); color: var(--fg); display: flex; align-items: center; justify-content: center; text-decoration: none"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 L6 10 L12 16"/></svg></a>
+</div>
+<div style="flex: 1; padding: 20px 20px 0; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h1 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 28px; line-height: 1.05; letter-spacing: -1px">tesla model 3</h1>
+<span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted)">electric · sedan · AB-123-C · 2 km away</span>
+</div>
+<div style="display: flex; gap: 8px; align-items: center">
+<span style="background: var(--acid); color: #0B0B0B; border-radius: 10px; padding: 6px 10px; font: 500 15px 'Space Grotesk', sans-serif">4.3 ★</span>
+<a href="#" style="color: var(--fg); font: 500 14px 'Space Grotesk', sans-serif; height: 44px; display: flex; align-items: center">see 12 ratings</a>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<div style="background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted)">range</span><span style="font-size: 20px; font-weight: 500">491 km</span></div>
+<div style="background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted)">cost per km</span><span style="font-size: 20px; font-weight: 500">€0.05</span></div>
+<div style="background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted)">transmission</span><span style="font-size: 20px; font-weight: 500">automatic</span></div>
+<div style="background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted)">doors</span><span style="font-size: 20px; font-weight: 500">4</span></div>
+</div>
+<button style="height: 48px; border-radius: 99px; border: 1.5px solid var(--fg); background: transparent; color: var(--fg); font: 500 15px 'Space Grotesk', sans-serif">calculate a trip</button>
+</div>
+<div style="padding: 12px 20px 22px; border-top: 1.5px solid var(--fg); display: flex; align-items: center; gap: 14px; background: var(--bg)">
+<div style="display: flex; flex-direction: column"><span style="font-size: 22px; font-weight: 500">€35</span><span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted)">per daypart</span></div>
+<a href="ReserveLight.html" style="flex: 1; height: 54px; border-radius: 99px; background: var(--btn-bg); color: var(--btn-fg); font: 500 16px 'Space Grotesk', sans-serif; display: flex; align-items: center; justify-content: center; text-decoration: none">reserve</a>
+</div>
+</div>
+</body>
+</html>
