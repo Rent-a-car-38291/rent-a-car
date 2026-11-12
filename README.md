@@ -24,14 +24,15 @@ Built with [Ktor](https://ktor.io) and Kotlin, and the [Kotlin Toolchain](https:
 
 You need Docker, for the database. You do not need a JDK: the `./kotlin` wrapper downloads the toolchain and a matching JDK on the first run (this takes a minute or two), so there is nothing else to install. On Windows, use `kotlin.bat` instead of `./kotlin`.
 
-Start the database, then the server:
+The server and the console client live in [`api/`](api). Every command and path in this README is relative to that folder. Start the database, then the server:
 
 ```bash
+cd api
 docker compose up -d
-./kotlin run -m rent-a-car
+./kotlin run -m api
 ```
 
-The project has two modules (the server and the [console client](#console-client)), so `run` needs `-m` with the module to start. The server module is named after the folder you cloned into (`rent-a-car`); `./kotlin show modules` lists the names.
+The project has two modules (the server and the [console client](#console-client)), so `run` needs `-m` with the module to start. The server module is named after its folder (`api`); `./kotlin show modules` lists the names.
 
 If the server starts successfully, you'll see:
 
@@ -48,7 +49,7 @@ curl http://localhost:8080/cars
 
 | Command          | Description       |
 |------------------|-------------------|
-| `./kotlin run -m rent-a-car` | Run the server |
+| `./kotlin run -m api` | Run the server |
 | `./kotlin run -m cli` | Run the console client |
 | `./kotlin test`  | Run the tests of both modules |
 | `./kotlin build` | Build both modules |
@@ -114,7 +115,7 @@ About two minutes, with two terminals:
 
 ```bash
 docker compose up -d
-./kotlin run -m rent-a-car      # terminal 1: the server
+./kotlin run -m api      # terminal 1: the server
 ./kotlin run -m cli             # terminal 2: the client
 ```
 
@@ -129,13 +130,13 @@ docker compose up -d
 
 ## Trying the API (Swagger UI)
 
-With the server running, open [http://localhost:8080/swagger](http://localhost:8080/swagger) to see every endpoint and try it with "Try it out". The page is described by [`resources/openapi/documentation.yaml`](resources/openapi/documentation.yaml), so add new endpoints there as well.
+With the server running, open [http://localhost:8080/swagger](http://localhost:8080/swagger) to see every endpoint and try it with "Try it out". The page is described by [`resources/openapi/documentation.yaml`](api/resources/openapi/documentation.yaml), so add new endpoints there as well.
 
 Swagger UI is only served in Ktor's development mode, which is on by default. Start the server with `KTOR_DEVELOPMENT=false` to turn it off.
 
 ## HTTP demo (IntelliJ)
 
-[`http/`](http) has request files for the [IntelliJ HTTP Client](https://www.jetbrains.com/help/idea/http-client-in-product-code-editor.html) that walk through the REST API as user flows, one click per request. Every request checks its status code (and a key field where that is cheap), so a run shows green or red per request, and the whole file doubles as a repeatable test of the running server.
+[`http/`](api/http) has request files for the [IntelliJ HTTP Client](https://www.jetbrains.com/help/idea/http-client-in-product-code-editor.html) that walk through the REST API as user flows, one click per request. Every request checks its status code (and a key field where that is cheap), so a run shows green or red per request, and the whole file doubles as a repeatable test of the running server.
 
 | File | What it does |
 |------|--------------|
@@ -156,7 +157,7 @@ docker run --rm -v "$PWD/http:/workdir" jetbrains/intellij-http-client -D -v htt
 
 ## API
 
-Every endpoint, taken from [`documentation.yaml`](resources/openapi/documentation.yaml). `Login` says whether the `Authorization: Bearer <token>` header is needed; every endpoint can also answer `500` and the other codes of [Errors and paging](#errors-and-paging). The paragraphs below the table explain the rules per area.
+Every endpoint, taken from [`documentation.yaml`](api/resources/openapi/documentation.yaml). `Login` says whether the `Authorization: Bearer <token>` header is needed; every endpoint can also answer `500` and the other codes of [Errors and paging](#errors-and-paging). The paragraphs below the table explain the rules per area.
 
 | Method   | Path                                   | Description                                             | Login | Success | Errors                                   |
 | -------- | -------------------------------------- | ------------------------------------------------------- | ----- | ------- | ---------------------------------------- |
@@ -255,6 +256,8 @@ This holds for `GET /cars` (after the filters), `GET /reservations`, `GET /trips
 To page in code, parse the parameters with `parsePaging` (`src/Paging.kt`), set the header with `call.setTotalCount(total)` and answer with the page. A route answers an error with `call.respond(HttpStatusCode.NotFound)` or, for a message about this request, `call.respondError(HttpStatusCode.NotFound, "...")` (`src/Errors.kt`): never build the error body by hand.
 
 ## Project layout
+
+Inside `api/` (`docs/` and `.github/` are at the root of the repository):
 
 ```
 src/
