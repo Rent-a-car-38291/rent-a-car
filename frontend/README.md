@@ -12,6 +12,12 @@ The `kotlin` (macOS/Linux) and `kotlin.bat` (Windows) scripts in the project roo
 the Kotlin Toolchain: they download the pinned toolchain version on first use, so no separate installation is required.
 Build the whole project with `./kotlin build`.
 
+### Look (acid wave)
+
+Theme in `shared/src/theme` (wrap screens in `AcidTheme(mode)`), components in `shared/src/components`, a static demo
+in `shared/src/demo`. Fonts (Unbounded, Space Grotesk, Space Mono, SIL OFL, see [licenses](./licenses)) are bundled
+in `shared/composeResources/font`. Icons come from Tabler via `io.github.lyxnx.compose.ui:tabler-icons`.
+
 ### Running
 
 Use the run configurations provided by the run widget in your IDE's toolbar. You can also run each module from the
