@@ -9,7 +9,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.avans.rentacar.components.AppShell
 import com.avans.rentacar.components.Destination
 import com.avans.rentacar.components.StatTile
-import com.avans.rentacar.demo.CarSearchScreen
+import com.avans.rentacar.gallery.ComponentGallery
 import com.avans.rentacar.theme.AcidTheme
 import com.avans.rentacar.theme.ThemeMode
 import org.jetbrains.compose.reload.DevelopmentEntryPoint
@@ -36,7 +36,7 @@ fun App() {
             onSelect = { tab = it },
             sidebarFooter = { StatTile("bonus points", "1,240") },
         ) {
-            CarSearchScreen(mode, onModeChange = { mode = it })
+            ComponentGallery(mode, onModeChange = { mode = it })
         }
     }
 }

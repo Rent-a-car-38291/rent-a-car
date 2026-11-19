@@ -14,8 +14,8 @@ Build the whole project with `./kotlin build`.
 
 ### Look (acid wave)
 
-Theme in `shared/src/theme` (wrap screens in `AcidTheme(mode)`), components in `shared/src/components`, a static demo
-in `shared/src/demo`. Fonts (Unbounded, Space Grotesk, Space Mono, SIL OFL, see [licenses](./licenses)) are bundled
+Theme in `shared/src/theme` (wrap screens in `AcidTheme(mode)`), components in `shared/src/components`, a component gallery
+in `shared/src/gallery`. Fonts (Unbounded, Space Grotesk, Space Mono, SIL OFL, see [licenses](./licenses)) are bundled
 in `shared/composeResources/font`. Icons come from Tabler via `io.github.lyxnx.compose.ui:tabler-icons`.
 
 ### Running
