@@ -7,6 +7,12 @@ html, body {
     background: #0B0B0B;
 }
 
+/* Follow the device theme like the app does: paper background, ink wave. */
+@media (prefers-color-scheme: light) {
+    html, body { background: #F4F2EA; }
+    #loader path { stroke: #0B0B0B; }
+}
+
 #loader {
     position: fixed;
     inset: 0;

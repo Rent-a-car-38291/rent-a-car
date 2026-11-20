@@ -76,8 +76,7 @@ val Dayparts = listOf("morning" to Acid, "afternoon" to Pink, "evening" to Viole
 private const val RowSeconds = 30f
 
 /**
- * The first screen for someone who is not logged in. Wrap it in a dark [AcidTheme]:
- * it follows the black intro, a switch to light would flash.
+ * The first screen for someone who is not logged in. Follows the device theme, like the intro before it.
  */
 @Composable
 fun WelcomeScreen(
@@ -248,14 +247,15 @@ private fun Chip(text: String, color: Color) {
     )
 }
 
-/** A lime wave that slowly swells and settles. */
+/** A wave that slowly swells and settles: lime in dark mode, ink in light mode where lime barely shows. */
 @Composable
 private fun SwayingWave(sway: Boolean, modifier: Modifier = Modifier) {
     val amplitude = if (sway) {
         rememberInfiniteTransition().animateFloat(4f, 9f, infiniteRepeatable(tween(2400), RepeatMode.Reverse)).value
     } else 6f
+    val color = if (AcidTheme.colors.isDark) Acid else Ink
     Canvas(modifier.fillMaxWidth().height(28.dp)) {
-        drawWave(Acid, amplitude = amplitude.dp, wavelength = 60.dp, strokeWidth = 3.dp)
+        drawWave(color, amplitude = amplitude.dp, wavelength = 60.dp, strokeWidth = 3.dp)
     }
 }
 

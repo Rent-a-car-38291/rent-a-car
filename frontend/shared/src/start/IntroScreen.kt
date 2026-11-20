@@ -30,16 +30,18 @@ import com.avans.rentacar.theme.Ink
 import com.avans.rentacar.theme.Pink
 import com.avans.rentacar.theme.Violet
 
-private val IntroWaves = listOf(Acid, Pink, Violet)
+// Lime barely shows on the light background, so the first wave is ink there.
+private fun introWaves(dark: Boolean) = listOf(if (dark) Acid else Ink, Pink, Violet)
 private const val IntroMillis = 1000
 
 /**
  * The first screen after the native splash: three waves draw in, then "rent a car" slides in.
- * About a second, a tap skips it. Always dark, like the splash before it.
+ * About a second, a tap skips it. Follows the device theme, like the splash before it.
  */
 @Composable
 fun IntroScreen(onFinish: () -> Unit) {
     val reduced = prefersReducedMotion()
+    val waves = introWaves(AcidTheme.colors.isDark)
     val t = remember { Animatable(if (reduced) 1f else 0f) }
     LaunchedEffect(Unit) {
         if (reduced) kotlinx.coroutines.delay(IntroMillis.toLong())
@@ -49,13 +51,13 @@ fun IntroScreen(onFinish: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(Ink)
+            .background(AcidTheme.colors.bg)
             .clickable(remember { MutableInteractionSource() }, indication = null, onClickLabel = "skip", role = Role.Button, onClick = onFinish),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Canvas(Modifier.fillMaxWidth().height(120.dp)) {
-            IntroWaves.forEachIndexed { i, color ->
+            waves.forEachIndexed { i, color ->
                 // Wave i draws from 0.2 i to 0.2 i + 0.3 of the timeline: 0 to 0.7 for all three.
                 val p = ((t.value - i * 0.2f) / 0.3f).coerceIn(0f, 1f)
                 clipRect(right = size.width * p) {

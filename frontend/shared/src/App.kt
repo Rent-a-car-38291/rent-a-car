@@ -48,11 +48,11 @@ fun App() {
     val toWelcome = { screen = Screen.Welcome }
 
     when (val s = screen) {
-        Screen.Intro -> AcidTheme(ThemeMode.Dark) {
+        Screen.Intro -> AcidTheme(mode) {
             // shortcut: no stored login yet, always goes to Welcome; check the token once login storage exists
             IntroScreen(onFinish = { screen = afterIntro(loggedIn = false) })
         }
-        Screen.Welcome -> AcidTheme(ThemeMode.Dark) {
+        Screen.Welcome -> AcidTheme(mode) {
             WelcomeScreen(
                 cars = FakeCars,
                 onCar = { screen = Screen.CarDetail(it) },
