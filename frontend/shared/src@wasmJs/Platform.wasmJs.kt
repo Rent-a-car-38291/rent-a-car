@@ -5,7 +5,6 @@ import kotlinx.browser.window
 
 class WasmPlatform : Platform {
     override val name: String = "Web with Kotlin/Wasm"
-    override val isWeb = true
 }
 
 actual fun getPlatform(): Platform = WasmPlatform()

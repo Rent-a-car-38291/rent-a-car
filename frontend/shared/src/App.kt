@@ -35,8 +35,8 @@ sealed interface Screen {
     data class CarDetail(val id: Int) : Screen
 }
 
-/** Where the intro goes: logged in or on the web portal straight to Car search, otherwise Welcome. */
-fun afterIntro(loggedIn: Boolean, web: Boolean): Screen = if (loggedIn || web) Screen.CarSearch else Screen.Welcome
+/** Where the intro goes: logged in straight to Car search, otherwise Welcome. */
+fun afterIntro(loggedIn: Boolean): Screen = if (loggedIn) Screen.CarSearch else Screen.Welcome
 
 @Composable
 @Preview
@@ -45,13 +45,12 @@ fun App() {
     // shortcut: the mode is not remembered across launches yet, store it on the device with Account settings
     var mode by remember { mutableStateOf(ThemeMode.System) }
     var screen by remember { mutableStateOf<Screen>(Screen.Intro) }
-    val web = getPlatform().isWeb
     val toWelcome = { screen = Screen.Welcome }
 
     when (val s = screen) {
         Screen.Intro -> AcidTheme(ThemeMode.Dark) {
             // shortcut: no stored login yet, always goes to Welcome; check the token once login storage exists
-            IntroScreen(onFinish = { screen = afterIntro(loggedIn = false, web = web) })
+            IntroScreen(onFinish = { screen = afterIntro(loggedIn = false) })
         }
         Screen.Welcome -> AcidTheme(ThemeMode.Dark) {
             WelcomeScreen(
@@ -62,7 +61,7 @@ fun App() {
                 onLogIn = { screen = Screen.LogIn },
             )
         }
-        Screen.CarSearch -> AcidTheme(mode) { CarSearch(mode, { mode = it }, onBack = if (web) null else toWelcome) }
+        Screen.CarSearch -> AcidTheme(mode) { CarSearch(mode, { mode = it }, onBack = toWelcome) }
         Screen.CreateAccount -> AcidTheme(mode) { PlaceholderScreen("create account", "Signing up comes here.", toWelcome) }
         Screen.LogIn -> AcidTheme(mode) { PlaceholderScreen("log in", "Logging in comes here.", toWelcome) }
         is Screen.CarDetail -> AcidTheme(mode) { PlaceholderScreen("car ${s.id}", "The car's details come here.", toWelcome) }

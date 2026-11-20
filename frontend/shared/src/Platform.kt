@@ -4,8 +4,6 @@ import androidx.compose.runtime.Composable
 
 interface Platform {
     val name: String
-    /** The web portal, which skips Welcome. */
-    val isWeb: Boolean get() = false
 }
 
 expect fun getPlatform(): Platform

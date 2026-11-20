@@ -7,10 +7,9 @@ import kotlin.test.assertEquals
 
 class StartTest {
     @Test
-    fun `intro goes to welcome only for a visitor on a phone`() {
-        assertEquals(Screen.Welcome, afterIntro(loggedIn = false, web = false))
-        assertEquals(Screen.CarSearch, afterIntro(loggedIn = true, web = false))
-        assertEquals(Screen.CarSearch, afterIntro(loggedIn = false, web = true))
+    fun `intro goes to welcome for a visitor and to car search when logged in`() {
+        assertEquals(Screen.Welcome, afterIntro(loggedIn = false))
+        assertEquals(Screen.CarSearch, afterIntro(loggedIn = true))
     }
 
     @Test
