@@ -1,0 +1,9 @@
+<resources>
+    <!-- The system splash (Android 12+): the app icon on the device theme color. Older versions show the window color only. -->
+    <style name="Theme.RentACar" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/launch</item>
+        <item name="android:windowSplashScreenBackground">@color/launch</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/acid</item>
+    </style>
+</resources>
