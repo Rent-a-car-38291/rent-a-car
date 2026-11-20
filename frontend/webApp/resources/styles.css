@@ -4,4 +4,32 @@ html, body {
     margin: 0;
     padding: 0;
     overflow: hidden;
+    background: #0B0B0B;
+}
+
+/* Follow the device theme like the app does: paper background, ink wave. */
+@media (prefers-color-scheme: light) {
+    html, body { background: #F4F2EA; }
+    #loader path { stroke: #0B0B0B; }
+}
+
+#loader {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+}
+
+#loader path {
+    stroke-dasharray: 100;
+    animation: draw 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes draw {
+    from { stroke-dashoffset: 100; }
+    to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #loader path { animation: none; }
 }
