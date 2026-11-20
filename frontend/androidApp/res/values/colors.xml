@@ -1,0 +1,6 @@
+<resources>
+    <color name="acid">#D4FF3A</color>
+    <color name="ink">#0B0B0B</color>
+    <!-- Window and splash background: paper here, ink in values-night, so it matches the device theme. -->
+    <color name="launch">#F4F2EA</color>
+</resources>
