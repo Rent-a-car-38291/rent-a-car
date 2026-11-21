@@ -29,3 +29,26 @@ jobs:
 
       - name: Build
         run: ./kotlin build
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+
+      # iOS needs a Mac with Xcode, so CI covers Android and the web portal.
+      - name: Test
+        run: ./kotlin test -m shared -p android
+
+      - name: Build Android
+        run: ./kotlin build -m androidApp -p android
+
+      - name: Build web
+        run: ./kotlin build -m webApp
