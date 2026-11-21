@@ -10,6 +10,7 @@ import com.example.configureRouting
 import com.example.configureErrors
 import com.example.configureSerialization
 import com.example.database.connectDatabase
+import com.example.database.seedDemoData
 import com.example.images.ImageRepository
 import com.example.images.configureImages
 import com.example.organizations.OrganizationRepository
@@ -21,7 +22,9 @@ import com.example.reservations.ReservationRepository
 import com.example.reservations.configureReservations
 import com.example.trips.TripRepository
 import com.example.trips.configureTrips
+import com.example.reservations.ZONE
 import io.ktor.server.application.*
+import java.time.LocalDate
 import java.nio.file.Path
 
 fun main(args: Array<String>) {
@@ -50,4 +53,8 @@ fun Application.module() {
     configureAccounts(users, organizations, tokens)
     configureOrganizations(organizations)
     configureOrganizationReport(organizations, cars, trips)
+    // Demo accounts with a known password: development mode only, never on a real server.
+    if (developmentMode && environment.config.propertyOrNull("seed.demoData")?.getString() == "true") {
+        seedDemoData(users, organizations, cars, reservations, trips, ratings, images, LocalDate.now(ZONE), ZONE)
+    }
 }
