@@ -6,6 +6,9 @@ ktor:
             - org.jetbrains.amper.ktor.ApplicationKt.module
     deployment:
         port: 8080
+cors:
+    # Comma-separated origins of the web portal, for example https://portal.example.com. Development mode also allows localhost.
+    origins: "$CORS_ORIGINS:"
 images:
     directory: "$IMAGES_DIRECTORY:uploads"
 database:
