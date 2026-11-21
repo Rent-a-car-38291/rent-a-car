@@ -25,7 +25,7 @@ command line:
 
 - Android app: `./kotlin run -m androidApp`
 - iOS app: `./kotlin run -m iosApp`
-- Web app: `./kotlin run -m webApp`
+- Web app: `./kotlin run -m webApp --port=8081` (the API already uses 8080; the app calls the API on port 8080 of the same machine)
 
 ### Testing
 

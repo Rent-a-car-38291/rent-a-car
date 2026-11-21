@@ -11,3 +11,6 @@ actual fun getPlatform(): Platform = WasmPlatform()
 
 @Composable
 actual fun prefersReducedMotion(): Boolean = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+
+// The API runs on port 8080 of the machine that serves the portal.
+actual fun defaultServerUrl(): String = "http://${window.location.hostname}:8080"
