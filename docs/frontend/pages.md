@@ -64,10 +64,18 @@ A visitor who taps an action that needs an account (Reserve, Rate, Offer a car) 
 
 ## Getting in
 
+### 0. Startup
+- **Native splash**: the app icon (a black wave on lime) on the device theme color, paper in light mode and black in dark mode. The system shows it, we only set the color and icon.
+- **Intro**: three waves (lime, pink, violet) draw in and "rent a car" slides in, about 1 second, skippable with a tap. Meanwhile the app checks for a stored login: logged in goes to Car search, otherwise to Welcome.
+- **Reduced motion**: the waves appear at once, no animation.
+- **Web**: a small HTML/CSS loader in the same look while the WebAssembly loads, then straight to Car search.
+
 ### 1. Welcome
-- **Who**: visitor, first open only.
-- **Shows**: app name, one line ("Rent a car for a morning, an afternoon or an evening."), a photo.
-- **Actions**: "Create account", "Log in", "Look around first" (goes to Car search).
+- **Who**: visitor, first open only. Follows the device theme, like the splash and intro before it.
+- **Shows**: "a car for the morning / afternoon / evening", rotating every few seconds with the matching color block. Below it two rows of real cars (photo with price, photo with rating) drifting slowly in opposite directions.
+- **Actions**: main button "See 14 cars nearby" (goes to Car search as a visitor; the number is live), "Create account", and the link "Already have an account? Log in". Tapping a car in the rows opens that car.
+- **Reduced motion**: the rows stand still and can be swiped by hand.
+- **Data**: `GET /cars` needs no login, so the rows and the count are real.
 - **Desktop**: the web portal skips this page and opens Car search with "Log in" in the sidebar.
 
 ### 2. Register
@@ -293,6 +301,7 @@ A visitor who taps an action that needs an account (Reserve, Rate, Offer a car) 
 | B8 | Car brand and photo in a reservation row and a trip row | 10, 15 |
 | B9 | Delete a car photo | 18 |
 | B10 | Allow the web portal's origin (CORS) | web portal |
+| B11 | The first photo of each car in the car list (`GET /cars`) | 1, 4 |
 
 ## Foundation work (not a page)
 
