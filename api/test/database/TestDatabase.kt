@@ -13,6 +13,14 @@ object TestDatabase {
 
     val dataSource: DataSource get() = postgres.postgresDatabase
 
+    /** An empty database of its own, for a test that must not share its rows with the others. */
+    fun separate(name: String): DataSource {
+        postgres.postgresDatabase.connection.use { c ->
+            if (!c.createStatement().executeQuery("SELECT 1 FROM pg_database WHERE datname = '$name'").next()) c.createStatement().execute("CREATE DATABASE $name")
+        }
+        return postgres.getDatabase("postgres", name)
+    }
+
     val config: ApplicationConfig
         get() = MapApplicationConfig(
             "database.url" to postgres.getJdbcUrl("postgres", "postgres"),

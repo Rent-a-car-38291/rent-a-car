@@ -54,6 +54,21 @@ curl http://localhost:8080/cars
 | `./kotlin test`  | Run the tests of both modules |
 | `./kotlin build` | Build both modules |
 
+### Demo data
+
+In development mode the server adds data to try the app with on start, so no screen starts empty. It adds it when the demo accounts are not there yet (a fresh database, or one from before the demo data) and leaves everything already in the database alone. Once they exist it adds nothing, so restarting never makes duplicates. Outside development mode, or with `SEED_DEMO_DATA=false`, only the 13 cars of the sample fleet are added.
+
+Every demo account has the password `drive-calmly`:
+
+| Email | Who |
+|---|---|
+| `sanne@rent-a-car.test` | Renter with the most trips, a reservation today and tomorrow |
+| `daan@rent-a-car.test` | Owns a Kia EV6 and a Fiat 500 (the Fiat is due for service), member of Avans Rentals |
+| `noor@rent-a-car.test` | Admin of the organization Avans Rentals, which has a Polestar 2 and a Skoda Octavia |
+| `milan@rent-a-car.test`, `lotte@rent-a-car.test` | Renters with trips and reservations in the coming days |
+
+Next to that: a month of finished trips with scores and bonus points (so the leaderboard and the stats are filled), ratings on most cars, and a drawn picture of every car in its color. The dates are relative to the day the database is seeded. To start over, remove the database volume: `docker compose down -v`, then `docker compose up -d`.
+
 ### Tests
 
 `./kotlin test` runs everything; a single class runs with `./kotlin test --include-classes=com.example.cars.CarFilterTest`.
@@ -77,6 +92,7 @@ The defaults match `docker-compose.yml` and need no setup for local development.
 | `DATABASE_PASSWORD` | `rentacar` | Database password |
 | `IMAGES_DIRECTORY` | `uploads` | Directory where the car photos are stored |
 | `KTOR_DEVELOPMENT` | `true` | Development mode, which serves Swagger UI at `/swagger`; set `false` outside local development |
+| `SEED_DEMO_DATA` | `true` | In development mode, add the [demo data](#demo-data) on start when it is not there yet; `false` keeps only the sample fleet |
 | `RENT_A_CAR_URL` | `http://localhost:8080` | Server the console client talks to (or pass the url as its first argument) |
 
 ## Console client
@@ -145,7 +161,7 @@ Swagger UI is only served in Ktor's development mode, which is on by default. St
 | `http-client.env.json` | The environment `dev`: `baseUrl` is `http://localhost:8080` |
 | `tiny.png` | A 1x1 picture for the photo upload |
 
-Start the server (see [Getting started](#getting-started)), open `http/demo.http` in IntelliJ IDEA, choose the environment `dev` in the top right of the editor and use **Run all requests in file**, or run one request with the green arrow. The blocks build on each other: the token, the ids and the invite code are passed on with `client.global.set`, so nothing has to be copied. The file expects the sample fleet that the server puts into an empty database (13 cars, car 2 is the Tesla Model 3), so start from a clean database, and run the blocks in order (each one uses what the one before it saved; "Run all requests in file" does that). The file can run again on the same database, because every run uses a new run id for the emails and the license plates and offers a new car, but every run leaves its users, cars and trips behind, so the leaderboard fills up: start clean again for a tidy demo. It works at any time of day: "today" is calculated in Dutch time, like the server does.
+Start the server (see [Getting started](#getting-started)), open `http/demo.http` in IntelliJ IDEA, choose the environment `dev` in the top right of the editor and use **Run all requests in file**, or run one request with the green arrow. The blocks build on each other: the token, the ids and the invite code are passed on with `client.global.set`, so nothing has to be copied. The file expects the sample fleet that the server puts into an empty database (car 2 is the Tesla Model 3; with the [demo data](#demo-data) there are 17 cars), so start from a clean database, and run the blocks in order (each one uses what the one before it saved; "Run all requests in file" does that). The file can run again on the same database, because every run uses a new run id for the emails and the license plates and offers a new car, but every run leaves its users, cars and trips behind, so the leaderboard fills up: start clean again for a tidy demo. It works at any time of day: "today" is calculated in Dutch time, like the server does.
 
 Without IntelliJ, the same files run with the [HTTP Client CLI](https://www.jetbrains.com/help/idea/http-client-cli.html) from Docker (`-D` makes `localhost` reach the server on your machine):
 
