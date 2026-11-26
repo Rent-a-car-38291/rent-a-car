@@ -6,7 +6,9 @@ import com.example.accounts.configureAccounts
 import com.example.accounts.configureSecurity
 import com.example.cars.PostgresCarRepository
 import com.example.cars.configureCars
+import com.example.configureCors
 import com.example.configureRouting
+import com.example.parseOrigins
 import com.example.configureErrors
 import com.example.configureSerialization
 import com.example.database.connectDatabase
@@ -29,6 +31,7 @@ fun main(args: Array<String>) {
 }
 
 fun Application.module() {
+    configureCors(parseOrigins(environment.config.propertyOrNull("cors.origins")?.getString().orEmpty()))
     configureSerialization()
     configureErrors()
     configureRouting()

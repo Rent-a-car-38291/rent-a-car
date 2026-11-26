@@ -77,6 +77,7 @@ The defaults match `docker-compose.yml` and need no setup for local development.
 | `DATABASE_PASSWORD` | `rentacar` | Database password |
 | `IMAGES_DIRECTORY` | `uploads` | Directory where the car photos are stored |
 | `KTOR_DEVELOPMENT` | `true` | Development mode, which serves Swagger UI at `/swagger`; set `false` outside local development |
+| `CORS_ORIGINS` | (none) | Comma-separated origins of the web portal that may call the API from the browser, such as `https://portal.example.com`; development mode also allows any `localhost` port |
 | `RENT_A_CAR_URL` | `http://localhost:8080` | Server the console client talks to (or pass the url as its first argument) |
 
 ## Console client
