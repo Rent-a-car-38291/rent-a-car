@@ -11,3 +11,6 @@ settings:
   android:
     namespace: com.avans.rentacar
     applicationId: com.avans.rentacar
+    compileSdk:
+      apiLevel: 37
+      minorApiLevel: 2 # tabler-icons-android requires 37.2
