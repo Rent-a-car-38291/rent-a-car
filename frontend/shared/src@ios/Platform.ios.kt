@@ -12,3 +12,6 @@ actual fun getPlatform(): Platform = IOSPlatform()
 
 @Composable
 actual fun prefersReducedMotion(): Boolean = UIAccessibilityIsReduceMotionEnabled()
+
+// The iOS simulator shares this computer's network. A real iPhone needs the computer's address on the wifi.
+actual fun defaultServerUrl(): String = "http://localhost:8080"

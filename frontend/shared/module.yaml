@@ -13,11 +13,22 @@ dependencies:
   - $libs.androidx.lifecycle.viewmodel.compose
   - $libs.androidx.lifecycle.runtime.compose
   - $libs.tabler.icons
+  - $libs.ktor.client.core
+  - $libs.kotlinx.datetime
 
 dependencies@android:
   - $compose.uiTooling
+  - $libs.ktor.client.okhttp
+
+dependencies@ios:
+  - $libs.ktor.client.darwin
+
+dependencies@wasmJs:
+  - $libs.ktor.client.js
 
 settings:
+  kotlin:
+    serialization: json
   compose:
     enabled: true
     resources:

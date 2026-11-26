@@ -1,12 +1,18 @@
 package com.avans.rentacar
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
-import com.avans.rentacar.cars.FakeCars
+import com.avans.rentacar.api.Api
+import com.avans.rentacar.api.ApiError
+import com.avans.rentacar.api.Page
+import com.avans.rentacar.cars.Car
+import com.avans.rentacar.cars.CarQuery
+import com.avans.rentacar.search.CarSearchScreen
 import com.avans.rentacar.components.AppShell
 import com.avans.rentacar.components.Destination
 import com.avans.rentacar.components.StatTile
@@ -46,6 +52,12 @@ fun App() {
     var mode by remember { mutableStateOf(ThemeMode.System) }
     var screen by remember { mutableStateOf<Screen>(Screen.Intro) }
     val toWelcome = { screen = Screen.Welcome }
+    val api = remember { Api() }
+    // Welcome's cars and count; it shows without them when the server can't be reached.
+    var welcomeCars by remember { mutableStateOf<Page<Car>?>(null) }
+    LaunchedEffect(api) {
+        welcomeCars = try { api.cars(CarQuery(), limit = 14) } catch (e: ApiError) { null }
+    }
 
     when (val s = screen) {
         Screen.Intro -> AcidTheme(mode) {
@@ -54,23 +66,24 @@ fun App() {
         }
         Screen.Welcome -> AcidTheme(mode) {
             WelcomeScreen(
-                cars = FakeCars,
+                cars = welcomeCars?.items.orEmpty(),
+                total = welcomeCars?.total,
                 onCar = { screen = Screen.CarDetail(it) },
                 onBrowse = { screen = Screen.CarSearch },
                 onCreateAccount = { screen = Screen.CreateAccount },
                 onLogIn = { screen = Screen.LogIn },
             )
         }
-        Screen.CarSearch -> AcidTheme(mode) { CarSearch(mode, { mode = it }, onBack = toWelcome) }
+        Screen.CarSearch -> AcidTheme(mode) { CarSearch(api, mode, { mode = it }, onCar = { screen = Screen.CarDetail(it) }, onBack = toWelcome) }
         Screen.CreateAccount -> AcidTheme(mode) { PlaceholderScreen("create account", "Signing up comes here.", toWelcome) }
         Screen.LogIn -> AcidTheme(mode) { PlaceholderScreen("log in", "Logging in comes here.", toWelcome) }
         is Screen.CarDetail -> AcidTheme(mode) { PlaceholderScreen("car ${s.id}", "The car's details come here.", toWelcome) }
     }
 }
 
-/** Car search as a visitor. Until it is built, the other tabs still show the component gallery. */
+/** Car search as a visitor. Until they are built, the other tabs show the component gallery. */
 @Composable
-private fun CarSearch(mode: ThemeMode, onModeChange: (ThemeMode) -> Unit, onBack: (() -> Unit)?) {
+private fun CarSearch(api: Api, mode: ThemeMode, onModeChange: (ThemeMode) -> Unit, onCar: (Int) -> Unit, onBack: (() -> Unit)?) {
     var tab by remember { mutableStateOf("find") }
     AppShell(
         destinations = Destinations,
@@ -78,7 +91,7 @@ private fun CarSearch(mode: ThemeMode, onModeChange: (ThemeMode) -> Unit, onBack
         onSelect = { tab = it },
         sidebarFooter = { StatTile("bonus points", "1,240") },
     ) {
-        if (tab == "find") PlaceholderScreen("find a car", "Car search comes here.", onBack)
+        if (tab == "find") CarSearchScreen(api, onCar, onBack)
         else ComponentGallery(mode, onModeChange)
     }
 }

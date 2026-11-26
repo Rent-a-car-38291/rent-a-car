@@ -14,3 +14,6 @@ actual fun getPlatform(): Platform = AndroidPlatform()
 @Composable
 actual fun prefersReducedMotion(): Boolean =
     Settings.Global.getFloat(LocalContext.current.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+
+// The Android emulator reaches this computer at 10.0.2.2. A real phone needs the computer's address on the wifi.
+actual fun defaultServerUrl(): String = "http://10.0.2.2:8080"

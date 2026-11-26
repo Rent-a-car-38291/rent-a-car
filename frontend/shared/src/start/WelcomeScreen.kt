@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avans.rentacar.cars.Car
+import com.avans.rentacar.cars.kindLabel
 import com.avans.rentacar.components.OutlineCard
 import com.avans.rentacar.components.PrimaryButton
 import com.avans.rentacar.components.SecondaryButton
@@ -81,6 +82,7 @@ private const val RowSeconds = 30f
 @Composable
 fun WelcomeScreen(
     cars: List<Car>,
+    total: Int?,
     onCar: (Int) -> Unit,
     onBrowse: () -> Unit,
     onCreateAccount: () -> Unit,
@@ -108,7 +110,7 @@ fun WelcomeScreen(
                     Spacer(Modifier.height(16.dp))
                     Headline(rotate = !reduced, style = AcidTheme.type.display.copy(fontSize = size.sp, lineHeight = (size * 1.05f).sp))
                     SwayingWave(sway = !reduced, modifier = Modifier.widthIn(max = 380.dp).padding(vertical = 36.dp))
-                    Actions(cars.size, onBrowse, onCreateAccount, onLogIn, Modifier.widthIn(max = 380.dp))
+                    Actions(total, onBrowse, onCreateAccount, onLogIn, Modifier.widthIn(max = 380.dp))
                 }
                 CarRows(cars, reduced, onCar, cardWidth = 220.dp, Modifier.weight(1.2f).fillMaxHeight())
             }
@@ -121,7 +123,7 @@ fun WelcomeScreen(
                 Spacer(Modifier.weight(1f))
                 CarRows(cars, reduced, onCar, cardWidth = 156.dp)
                 SwayingWave(sway = !reduced, modifier = Modifier.padding(vertical = 20.dp))
-                Actions(cars.size, onBrowse, onCreateAccount, onLogIn, Modifier.padding(horizontal = 20.dp))
+                Actions(total, onBrowse, onCreateAccount, onLogIn, Modifier.padding(horizontal = 20.dp))
             }
         }
     }
@@ -130,22 +132,33 @@ fun WelcomeScreen(
 /** The two rows drifting in opposite directions: prices on top, ratings below. */
 @Composable
 private fun CarRows(cars: List<Car>, reduced: Boolean, onCar: (Int) -> Unit, cardWidth: Dp, modifier: Modifier = Modifier) {
+    // No rows without cars (loading, or the server can't be reached): an endless row needs at least one.
+    if (cars.isEmpty()) {
+        Spacer(modifier)
+        return
+    }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)) {
         DriftingRow(cars, reverse = false, moving = !reduced, cardWidth, onCar) { Chip("€${it.rate.roundToInt()}", Acid) }
-        DriftingRow(cars.filter { it.averageRating != null }.reversed(), reverse = true, moving = !reduced, cardWidth, onCar) {
-            Chip("${oneDecimal(it.averageRating!!)} ★", Pink)
+        // The rating, or the kind for a car nobody rated yet, so the row is never empty.
+        DriftingRow(cars.reversed(), reverse = true, moving = !reduced, cardWidth, onCar) { car ->
+            car.averageRating?.let { Chip("${oneDecimal(it)} ★", Pink) } ?: Chip(car.kindLabel, Violet)
         }
     }
 }
 
 @Composable
-private fun Actions(count: Int, onBrowse: () -> Unit, onCreateAccount: () -> Unit, onLogIn: () -> Unit, modifier: Modifier = Modifier) {
+private fun Actions(count: Int?, onBrowse: () -> Unit, onCreateAccount: () -> Unit, onLogIn: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        PrimaryButton("See $count cars nearby", onBrowse, Modifier.fillMaxWidth())
+        val see = when (count) {
+            null -> "See cars nearby"
+            1 -> "See 1 car nearby"
+            else -> "See $count cars nearby"
+        }
+        PrimaryButton(see, onBrowse, Modifier.fillMaxWidth())
         SecondaryButton("Create account", onCreateAccount, Modifier.fillMaxWidth())
         Text(
             buildAnnotatedString {
