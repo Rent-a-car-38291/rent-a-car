@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reserve, dark</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Space+Grotesk:wght@400;500&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</head>
+<body>
+<div style="--bg:#0B0B0B;--surface:#1A1A19;--fg:#F4F2EA;--muted:#A8A69C;--line:#2E2E2C;--acid:#D4FF3A;--btn-bg:#D4FF3A;--btn-fg:#0B0B0B;--photo:#26215C;--wave2:#FF8AC4;--wave3:#B9A9FF;--route:#D4FF3A;--num-fg:#D4FF3A;--num-bg:transparent;--danger:#FF8AC4; width: 390px; height: 844px; box-sizing: border-box; background: var(--bg); color: var(--fg); font-family: 'Space Grotesk', sans-serif; display: flex; flex-direction: column; overflow: hidden">
+<div style="flex: 1; padding: 20px 20px 0; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; align-items: center; gap: 12px">
+<a href="DetailDark.html" aria-label="Back to the car" style="width: 44px; height: 44px; border-radius: 99px; border: 1.5px solid var(--fg); color: var(--fg); display: flex; align-items: center; justify-content: center; text-decoration: none; box-sizing: border-box"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 L6 10 L12 16"/></svg></a>
+<h1 style="margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 28px; line-height: 1.05; letter-spacing: -1px">reserve</h1>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 10px">
+<div style="width: 64px; height: 52px; border-radius: 10px; background: var(--photo)"></div>
+<div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Unbounded', sans-serif; font-weight: 500; font-size: 15px; letter-spacing: -0.5px">tesla model 3</span><span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted)">€35 per daypart</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted)">which day</span>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px">
+<button style="height: 64px; border-radius: 16px; border: 1.5px solid var(--btn-bg); background: var(--btn-bg); color: var(--btn-fg); font: 500 13px 'Space Grotesk', sans-serif">wed<br><span style="font-size: 20px">11</span></button>
+<button style="height: 64px; border-radius: 16px; border: 1.5px solid var(--line); background: transparent; color: var(--fg); font: 500 13px 'Space Grotesk', sans-serif">thu<br><span style="font-size: 20px">12</span></button>
+<button style="height: 64px; border-radius: 16px; border: 1.5px solid var(--line); background: transparent; color: var(--fg); font: 500 13px 'Space Grotesk', sans-serif">fri<br><span style="font-size: 20px">13</span></button>
+<button style="height: 64px; border-radius: 16px; border: 1.5px solid var(--line); background: transparent; color: var(--fg); font: 500 13px 'Space Grotesk', sans-serif">sat<br><span style="font-size: 20px">14</span></button>
+<button style="height: 64px; border-radius: 16px; border: 1.5px solid var(--line); background: transparent; color: var(--fg); font: 500 13px 'Space Grotesk', sans-serif">sun<br><span style="font-size: 20px">15</span></button>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted)">which part of the day</span>
+<button style="height: 76px; border-radius: 20px; border: 1.5px solid var(--fg); background: var(--acid); color: #0B0B0B; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; font: 500 18px 'Space Grotesk', sans-serif"><span>morning</span><span style="font: 400 13px 'Space Mono', monospace">06:00 to 12:00 · picked</span></button>
+<button disabled style="height: 76px; border-radius: 20px; border: 1.5px dashed var(--line); background: transparent; color: var(--muted); padding: 0 18px; display: flex; align-items: center; justify-content: space-between; font: 500 18px 'Space Grotesk', sans-serif"><span style="text-decoration: line-through">afternoon</span><span style="font: 400 13px 'Space Mono', monospace">12:00 to 18:00 · taken</span></button>
+<button style="height: 76px; border-radius: 20px; border: 1.5px solid var(--fg); background: var(--surface); color: var(--fg); padding: 0 18px; display: flex; align-items: center; justify-content: space-between; font: 500 18px 'Space Grotesk', sans-serif"><span>evening</span><span style="font: 400 13px 'Space Mono', monospace; color: var(--muted)">18:00 to 24:00 · free</span></button>
+</div>
+</div>
+<div style="padding: 12px 20px 24px; border-top: 1.5px solid var(--fg); display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted)">wed 11 nov · morning · tesla model 3</span>
+<a href="BookingsDark.html" style="height: 58px; border-radius: 99px; background: var(--btn-bg); color: var(--btn-fg); font: 500 17px 'Space Grotesk', sans-serif; display: flex; align-items: center; justify-content: center; text-decoration: none">reserve for €35</a>
+</div>
+</div>
+</body>
+</html>
